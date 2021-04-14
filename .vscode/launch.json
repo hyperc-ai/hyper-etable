@@ -31,7 +31,8 @@
                 "HYPERC_MAX_PROC": "1",
                 "HYPERC_USE_CACHE": "1",
                 "HYPERC_TEMPDIR": "./tmp"
-            }
+            },
+            "justMyCode": false
         }
     ]
 }

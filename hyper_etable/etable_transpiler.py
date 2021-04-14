@@ -3,7 +3,9 @@ import collections
 import hyperc.settings
 import hyperc.xtj
 
-def get_var_from_cell(cell):
+def get_var_from_cell(cell_str):
+    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
+                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     letter = cell['c1'].lower()
     number = cell['r1']
     sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
@@ -12,16 +14,19 @@ def get_var_from_cell(cell):
 
 class EtableTranspiler:
 
-    def __init__(self, formula):
+    def __init__(self, formula, inputs, output):
         self.formula = formula
+        self.inputs = inputs
+        self.output = output
         try:
-            self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula['function'].name)
+            self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
         except formulas.errors.FormulaError as e:
             # print(f"Can't parse {v}: {e}")
             raise e
 
     def transpile_start(self):
+        self.var_counter = 0
         self.paren_level = 0
         self.functions = []
         self.last_node = None
@@ -29,31 +34,31 @@ class EtableTranspiler:
         self.function_parens_args = collections.defaultdict(list)
         self.code = []
         self.remember_types = {}
-        self.return_var = get_var_from_cell(self.formula['outputs'][0])
-        self.selectif = False
-        return_formula = self.transpile(self.nodes)
-        if self.selectif:
-            return self.transpile(self.nodes)
-        else:
-            return f'{self.return_var} = {return_formula}'
+        self.return_var = get_var_from_cell(self.output)
+        return self.transpile(self.nodes)
+
 
     def f_selectif(self, *args):
-        self.selectif = True
-        counter = 0
-        code = []
-        for arg in args:
-            if counter % 2 == 0:
-                code.append(f'        assert True')
-            if counter == 1:
-                code.append(f'    if ({arg}):')
-                code.append(f'        assert True')
-            elif counter > 2:
-                code.append(f'    elif ({arg}):')
-                code.append(f'        assert True')
-            counter += 1
-        code.append('    else:')
-        code.append(f'        assert False')
-        return code
+        assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
+        assert len(args) > 2, "Args should be 3 and more"
+        ret_var = f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}'
+        self.var_counter += 1
+        for idx, arg in enumerate(args):
+            if idx % 2 == 0:
+                continue
+            if idx == 1:
+                self.code.append(f"    if {arg}:")
+                self.code.append(f"        assert True")
+                self.code.append(f"        {ret_var} = {args[idx+1]}")
+            else:
+                self.code.append(f"    elif {arg}:")
+                self.code.append(f"        assert True")
+                self.code.append(f"        {ret_var} = {args[idx+1]}")
+        self.code.append(f"    else:")
+        self.code.append(f"        assert False")
+
+
+        return ret_var
 
     def f_and(self, *args):
         if len(args) == 2 and self.paren_level > 1:
@@ -212,7 +217,8 @@ class EtableTranspiler:
     def transpile_range(self, node: formulas.tokens.operand.Range):
         if not 'sheet' in node.attr:
             raise formulas.errors.FormulaError(f"Formula reference without row ID")
-        return get_var_from_cell(node.attr)
+        # return node.attr
+        return get_var_from_cell(node.attr['name'])
 
     def save_return(self, ret, type_):
         self.remember_types[ret] = type_

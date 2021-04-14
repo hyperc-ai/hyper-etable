@@ -58,10 +58,10 @@ class ETable:
                     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
                     code[out_py].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
 
-                formula = hyper_etable.etable_transpiler.EtableTranspiler(node_val)
+                formula = hyper_etable.etable_transpiler.EtableTranspiler(node_key, node_val['inputs'].keys(), output)
                 transpiled_formula = formula.transpile_start()
-                cell = formulas.Parser().ast("="+list(formulas.Parser().ast(f'={output}')[1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-                out_var = hyper_etable.etable_transpiler.get_var_from_cell(cell)
+                code[out_py].extend(formula.code)
+                out_var = hyper_etable.etable_transpiler.get_var_from_cell(output)
                 code[out_py].append(f'    {out_var} = {transpiled_formula}')
                 code[out_py].append(f'    # side effect with {out_var} shoul be added here')
             
