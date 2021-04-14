@@ -1,0 +1,37 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Текущий файл",
+            "type": "python",
+            "request": "launch",
+            // "program": "${file}",
+            "program": "hyper_etable/etable.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": " PyTest etable",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "-s",
+                "tests/test_etable.py::test_etable"
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHON": "pypy3",
+                "HYPERC_SEARCH_CONFIG": "lmcount_alt5",
+                "HYPERC_SPLIT_OFF": "1",
+                "HYPERC_SOLVER_MAX_TIME": "999900",
+                "HYPERC_MAX_PROC": "1",
+                "HYPERC_USE_CACHE": "1",
+                "HYPERC_TEMPDIR": "./tmp"
+            }
+        }
+    ]
+}
