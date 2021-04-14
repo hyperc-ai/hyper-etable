@@ -1,4 +1,4 @@
-import hyperc.etable
+import hyper_etable.etable
 import os
 
 def test_etable():
@@ -8,5 +8,5 @@ def test_etable():
     # file = 'plus.xlsx'
     file = 'plus_selectif.xlsx'
 
-    et = hyperc.etable.ETable(os.path.join(mydir, file), "test_etable")
+    et = hyper_etable.etable.ETable(os.path.join(mydir, file), "test_etable")
     et.calculate()

@@ -9,7 +9,7 @@ import unidecode
 import string
 import hyperc.util
 import hyperc.settings
-import hyperc.etable_transpiler
+import hyper_etable.etable_transpiler
 import hyperc.xtj
 import itertools
 
@@ -58,10 +58,10 @@ class ETable:
                     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
                     code[out_py].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
 
-                formula = hyperc.etable_transpiler.EtableTranspiler(node_val)
+                formula = hyper_etable.etable_transpiler.EtableTranspiler(node_val)
                 transpiled_formula = formula.transpile_start()
                 cell = formulas.Parser().ast("="+list(formulas.Parser().ast(f'={output}')[1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-                out_var = hyperc.etable_transpiler.get_var_from_cell(cell)
+                out_var = hyper_etable.etable_transpiler.get_var_from_cell(cell)
                 code[out_py].append(f'    {out_var} = {transpiled_formula}')
                 code[out_py].append(f'    # side effect with {out_var} shoul be added here')
             
