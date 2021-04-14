@@ -2,6 +2,7 @@ import formulas
 import collections
 import hyperc.settings
 import hyperc.xtj
+import schedula
 
 def get_var_from_cell(cell_str):
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
@@ -12,12 +13,19 @@ def get_var_from_cell(cell_str):
     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
     return var_name
 
+def split_cell(cell_str):
+    # return (rec_id , letter) 
+    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
+                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
+    return (cell['r1'], cell['c1'].lower())
+
 class EtableTranspiler:
 
     def __init__(self, formula, inputs, output):
         self.formula = formula
         self.inputs = inputs
         self.output = output
+        self.default = schedula.EMPTY
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
@@ -35,12 +43,14 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         self.return_var = get_var_from_cell(self.output)
-        return self.transpile(self.nodes)
+        return self.transpile(self.nodes), self.default
 
 
     def f_selectif(self, *args):
         assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
         assert len(args) > 2, "Args should be 3 and more"
+        if self.paren_level == 1:
+            self.default = args[0]
         ret_var = f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}'
         self.var_counter += 1
         for idx, arg in enumerate(args):
