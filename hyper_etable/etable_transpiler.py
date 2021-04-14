@@ -38,19 +38,22 @@ class EtableTranspiler:
             return f'{self.return_var} = {return_formula}'
 
     def f_selectif(self, *args):
+        self.selectif = True
         counter = 0
         code = []
-        default_code = []
         for arg in args:
-            if counter == 0:
-                default_code.append('    else:')
-                default_code.append(f'        {self.return_var} = {arg}')
-            elif counter == 1:
-                code.append('')
+            if counter % 2 == 0:
+                code.append(f'        assert True')
+            if counter == 1:
+                code.append(f'    if ({arg}):')
+                code.append(f'        assert True')
+            elif counter > 2:
+                code.append(f'    elif ({arg}):')
+                code.append(f'        assert True')
             counter += 1
-
-
-        return ''
+        code.append('    else:')
+        code.append(f'        assert False')
+        return code
 
     def f_and(self, *args):
         if len(args) == 2 and self.paren_level > 1:
