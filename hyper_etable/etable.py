@@ -73,7 +73,9 @@ class ETable:
                     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
                     code[out_py].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
 
-                formula= hyper_etable.etable_transpiler.EtableTranspiler(
+                # formula= hyper_etable.etable_transpiler.EtableTranspiler(
+                #     node_key, node_val['inputs'].keys(), output)
+                formula = hyper_etable.etable_transpiler.EtableTranspilerBreeder(
                     node_key, node_val['inputs'].keys(), output)
                 # set default value for selectif
                 transpiled_formula, xl_mdl.cells[output].value = formula.transpile_start()
