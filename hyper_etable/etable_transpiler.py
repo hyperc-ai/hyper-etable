@@ -246,14 +246,20 @@ class EtableTranspilerBreeder(EtableTranspiler):
 
         if isinstance(node, formulas.tokens.parenthesis.Parenthesis):
             if node.attr["name"] == "(":
-                self.last_node.args_counter = self.args_counter
+                if self.last_node is not None:
+                    self.last_node.args_counter = self.args_counter
                 self.args_counter = 0
                 self.stack.append(self.last_node)
                 self.paren_level += 1
             if node.attr["name"] == ")":
-                deleted_node = self.stack.pop()
-                self.args_counter = deleted_node.args_counter
-                deleted_node.args_counter = 0
+                if len(self.stack) == 0:
+                    print("ff")
+                deleted_node = self.stack.pop() 
+                if deleted_node is not None:
+                    self.args_counter = deleted_node.args_counter
+                    deleted_node.args_counter = 0
+                else:
+                    self.args_counter = 0
                 self.paren_level -= 1
         elif isinstance(node, formulas.tokens.function.Function):
             # if node.attr["name"] == 'SELECTIF' and node.attr['n_args'] > 3:
@@ -279,6 +285,8 @@ class EtableTranspilerBreeder(EtableTranspiler):
                         chunk1.extend(self.current_nodes[idx+(self.stack[-1].attr['n_args'] * 2 - (self.args_counter * 2 - 1)):])
                         chunk2 = self.current_nodes[0:idx-4]
                         chunk2.extend(self.current_nodes[idx:])
+                        self.breeded_nodes.append(chunk1)
+                        self.breeded_nodes.append(chunk2)
             return
 
 # breed selectif only
@@ -294,7 +302,8 @@ class EtableTranspilerBreeder(EtableTranspiler):
 
     def breeder(self):
         self.breeded_nodes.append(self.nodes)
-        while not self.breeder_stop:
+        self.breeder_stop = True
+        while self.breeder_stop:
             self.breeder_stop = False
             for nodes in self.breeded_nodes:
                 self.current_nodes = nodes
