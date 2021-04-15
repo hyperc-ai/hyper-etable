@@ -307,8 +307,10 @@ class EtableTranspilerBreeder(EtableTranspiler):
     def transpile_start(self):
         self.breeded_nodes = []
         self.breeder()
-
-        return super(EtableTranspilerBreeder, self).transpile_start()
+        for nodes in self.breeded_nodes:
+            self.nodes = nodes
+            ret = super(EtableTranspilerBreeder, self).transpile_start()
+        return ret
 
     def f_selectif(self, *args):
         assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
