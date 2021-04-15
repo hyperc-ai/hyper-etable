@@ -263,6 +263,8 @@ class EtableTranspilerBreeder(EtableTranspiler):
             if node.attr["name"] != ",":
                 raise ValueError("Can't support separator %s" % node.attr["name"])
             self.args_counter += 1
+            if len(self.stack) == 0:
+                return
             if isinstance(self.stack[-1], formulas.tokens.function.Function):
                 if self.stack[-1].attr["name"] == 'SELECTIF':
                     if self.args_counter == 3:
@@ -299,6 +301,7 @@ class EtableTranspilerBreeder(EtableTranspiler):
                 self.paren_level = 0
                 self.args_counter = 0
                 self.stack = []
+                self.last_node = None
                 self.traspile_breeder(nodes)
 
     def transpile_start(self):
