@@ -14,10 +14,10 @@ def get_var_from_cell(cell_str):
     return var_name
 
 def split_cell(cell_str):
-    # return (rec_id , letter) 
+    # return (file, sheet, rec_id , letter) 
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-    return (cell['r1'], cell['c1'].lower())
+    return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
 
 class EtableTranspiler:
 

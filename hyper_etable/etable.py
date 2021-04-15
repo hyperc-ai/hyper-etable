@@ -75,6 +75,7 @@ class ETable:
 
                 formula= hyper_etable.etable_transpiler.EtableTranspiler(
                     node_key, node_val['inputs'].keys(), output)
+                # set default value for selectif
                 transpiled_formula, xl_mdl.cells[output].value = formula.transpile_start()
                 code[out_py].extend(formula.code)
                 out_var = hyper_etable.etable_transpiler.get_var_from_cell(output)
@@ -86,18 +87,19 @@ class ETable:
                 f.write('\n'.join(func))
                 f.write('\n')
 
-        py_table_name = hyperc.xtj.str_to_py(self.filename)
-
-        ThisTable = self.get_new_table(py_table_name)
-
         for cell in used_cell_set:
 
-            recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+            filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+            py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             if recid not in self.objects[py_table_name]:
+                if py_table_name not in self.classes:
+                    ThisTable = self.get_new_table(py_table_name)
+                else:
+                    ThisTable = self.classes[py_table_name]
                 rec_obj = ThisTable()
                 # rec_obj.__row_record__ = copy.copy(cell)
                 rec_obj.__recid__ = recid
-                # rec_obj.__table_name__ += f'!_{str(rec_obj.__recid__)} {",".join(map(str, rec.values()))}'
+                rec_obj.__table_name__ += f'[{filename}]{sheet}'
                 rec_obj.__touched_annotations__ = set()
                 # ThisTable.__annotations_type_set__ = defaultdict(set)
                 self.objects[py_table_name][recid] = rec_obj
