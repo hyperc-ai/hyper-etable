@@ -45,7 +45,10 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         self.return_var = get_var_from_cell(self.output)
-        return self.transpile(self.nodes), self.default
+        transpiled_formula_return = self.transpile(self.nodes)
+        self.code.append(f'    {self.return_var} = {transpiled_formula_return}')
+        self.code.append(f'    # side effect with {self.return_var} shoul be added here')
+        return self.default
 
 
     def f_selectif(self, *args):
@@ -275,9 +278,6 @@ class EtableTranspilerBreeder(EtableTranspiler):
                         chunk2 = self.current_nodes[0:idx-4]
                         chunk2.extend(self.current_nodes[idx:])
             return
-
-
-
 
 # breed selectif only
     def traspile_breeder(self, nodes):

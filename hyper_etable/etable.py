@@ -78,11 +78,9 @@ class ETable:
                 formula = hyper_etable.etable_transpiler.EtableTranspilerBreeder(
                     node_key, node_val['inputs'].keys(), output)
                 # set default value for selectif
-                transpiled_formula, xl_mdl.cells[output].value = formula.transpile_start()
+                xl_mdl.cells[output].value = formula.transpile_start()
                 code[out_py].extend(formula.code)
-                out_var = hyper_etable.etable_transpiler.get_var_from_cell(output)
-                code[out_py].append(f'    {out_var} = {transpiled_formula}')
-                code[out_py].append(f'    # side effect with {out_var} shoul be added here')
+
             
         with open(f"{self.tempdir}/hpy_etable.py", "w+") as f:
             for func in code.values():
