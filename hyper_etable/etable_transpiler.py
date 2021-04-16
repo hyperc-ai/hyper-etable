@@ -3,6 +3,7 @@ import collections
 import hyperc.settings
 import hyperc.xtj
 import schedula
+import copy
 
 def get_var_from_cell(cell_str):
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
@@ -23,10 +24,11 @@ def split_cell(cell_str):
     
 class EtableTranspiler:
 
-    def __init__(self, formula, inputs, output):
+    def __init__(self, formula, inputs, output, init_code=None):
         self.formula = formula
         self.inputs = inputs
         self.output = output
+        self.init_code = init_code
         self.default = schedula.EMPTY
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
@@ -48,7 +50,6 @@ class EtableTranspiler:
         transpiled_formula_return = self.transpile(self.nodes)
         self.code.append(f'    {self.return_var} = {transpiled_formula_return}')
         self.code.append(f'    # side effect with {self.return_var} shoul be added here')
-        return self.default
 
 
     def f_selectif(self, *args):
@@ -240,6 +241,92 @@ class EtableTranspiler:
         return ret
 
 
+class CodeElement:
+
+    def __init__(self):
+        self.code_chunk = collections.defaultdict(list)
+
+class FunctionCode:
+    def __init__(self, name):
+        self.name = name
+        self.init = []
+        self.operators = []
+        self.args = []
+
+    def clean_init(self):
+        found = False
+        while not found:
+            found = False
+            for init in self.init:
+                var = init.split('#')[0].split('=')[0].strip()
+                for op in self.operators:
+                    if var in op:
+                        found = True
+                        break
+                if not found:
+                    self.init.remove(init)
+                    break
+
+    def __str__(self):
+        str = f'''def {self.name}():
+    {'\n'.join(self.init)}
+    {'\n'.join(self.operators)}
+    '''
+
+        return str
+
+
+class EtableTranspilerEasy(EtableTranspiler):
+
+    def transpile_start(self):
+        super(EtableTranspilerEasy, self).transpile_start()
+        code = {}
+        for idx, code_chunk in enumerate(self.code):
+            if isinstance(code_chunk, CodeElement):
+                if len(code_chunk) > 1:
+                    for ce in code_chunk:
+                        code[f'{self.init_code.name}_{ce}'] = FunctionCode(name=f'{self.init_code.name}_{ce}')
+                        code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
+                        code[f'{self.init_code.name}_{ce}'].operators = code.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].idx = idx
+                else:
+                    ce = list(code_chunk.keys())[0]
+                    self.init_code.operators.append(code.code_chunk[ce])
+            else:
+                self.init_code.operators.append(code_chunk)
+        if (len(code) > 0):
+            for branch_name in code:
+                code[branch_name].operators = copy.copy(
+                    self.init_code.operators[0: idx]).extend(
+                    code[branch_name].operators)
+                code[branch_name].operators.extend(self.init_code.operators[idx:])
+                code[branch_name].clean()
+        else:
+            code[self.init_code.name] = self.init_code
+            code[self.init_code.name].clean()
+        self.code = code
+
+
+
+
+    def f_selectif(self, *args):
+        assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
+        assert len(args) > 2, "Args should be 3 and more"
+        if self.paren_level == 1:
+            self.default = args[0]
+        ret_var = f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}'
+        self.var_counter += 1
+        for idx, arg in enumerate(args):
+            if idx % 2 == 0:
+                continue
+            code_element = CodeElement()
+            self.code.append(code_element)
+            code_element[f'branch{(idx-1)/2}'].append(f"    assert {arg}")
+            code_element[f'branch{(idx-1)/2}'].append(f"    {ret_var} = {args[idx+1]}")
+
+        return ret_var
+
+
 class EtableTranspilerBreeder(EtableTranspiler):
 
     def transtile_node_breeder(self, node):
@@ -282,6 +369,7 @@ class EtableTranspilerBreeder(EtableTranspiler):
                         idx = self.current_nodes.index(node)
                         self.breeded_nodes.remove(self.current_nodes)
                         chunk1 = self.current_nodes[0:idx]
+                        cut = idx+(self.stack[-1].attr['n_args'] * 2 - (self.args_counter * 2 - 1))
                         chunk1.extend(self.current_nodes[idx+(self.stack[-1].attr['n_args'] * 2 - (self.args_counter * 2 - 1)):])
                         chunk2 = self.current_nodes[0:idx-4]
                         chunk2.extend(self.current_nodes[idx:])
@@ -318,8 +406,7 @@ class EtableTranspilerBreeder(EtableTranspiler):
         self.breeder()
         for nodes in self.breeded_nodes:
             self.nodes = nodes
-            ret = super(EtableTranspilerBreeder, self).transpile_start()
-        return ret
+            super(EtableTranspilerBreeder, self).transpile_start()
 
     def f_selectif(self, *args):
         assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"

@@ -1,5 +1,6 @@
 from collections import defaultdict
 import os.path
+from numpy.lib.function_base import append
 import schedula
 from formulas.excel import ExcelModel, BOOK, ERR_CIRCULAR
 from formulas.excel.xlreader import load_workbook
@@ -52,7 +53,7 @@ class ETable:
         xl_mdl = ExcelModel()
         xl_mdl.loads(self.filename)
 
-        code = defaultdict(list)
+        code = {}
 
         used_cell_set = set()
 
@@ -61,8 +62,9 @@ class ETable:
                 assert len(node_val['outputs']) == 1, f'Currently support only one cell as output'
                 output = node_val['outputs'][0]
                 out_py = hyperc.xtj.str_to_py(output)
-                code[out_py].append(f'def hct_{out_py}():')
-                code[out_py].append(f'    #{node_key}')
+                code_init = {}
+                code_init[out_py] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
+                code_init[out_py].init.append(f'    #{node_key}')
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
@@ -71,20 +73,21 @@ class ETable:
                     number = cell['r1']
                     sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
                     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
-                    code[out_py].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
+                    code_init[out_py].init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
-                formula = hyper_etable.etable_transpiler.EtableTranspilerBreeder(
-                    node_key, node_val['inputs'].keys(), output)
+                formula = hyper_etable.etable_transpiler.EtableTranspilerEasy(
+                    node_key, node_val['inputs'].keys(), output, init_code=code_init)
+                formula.transpile_start()
                 # set default value for selectif
-                xl_mdl.cells[output].value = formula.transpile_start()
-                code[out_py].extend(formula.code)
+                xl_mdl.cells[output].value = formula.default
+                code.update(formula.code)
 
             
         with open(f"{self.tempdir}/hpy_etable.py", "w+") as f:
             for func in code.values():
-                f.write('\n'.join(func))
+                f.write(str(func))
                 f.write('\n')
 
         for cell in used_cell_set:
