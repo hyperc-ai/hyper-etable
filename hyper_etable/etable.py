@@ -83,7 +83,10 @@ class ETable:
                 xl_mdl.cells[output].value = formula.default
                 code.update(formula.code)
 
-            
+        # for func in code:
+        #     for init in func.init:
+
+
         with open(f"{self.tempdir}/hpy_etable.py", "w+") as f:
             for func in code.values():
                 f.write(str(func))

@@ -20,8 +20,17 @@ def split_cell(cell_str):
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
 
+class StringLikeVars:
+    def __init__(self,rendered_str, args):
+        self.rendered_str = rendered_str
+        self.args  = args
+        self.variables = []
+        for arg in self.args:
+            if isinstance(arg, str):
+                self.variables.append(arg)
+            elif isinstance(arg, StringLikeVars):
+                self.variables.extend(arg.variables)
 
-    
 class EtableTranspiler:
 
     def __init__(self, formula, inputs, output, init_code=None):
@@ -94,34 +103,34 @@ class EtableTranspiler:
             raise TypeError("AND() only supports 2 arguments if used in complex formula")
 
     def f_eq(self, v1, v2):
-        return self.save_return(f"({v1} == {v2})", bool)
+        return self.save_return(StringLikeVars(f"({v1} == {v2})", [v1, v2]), bool)
 
     def f_ne(self, v1, v2):
-        return self.save_return(f"({v1} != {v2})", bool)
+        return self.save_return(StringLikeVars(f"({v1} != {v2})", [v1, v2]), bool)
 
     def f_add(self, v1, v2):
-        return self.save_return(f"({v1} + {v2})", int)
+        return self.save_return(StringLikeVars(f"({v1} + {v2})", [v1, v2]), int)
 
     def f_sub(self, v1, v2):
-        return self.save_return(f"({v1} - {v2})", int)
+        return self.save_return(StringLikeVars(f"({v1} - {v2})", [v1, v2]), int)
 
     def f_mul(self, v1, v2):
-        return self.save_return(f"({v1} * {v2})", int)
+        return self.save_return(StringLikeVars(f"({v1} * {v2})", [v1, v2]), int)
 
     def f_div(self, v1, v2):
-        return self.save_return(f"({v1} // {v2})", int)
+        return self.save_return(StringLikeVars(f"({v1} // {v2})", [v1, v2]), int)
 
     def f_lt(self, v1, v2):
-        return self.save_return(f"({v1} < {v2})", bool)
+        return self.save_return(StringLikeVars(f"({v1} < {v2})", [v1, v2]), bool)
 
     def f_gt(self, v1, v2):
-        return self.save_return(f"({v1} > {v2})", bool)
+        return self.save_return(StringLikeVars(f"({v1} > {v2})", [v1,v2]), bool)
 
     def f_le(self, v1, v2):
-        return self.save_return(f"({v1} <= {v2})", bool)
+        return self.save_return(StringLikeVars(f"({v1} <= {v2})", [v1, v2]), bool)
 
     def f_ge(self, v1, v2):
-        return self.save_return(f"({v1} >= {v2})", bool)
+        return self.save_return(StringLikeVars(f"({v1} >= {v2})", [v1, v2]), bool)
 
     def transpile(self, nodes):
         if isinstance(nodes, list):
@@ -242,11 +251,11 @@ class EtableTranspiler:
         self.remember_types[ret] = type_
         return ret
 
-
 class CodeElement:
 
     def __init__(self):
         self.code_chunk = collections.defaultdict(list)
+        self.contion_vars = collections.defaultdict(list)
 
 class FunctionCode:
     def __init__(self, name):
@@ -291,6 +300,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(name=f'{self.init_code.name}_{ce}')
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                         code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].selected_cell = code_chunk.contion_vars[ce]
                         code[f'{self.init_code.name}_{ce}'].idx = idx
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
@@ -307,9 +317,6 @@ class EtableTranspilerEasy(EtableTranspiler):
             code[self.init_code.name].clean()
         self.code = code
 
-
-
-
     def f_selectif(self, *args):
         assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
         assert len(args) > 2, "Args should be 3 and more"
@@ -324,6 +331,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                 continue
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_var} = {args[idx+1]}")
+            code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
 
         return ret_var
 
