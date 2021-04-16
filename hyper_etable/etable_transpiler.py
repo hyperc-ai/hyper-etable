@@ -29,6 +29,8 @@ class EtableTranspiler:
         self.inputs = inputs
         self.output = output
         self.init_code = init_code
+        if self.init_code is None:
+            self.init_code = []
         self.default = schedula.EMPTY
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
@@ -252,8 +254,9 @@ class FunctionCode:
         self.init = []
         self.operators = []
         self.args = []
+        self.selected_cell = []
 
-    def clean_init(self):
+    def clean(self):
         found = False
         while not found:
             found = False
@@ -268,12 +271,12 @@ class FunctionCode:
                     break
 
     def __str__(self):
-        str = f'''def {self.name}():
-    {'\n'.join(self.init)}
-    {'\n'.join(self.operators)}
-    '''
-
-        return str
+        init = '\n'.join(self.init)
+        operators = '\n'.join(self.operators)
+        return f'''def {self.name}():
+    {init}
+    {operators}
+'''
 
 
 class EtableTranspilerEasy(EtableTranspiler):
@@ -283,22 +286,20 @@ class EtableTranspilerEasy(EtableTranspiler):
         code = {}
         for idx, code_chunk in enumerate(self.code):
             if isinstance(code_chunk, CodeElement):
-                if len(code_chunk) > 1:
-                    for ce in code_chunk:
+                if len(code_chunk.code_chunk) > 1:
+                    for ce in code_chunk.code_chunk:
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(name=f'{self.init_code.name}_{ce}')
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].operators = code.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].idx = idx
                 else:
-                    ce = list(code_chunk.keys())[0]
-                    self.init_code.operators.append(code.code_chunk[ce])
+                    ce = list(code_chunk.code_chunk.keys())[0]
+                    self.init_code.operators = code_chunk.code_chunk[ce]
             else:
                 self.init_code.operators.append(code_chunk)
         if (len(code) > 0):
             for branch_name in code:
-                code[branch_name].operators = copy.copy(
-                    self.init_code.operators[0: idx]).extend(
-                    code[branch_name].operators)
+                code[branch_name].operators = self.init_code.operators[0: idx] + code[branch_name].operators
                 code[branch_name].operators.extend(self.init_code.operators[idx:])
                 code[branch_name].clean()
         else:
@@ -316,13 +317,13 @@ class EtableTranspilerEasy(EtableTranspiler):
             self.default = args[0]
         ret_var = f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}'
         self.var_counter += 1
+        code_element = CodeElement()
+        self.code.append(code_element)
         for idx, arg in enumerate(args):
             if idx % 2 == 0:
                 continue
-            code_element = CodeElement()
-            self.code.append(code_element)
-            code_element[f'branch{(idx-1)/2}'].append(f"    assert {arg}")
-            code_element[f'branch{(idx-1)/2}'].append(f"    {ret_var} = {args[idx+1]}")
+            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
+            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_var} = {args[idx+1]}")
 
         return ret_var
 

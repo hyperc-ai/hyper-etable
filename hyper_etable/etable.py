@@ -62,9 +62,8 @@ class ETable:
                 assert len(node_val['outputs']) == 1, f'Currently support only one cell as output'
                 output = node_val['outputs'][0]
                 out_py = hyperc.xtj.str_to_py(output)
-                code_init = {}
-                code_init[out_py] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
-                code_init[out_py].init.append(f'    #{node_key}')
+                code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
+                code_init.init.append(f'    #{node_key}')
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
@@ -73,7 +72,7 @@ class ETable:
                     number = cell['r1']
                     sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
                     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
-                    code_init[out_py].init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
+                    code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
