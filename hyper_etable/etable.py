@@ -82,9 +82,23 @@ class ETable:
                 # set default value for selectif
                 xl_mdl.cells[output].value = formula.default
                 code.update(formula.code)
+        
+        # look for mergable actions
+        deleted_keys = set()
+        for func_name_other in list(code.keys()):
+            if func_name_other in deleted_keys:
+                continue
+            for s_c in code[func_name_other].selected_cell:
+                for func_name in list(code.keys()):
+                    if func_name_other in deleted_keys:
+                        continue
+                    if func_name == func_name_other:
+                        continue
+                    if s_c in code[func_name].selected_cell:
+                        code[func_name].merge(code[func_name_other])
+                        del code[func_name_other]
+                        deleted_keys.add(func_name_other)
 
-        # for func in code:
-        #     for init in func.init:
 
 
         with open(f"{self.tempdir}/hpy_etable.py", "w+") as f:

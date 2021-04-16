@@ -265,6 +265,13 @@ class FunctionCode:
         self.args = []
         self.selected_cell = []
 
+    def merge(self, other):
+        self.name = f'{self.name}_{other.name}'
+        self.init.extend(other.init)
+        self.operators.extend(other.operators)
+        self.args.extend(other.args)
+        self.selected_cell.extend(other.selected_cell)
+
     def clean(self):
         found = False
         while not found:
