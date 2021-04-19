@@ -8,6 +8,7 @@ from formulas.functions import is_number
 import formulas
 import unidecode
 import string
+import hyperc
 import hyperc.util
 import hyperc.settings
 import hyper_etable.etable_transpiler
@@ -36,6 +37,15 @@ class ETable:
         sys.modules[self.session_name] = self.mod
         self.classes = {}
         self.objects = collections.defaultdict(dict)
+        self.mod.side_effect = hyperc.side_effect
+        self.mod.ensure_ne = hyperc.ensure_ne
+        self.mod.StaticObject = type("StaticObject", (object, ), {})
+        self.mod.StaticObject.__annotations__ = {}
+        self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
+        self.mod.HCT_STATIC_OBJECTS = self.mod.StaticObject()
+        self.mod.HCT_OBJECTS = {}
+
+
         
     def get_new_table(self, table_name):
         ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name})
@@ -46,6 +56,7 @@ class ETable:
         self.mod.__dict__[table_name] = ThisTable
         self.classes[table_name] = ThisTable
         self.classes[table_name].__qualname__ = f"{self.session_name}.{table_name}"
+        self.mod.HCT_OBJECTS[table_name] = []
         return ThisTable
 
     def calculate(self):
@@ -67,12 +78,10 @@ class ETable:
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
-                    cell = formulas.Parser().ast("="+list(formulas.Parser().ast(f'={input}')[1].compile().dsp.nodes.keys())[0].replace(" = -","=-"))[0][0].attr
-                    letter = cell['c1'].lower()
-                    number = cell['r1']
-                    sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
-                    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
-                    code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{number}.{letter}')
+                    filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(input)
+                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
+                    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{recid}_{letter}'
+                    code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter}')
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
@@ -115,18 +124,27 @@ class ETable:
                     ThisTable = self.get_new_table(py_table_name)
                 else:
                     ThisTable = self.classes[py_table_name]
+                # if 
                 rec_obj = ThisTable()
                 # rec_obj.__row_record__ = copy.copy(cell)
                 rec_obj.__recid__ = recid
-                rec_obj.__table_name__ += f'[{filename}]{sheet}'
+                rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                 rec_obj.__touched_annotations__ = set()
                 # ThisTable.__annotations_type_set__ = defaultdict(set)
                 self.objects[py_table_name][recid] = rec_obj
+                self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
             self.objects[py_table_name][recid].__touched_annotations__.add(letter)
             #TODO add type detector
             self.classes[py_table_name].__annotations__[letter] = int
             # rec_obj.__annotations__.add(letter)
             if xl_mdl.cells[cell].value is not schedula.EMPTY:
+                filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+                sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                if sheet_name not in self.mod.HCT_OBJECTS:
+                    self.mod.HCT_OBJECTS[sheet_name] = []
+                if self.objects[py_table_name][recid] not in self.mod.HCT_OBJECTS[sheet_name]:
+                    setattr(self.mod.HCT_STATIC_OBJECTS, sheet_name, self.objects[py_table_name][recid])
+                self.mod.HCT_OBJECTS[sheet_name].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}.{letter}')
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
 
         for clsv in self.classes.values():
@@ -157,7 +175,22 @@ class ETable:
             exec(f_code, globals())
             clsv.__init__ = globals()["hct_f_init"]
             clsv.__init__.__name__ = "__init__"
-        
+
+        # Now generate init for static object
+        init_f_code = []
+        for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECTS.{attr_name}")  # if it does not ignore, fix it!
+        if init_f_code:
+            HCT_STATIC_OBJECTS = self.mod.HCT_STATIC_OBJECTS
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_stf_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
+            self.mod.StaticObject.__init__.__name__ = "__init__"
+
         print("finish")
         # xl_mdl.calculate()
         # # xl_mdl.add_book(self.link_filename)
