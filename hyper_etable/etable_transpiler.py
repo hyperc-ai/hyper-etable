@@ -31,6 +31,9 @@ class StringLikeVars:
             elif isinstance(arg, StringLikeVars):
                 self.variables.extend(arg.variables)
 
+    def __str__(self):
+        return self.rendered_str
+
 class EtableTranspiler:
 
     def __init__(self, formula, inputs, output, init_code=None):
