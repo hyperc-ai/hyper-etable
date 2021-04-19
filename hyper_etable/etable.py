@@ -1,13 +1,7 @@
 from collections import defaultdict
-import os.path
-from numpy.lib.function_base import append
 import schedula
-from formulas.excel import ExcelModel, BOOK, ERR_CIRCULAR
-from formulas.excel.xlreader import load_workbook
-from formulas.functions import is_number
+import formulas.excel
 import formulas
-import unidecode
-import string
 import hyperc
 import hyperc.util
 import hyperc.settings
@@ -16,7 +10,6 @@ import hyperc.xtj
 import itertools
 import sys
 import types
-import copy
 import collections
 
 class TableElementMeta(type):
@@ -61,7 +54,7 @@ class ETable:
 
     def calculate(self):
         
-        xl_mdl = ExcelModel()
+        xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(self.filename)
 
         code = {}
@@ -190,6 +183,13 @@ class ETable:
             exec(f_code, self.mod.__dict__)
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
+
+        # TODO set goal here 
+        for book in xl_mdl.books.values():
+            for sheet in book[formulas.excel.BOOK].worksheets:
+                for rule_cell in sheet.conditional_formatting._cf_rules:
+                    cell = rule_cell.split()[1].strip()
+
 
         print("finish")
         # xl_mdl.calculate()
