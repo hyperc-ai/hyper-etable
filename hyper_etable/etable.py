@@ -123,10 +123,40 @@ class ETable:
                 # ThisTable.__annotations_type_set__ = defaultdict(set)
                 self.objects[py_table_name][recid] = rec_obj
             self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+            #TODO add type detector
+            self.classes[py_table_name].__annotations__[letter] = int
             # rec_obj.__annotations__.add(letter)
             if xl_mdl.cells[cell].value is not schedula.EMPTY:
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
 
+        for clsv in self.classes.values():
+            init_f_code = []
+            init_pars = []
+            if hyperc.settings.DEBUG:
+                print(f" {clsv} -  {clsv.__annotations__}")
+            for par_name, par_type in clsv.__annotations__.items():
+                if par_name == '__table_name__':
+                    continue
+                # Skip None type cell
+                if par_type is None:
+                    par_type = str
+                    clsv.__annotations__[par_name] = str
+                init_f_code.append(
+                    f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                if not par_type in hyperc.xtj.DEFAULT_VALS:
+                    raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
+                init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+            if len(init_f_code) == 0:
+                continue
+            full_f_code = '\n    '.join(init_f_code)
+            full_f_pars = ",".join(init_pars)
+            full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, globals())
+            clsv.__init__ = globals()["hct_f_init"]
+            clsv.__init__.__name__ = "__init__"
         
         print("finish")
         # xl_mdl.calculate()
