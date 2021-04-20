@@ -137,6 +137,7 @@ class ETable:
                     self.mod.HCT_OBJECTS[sheet_name] = []
                 if self.objects[py_table_name][recid] not in self.mod.HCT_OBJECTS[sheet_name]:
                     setattr(self.mod.HCT_STATIC_OBJECTS, sheet_name, self.objects[py_table_name][recid])
+                    self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
                 self.mod.HCT_OBJECTS[sheet_name].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}.{letter}')
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
 
