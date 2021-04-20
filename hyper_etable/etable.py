@@ -17,6 +17,14 @@ class TableElementMeta(type):
     def __str__(self):
         return self.__table_name__
 
+def operator_name_to_operator(op):
+    expand = {">": "greaterThan", ">=": "greaterThanOrEqual", "<": "lessThan", "<=": "lessThanOrEqual",
+              "==": "equal", "!=": "notEqual"}
+    for k, v in expand.items():
+        if v == op:
+            return k
+    return None
+
 class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
         self.filename = filename
@@ -185,11 +193,37 @@ class ETable:
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
+        # Collect conditional formatting
         # TODO set goal here 
-        for book in xl_mdl.books.values():
-            for sheet in book[formulas.excel.BOOK].worksheets:
-                for rule_cell in sheet.conditional_formatting._cf_rules:
-                    cell = rule_cell.split()[1].strip()
+        goal_code = defaultdict(list)
+        for filename, book in xl_mdl.books.items():
+            for worksheet in book[formulas.excel.BOOK].worksheets:
+                for rule_cell in worksheet.conditional_formatting._cf_rules:
+                    assert len(rule_cell.sqref.ranges) == 1, "only one cell ondition support"
+                    sheet = worksheet.title
+                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}"
+                    filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                    for rule in rule_cell.rules:
+                        value = hyper_etable.etable_transpiler.formulas_parser(rule.formula[0])[0]
+                        if isinstance(value, formulas.tokens.operand.Range):
+                            filename_value, sheet_value, recid_value, letter_value = hyper_etable.etable_transpiler.split_cell(rule.formula[0])
+                            if filename_value == '':
+                                filename_value = filename
+                            if sheet_value == '':
+                                sheet_value = sheet
+                            sheet_name_value = hyperc.xtj.str_to_py(f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
+                            goal_code[cell].append(
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}_{recid_value}.{letter_value}')
+                        elif isinstance(value, formulas.tokens.operand.Number):
+                            goal_code[cell].append(
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                        elif isinstance(value, formulas.tokens.operand.String):
+                            goal_code[cell].append(
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} {value.attr["name"]}')
+
+
+
 
 
         print("finish")

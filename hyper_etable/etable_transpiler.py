@@ -14,6 +14,10 @@ def get_var_from_cell(cell_str):
     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
     return var_name
 
+def formulas_parser(formula_str):
+    return formulas.Parser().ast("="+list(formulas.Parser().ast("=" + formula_str)
+                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
+
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter) 
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
