@@ -106,6 +106,7 @@ class ETable:
                         continue
                     if s_c in code[func_name].selected_cell:
                         code[func_name].merge(code[func_name_other])
+
                         del code[func_name_other]
                         deleted_keys.add(func_name_other)
 
@@ -122,9 +123,10 @@ class ETable:
         f_code = compile(s_code, fn, 'exec')
  
         exec(f_code, self.mod.__dict__)
-        # functions[tp.action['py_name']] = globals()[tp.action['py_name']]
-        # functions[tp.action['py_name']] = self.mod.__dict__[tp.action['py_name']]
-        # functions[tp.action['py_name']].orig_source = s_code
+        functions = {}
+        for func_code in code.values():
+            functions[func_code.name] = self.mod.__dict__[func_code.name]
+            functions[func_code.name].orig_source = str(func_code)
 
         for cell in used_cell_set:
 
