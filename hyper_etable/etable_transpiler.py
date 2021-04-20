@@ -297,8 +297,8 @@ class FunctionCode:
         init = '\n'.join(self.init)
         operators = '\n'.join(self.operators)
         return f'''def {self.name}():
-    {init}
-    {operators}
+{init}
+{operators}
 '''
 
 
