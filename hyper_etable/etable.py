@@ -110,11 +110,21 @@ class ETable:
                         deleted_keys.add(func_name_other)
 
 
-
-        with open(f"{self.tempdir}/hpy_etable.py", "w+") as f:
+        s_code = ''
+        fn = f"{self.tempdir}/hpy_etable.py"
+        with open(fn, "w+") as f:
             for func in code.values():
                 f.write(str(func))
                 f.write('\n')
+                s_code += str(func)
+                s_code += '\n'
+
+        f_code = compile(s_code, fn, 'exec')
+ 
+        exec(f_code, self.mod.__dict__)
+        # functions[tp.action['py_name']] = globals()[tp.action['py_name']]
+        # functions[tp.action['py_name']] = self.mod.__dict__[tp.action['py_name']]
+        # functions[tp.action['py_name']].orig_source = s_code
 
         for cell in used_cell_set:
 
