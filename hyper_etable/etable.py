@@ -47,6 +47,23 @@ class ETable:
         self.mod.HCT_STATIC_OBJECTS = self.mod.StaticObject()
         self.mod.HCT_OBJECTS = {}
 
+    def dump_functions(self, code, filename):
+        s_code = ''
+        fn = f"{self.tempdir}/{filename}"
+        with open(fn, "w+") as f:
+            for func in code.values():
+                f.write(str(func))
+                f.write('\n')
+                s_code += str(func)
+                s_code += '\n'
+
+        f_code = compile(s_code, fn, 'exec')
+
+        exec(f_code, self.mod.__dict__)
+        functions = {}
+        for func_code in code.values():
+            functions[func_code.name] = self.mod.__dict__[func_code.name]
+            functions[func_code.name].orig_source = str(func_code)
 
         
     def get_new_table(self, table_name):
@@ -111,23 +128,7 @@ class ETable:
                         del code[func_name_other]
                         deleted_keys.add(func_name_other)
 
-
-        s_code = ''
-        fn = f"{self.tempdir}/hpy_etable.py"
-        with open(fn, "w+") as f:
-            for func in code.values():
-                f.write(str(func))
-                f.write('\n')
-                s_code += str(func)
-                s_code += '\n'
-
-        f_code = compile(s_code, fn, 'exec')
- 
-        exec(f_code, self.mod.__dict__)
-        functions = {}
-        for func_code in code.values():
-            functions[func_code.name] = self.mod.__dict__[func_code.name]
-            functions[func_code.name].orig_source = str(func_code)
+        self.dump_functions(code, 'hpy_etable.py')
 
         for cell in used_cell_set:
 
@@ -236,8 +237,8 @@ class ETable:
                                 f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
-        goal_code_source = defaultdict(list)
-        goal_code_source[0] = []
+        goal_code_source = {}
+        goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0')
         goal_counter = 0
         for goal_name, g_c in goal_code.items():
             goal_counter_was = goal_counter
@@ -247,14 +248,16 @@ class ETable:
                 for counter_new in range(goal_counter_was + 1, goal_counter+1):
                     if counter_was == goal_counter_was + 1:
                         counter_was = 0
-                    goal_code_source[counter_new] = copy.copy(goal_code_source[counter_was])
+                    goal_code_source[counter_new] = hyper_etable.etable_transpiler.FunctionCode(
+                        name=f'hct_goal_{counter_new}')
+                    goal_code_source[counter_new].operators = copy.copy(goal_code_source[counter_was].operators)
                     counter_was += 1
 
             for idx in goal_code_source:
-                goal_code_source[idx].append(f'    #{goal_name}')
-                goal_code_source[idx].append(g_c[idx % len(g_c)])
+                goal_code_source[idx].operators.append(f'    #{goal_name}')
+                goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
             
-
+        self.dump_functions(goal_code_source, 'hpy_goals.py')
 
 
         print("finish")
