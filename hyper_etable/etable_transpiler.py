@@ -66,8 +66,12 @@ class EtableTranspiler:
         self.remember_types = {}
         self.return_var = get_var_from_cell(self.output)
         transpiled_formula_return = self.transpile(self.nodes)
-        self.code.append(f'    {self.return_var} = {transpiled_formula_return}')
-        self.code.append(f'    # side effect with {self.return_var} shoul be added here')
+        filename, sheet, recid, letter = split_cell(self.output)
+        sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
+        self.output_code = []
+        self.output_code.append(f'    {self.return_var} = {transpiled_formula_return}')
+        self.output_code.append(f'    HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
+        self.output_code.append(f'    # side effect with {self.return_var} can be added here')
 
 
     def f_selectif(self, *args):
@@ -271,6 +275,7 @@ class FunctionCode:
         self.operators = []
         self.args = []
         self.selected_cell = []
+        self.output = []
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
@@ -278,6 +283,7 @@ class FunctionCode:
         self.operators.extend(other.operators)
         self.args.extend(other.args)
         self.selected_cell.extend(other.selected_cell)
+        self.output.extend(other.output)
 
     def clean(self):
         found = False
@@ -296,9 +302,11 @@ class FunctionCode:
     def __str__(self):
         init = '\n'.join(self.init)
         operators = '\n'.join(self.operators)
+        output = '\n'.join(self.output)
         return f'''def {self.name}():
 {init}
 {operators}
+{output}
 '''
 
 
@@ -329,6 +337,8 @@ class EtableTranspilerEasy(EtableTranspiler):
         else:
             code[self.init_code.name] = self.init_code
             code[self.init_code.name].clean()
+        for  c in code.values():
+            c.output.extend(self.output_code)
         self.code = code
 
     def f_selectif(self, *args):
