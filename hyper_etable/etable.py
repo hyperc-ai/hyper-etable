@@ -140,7 +140,7 @@ class ETable:
                 for rule_cell in worksheet.conditional_formatting._cf_rules:
                     assert len(rule_cell.sqref.ranges) == 1, "only one cell ondition support"
                     sheet = worksheet.title
-                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}"
+                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}".upper()
                     used_cell_set.add(cell)
                     filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
