@@ -132,6 +132,69 @@ class ETable:
 
         self.dump_functions(code, 'hpy_etable.py')
 
+        # Collect conditional formatting
+        # TODO set goal here
+        goal_code = defaultdict(list)
+        for filename, book in xl_mdl.books.items():
+            for worksheet in book[formulas.excel.BOOK].worksheets:
+                for rule_cell in worksheet.conditional_formatting._cf_rules:
+                    assert len(rule_cell.sqref.ranges) == 1, "only one cell ondition support"
+                    sheet = worksheet.title
+                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}"
+                    used_cell_set.add(cell)
+                    filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                    for rule in rule_cell.rules:
+                        value = hyper_etable.etable_transpiler.formulas_parser(rule.formula[0])[0]
+                        if isinstance(value, formulas.tokens.operand.Range):
+                            filename_value, sheet_value, recid_value, letter_value = hyper_etable.etable_transpiler.split_cell(
+                                rule.formula[0])
+                            if filename_value == '':
+                                filename_value = filename
+                            if sheet_value == '':
+                                sheet_value = sheet
+                            sheet_name_value = hyperc.xtj.str_to_py(
+                                f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
+                            goal_code[cell].append(
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
+                        elif isinstance(value, formulas.tokens.operand.Number):
+                            goal_code[cell].append(
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                        elif isinstance(value, formulas.tokens.operand.String):
+                            goal_code[cell].append(
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
+
+        g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
+        goal_code_source = {}
+        goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0')
+        goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+        goal_counter = 0
+        for goal_name, g_c in goal_code.items():
+            goal_counter_was = goal_counter
+            goal_counter = (goal_counter + 1) * len(g_c) - 1
+            if goal_counter > goal_counter_was:
+                counter_was = 0
+                for counter_new in range(goal_counter_was + 1, goal_counter+1):
+                    if counter_was == goal_counter_was + 1:
+                        counter_was = 0
+                    goal_code_source[counter_new] = hyper_etable.etable_transpiler.FunctionCode(
+                        name=f'hct_goal_{counter_new}')
+                    goal_code_source[counter_new].operators = copy.copy(goal_code_source[counter_was].operators)
+                    goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+                    counter_was += 1
+
+            for idx in goal_code_source:
+                goal_code_source[idx].operators.append(f'    #{goal_name}')
+                goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
+
+        main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')
+        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
+        goal_code_source['main_goal'] = main_goal
+        self.dump_functions(goal_code_source, 'hpy_goals.py')
+
+        code.update(goal_code_source)
+
+
         for cell in used_cell_set:
 
             filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
@@ -209,65 +272,7 @@ class ETable:
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
-        # Collect conditional formatting
-        # TODO set goal here 
-        goal_code = defaultdict(list)
-        for filename, book in xl_mdl.books.items():
-            for worksheet in book[formulas.excel.BOOK].worksheets:
-                for rule_cell in worksheet.conditional_formatting._cf_rules:
-                    assert len(rule_cell.sqref.ranges) == 1, "only one cell ondition support"
-                    sheet = worksheet.title
-                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}"
-                    filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
-                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
-                    for rule in rule_cell.rules:
-                        value = hyper_etable.etable_transpiler.formulas_parser(rule.formula[0])[0]
-                        if isinstance(value, formulas.tokens.operand.Range):
-                            filename_value, sheet_value, recid_value, letter_value = hyper_etable.etable_transpiler.split_cell(rule.formula[0])
-                            if filename_value == '':
-                                filename_value = filename
-                            if sheet_value == '':
-                                sheet_value = sheet
-                            sheet_name_value = hyperc.xtj.str_to_py(f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
-                            goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
-                        elif isinstance(value, formulas.tokens.operand.Number):
-                            goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
-                        elif isinstance(value, formulas.tokens.operand.String):
-                            goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
 
-        g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
-        goal_code_source = {}
-        goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0')
-        goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
-        goal_counter = 0
-        for goal_name, g_c in goal_code.items():
-            goal_counter_was = goal_counter
-            goal_counter = (goal_counter + 1 )* len(g_c) -1
-            if goal_counter > goal_counter_was:
-                counter_was = 0
-                for counter_new in range(goal_counter_was + 1, goal_counter+1):
-                    if counter_was == goal_counter_was + 1:
-                        counter_was = 0
-                    goal_code_source[counter_new] = hyper_etable.etable_transpiler.FunctionCode(
-                        name=f'hct_goal_{counter_new}')
-                    goal_code_source[counter_new].operators = copy.copy(goal_code_source[counter_was].operators)
-                    goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
-                    counter_was += 1
-
-            for idx in goal_code_source:
-                goal_code_source[idx].operators.append(f'    #{goal_name}')
-                goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
-            
-        main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')
-        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
-        goal_code_source['main_goal'] = main_goal
-        self.dump_functions(goal_code_source, 'hpy_goals.py')
-        
-        code.update(goal_code_source)
-        
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
         plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], globals_=self.methods_classes, extra_instantiations=just_classes, work_dir=self.tempdir )
