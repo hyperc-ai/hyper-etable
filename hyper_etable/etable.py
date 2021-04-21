@@ -47,6 +47,8 @@ class ETable:
         self.mod.HCT_STATIC_OBJECTS = self.mod.StaticObject()
         self.mod.HCT_STATIC_OBJECTS.GOAL = False
         self.mod.HCT_OBJECTS = {}
+        self.methods_classes = {}
+        self.methods_classes["StaticObject"] = self.mod.StaticObject
 
     def dump_functions(self, code, filename):
         s_code = ''
@@ -61,10 +63,9 @@ class ETable:
         f_code = compile(s_code, fn, 'exec')
 
         exec(f_code, self.mod.__dict__)
-        functions = {}
         for func_code in code.values():
-            functions[func_code.name] = self.mod.__dict__[func_code.name]
-            functions[func_code.name].orig_source = str(func_code)
+            self.methods_classes[func_code.name] = self.mod.__dict__[func_code.name]
+            self.methods_classes[func_code.name].orig_source = str(func_code)
 
         
     def get_new_table(self, table_name):
@@ -266,13 +267,10 @@ class ETable:
         self.dump_functions(goal_code_source, 'hpy_goals.py')
         
         code.update(goal_code_source)
+        
+        just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
-
-
-        # plan_or_invariants = hyperc.solve(
-        # methods_classes["hyperc_magictable_goal"],
-        # globals_=methods_classes, solver_lock=solver_lock, extra_instantiations=just_classes, **solve_params,
-        # gen_pddl_only=gen_pddl_only, work_dir=work_dir, addition_modules=addition_modules)
+        plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], globals_=self.methods_classes, extra_instantiations=just_classes, work_dir=self.tempdir )
 
         print("finish")
         # xl_mdl.calculate()
