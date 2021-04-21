@@ -44,8 +44,8 @@ class ETable:
         self.mod.StaticObject = type("StaticObject", (object, ), {})
         self.mod.StaticObject.__annotations__ = {'GOAL': bool}
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
-        self.mod.HCT_STATIC_OBJECTS = self.mod.StaticObject()
-        self.mod.HCT_STATIC_OBJECTS.GOAL = False
+        self.mod.HCT_STATIC_OBJECT = self.mod.StaticObject()
+        self.mod.HCT_STATIC_OBJECT.GOAL = False
         self.mod.HCT_OBJECTS = {}
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
@@ -160,7 +160,7 @@ class ETable:
                 if sheet_name not in self.mod.HCT_OBJECTS:
                     self.mod.HCT_OBJECTS[sheet_name] = []
                 if self.objects[py_table_name][recid] not in self.mod.HCT_OBJECTS[sheet_name]:
-                    setattr(self.mod.HCT_STATIC_OBJECTS, sheet_name, self.objects[py_table_name][recid])
+                    setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
                 self.mod.HCT_OBJECTS[sheet_name].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}.{letter}')
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
@@ -197,9 +197,9 @@ class ETable:
         # Now generate init for static object
         init_f_code = []
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
-            init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECTS.{attr_name}")  # if it does not ignore, fix it!
+            init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
         if init_f_code:
-            HCT_STATIC_OBJECTS = self.mod.HCT_STATIC_OBJECTS
+            HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
             full_f_code = '\n    '.join(init_f_code)
             full_code = f"def hct_stf_init(self):\n    {full_f_code}"
             fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
@@ -230,13 +230,13 @@ class ETable:
                                 sheet_value = sheet
                             sheet_name_value = hyperc.xtj.str_to_py(f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}_{recid_value}.{letter_value}')
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
                         elif isinstance(value, formulas.tokens.operand.Number):
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
                         elif isinstance(value, formulas.tokens.operand.String):
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
         goal_code_source = {}
