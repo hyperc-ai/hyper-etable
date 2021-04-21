@@ -42,9 +42,10 @@ class ETable:
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
         self.mod.StaticObject = type("StaticObject", (object, ), {})
-        self.mod.StaticObject.__annotations__ = {}
+        self.mod.StaticObject.__annotations__ = {'GOAL': bool}
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
         self.mod.HCT_STATIC_OBJECTS = self.mod.StaticObject()
+        self.mod.HCT_STATIC_OBJECTS.GOAL = False
         self.mod.HCT_OBJECTS = {}
 
     def dump_functions(self, code, filename):
@@ -239,6 +240,7 @@ class ETable:
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
         goal_code_source = {}
         goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0')
+        goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
         goal_counter = 0
         for goal_name, g_c in goal_code.items():
             goal_counter_was = goal_counter
@@ -251,14 +253,26 @@ class ETable:
                     goal_code_source[counter_new] = hyper_etable.etable_transpiler.FunctionCode(
                         name=f'hct_goal_{counter_new}')
                     goal_code_source[counter_new].operators = copy.copy(goal_code_source[counter_was].operators)
+                    goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
                     counter_was += 1
 
             for idx in goal_code_source:
                 goal_code_source[idx].operators.append(f'    #{goal_name}')
                 goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
             
+        main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')
+        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
+        goal_code_source['main_goal'] = main_goal
         self.dump_functions(goal_code_source, 'hpy_goals.py')
+        
+        code.update(goal_code_source)
 
+
+
+        # plan_or_invariants = hyperc.solve(
+        # methods_classes["hyperc_magictable_goal"],
+        # globals_=methods_classes, solver_lock=solver_lock, extra_instantiations=just_classes, **solve_params,
+        # gen_pddl_only=gen_pddl_only, work_dir=work_dir, addition_modules=addition_modules)
 
         print("finish")
         # xl_mdl.calculate()
