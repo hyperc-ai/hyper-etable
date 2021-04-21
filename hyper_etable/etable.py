@@ -233,7 +233,7 @@ class ETable:
                                 f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
                         elif isinstance(value, formulas.tokens.operand.String):
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} {value.attr["name"]}')
+                                f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
         goal_code_source = defaultdict(list)
