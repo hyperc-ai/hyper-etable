@@ -11,6 +11,7 @@ import itertools
 import sys
 import types
 import collections
+import copy
 
 class TableElementMeta(type):
     @hyperc.util.side_effect_decorator
@@ -234,7 +235,25 @@ class ETable:
                             goal_code[cell].append(
                                 f'    assert HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} {operator_name_to_operator(rule.operator)} {value.attr["name"]}')
 
+        g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
+        goal_code_source = defaultdict(list)
+        goal_code_source[0] = []
+        goal_counter = 0
+        for goal_name, g_c in goal_code.items():
+            goal_counter_was = goal_counter
+            goal_counter = (goal_counter + 1 )* len(g_c) -1
+            if goal_counter > goal_counter_was:
+                counter_was = 0
+                for counter_new in range(goal_counter_was + 1, goal_counter+1):
+                    if counter_was == goal_counter_was + 1:
+                        counter_was = 0
+                    goal_code_source[counter_new] = copy.copy(goal_code_source[counter_was])
+                    counter_was += 1
 
+            for idx in goal_code_source:
+                goal_code_source[idx].append(f'    #{goal_name}')
+                goal_code_source[idx].append(g_c[idx % len(g_c)])
+            
 
 
 
