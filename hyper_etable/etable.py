@@ -45,12 +45,12 @@ class ETable:
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
         self.mod.StaticObject = type("StaticObject", (object, ), {})
-        # self.mod.StaticObject.__annotations__ = {'GOAL': bool}
+        self.mod.StaticObject.__annotations__ = {'GOAL': bool}
         self.mod.StaticObject.__annotations__ = {}
 
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
         self.mod.HCT_STATIC_OBJECT = self.mod.StaticObject()
-        # self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.HCT_STATIC_OBJECT.GOAL = False
         self.mod.HCT_OBJECTS = {}
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
@@ -180,7 +180,7 @@ class ETable:
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
         goal_code_source = {}
         goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0')
-        # goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+        goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
         goal_code_source[0].output.append('    pass')
 
         goal_counter = 0
@@ -195,7 +195,7 @@ class ETable:
                     goal_code_source[counter_new] = hyper_etable.etable_transpiler.FunctionCode(
                         name=f'hct_goal_{counter_new}')
                     goal_code_source[counter_new].operators = copy.copy(goal_code_source[counter_was].operators)
-                    # goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+                    goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
                     counter_was += 1
 
             for idx in goal_code_source:
@@ -203,7 +203,7 @@ class ETable:
                 goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')
-        # main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
+        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
         main_goal.operators.append('    pass')
         goal_code_source['main_goal'] = main_goal
         self.dump_functions(goal_code_source, 'hpy_goals.py')
