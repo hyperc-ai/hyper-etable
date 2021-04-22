@@ -290,6 +290,7 @@ class ETable:
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
 
+        self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
         # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
