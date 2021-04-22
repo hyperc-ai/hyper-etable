@@ -26,6 +26,9 @@ def operator_name_to_operator(op):
             return k
     return None
 
+
+
+
 class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
         self.filename = filename
@@ -42,13 +45,23 @@ class ETable:
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
         self.mod.StaticObject = type("StaticObject", (object, ), {})
-        self.mod.StaticObject.__annotations__ = {'GOAL': bool}
+        # self.mod.StaticObject.__annotations__ = {'GOAL': bool}
+        self.mod.StaticObject.__annotations__ = {}
+
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
         self.mod.HCT_STATIC_OBJECT = self.mod.StaticObject()
-        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        # self.mod.HCT_STATIC_OBJECT.GOAL = False
         self.mod.HCT_OBJECTS = {}
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
+
+
+    def solver_call(self,goal, extra_instantiations):
+        mod=self.mod
+        HCT_STATIC_OBJECT = mod.HCT_STATIC_OBJECT
+        globals_ = self.methods_classes
+        return hyperc.solve(goal, globals_=globals_, extra_instantiations=extra_instantiations, work_dir=self.tempdir, addition_modules=[mod])
+
 
     def dump_functions(self, code, filename):
         s_code = ''
@@ -167,7 +180,9 @@ class ETable:
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
         goal_code_source = {}
         goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0')
-        goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+        # goal_code_source[0].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+        goal_code_source[0].output.append('    pass')
+
         goal_counter = 0
         for goal_name, g_c in goal_code.items():
             goal_counter_was = goal_counter
@@ -180,7 +195,7 @@ class ETable:
                     goal_code_source[counter_new] = hyper_etable.etable_transpiler.FunctionCode(
                         name=f'hct_goal_{counter_new}')
                     goal_code_source[counter_new].operators = copy.copy(goal_code_source[counter_was].operators)
-                    goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
+                    # goal_code_source[counter_new].output.append('    HCT_STATIC_OBJECT.GOAL = True')
                     counter_was += 1
 
             for idx in goal_code_source:
@@ -188,7 +203,8 @@ class ETable:
                 goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')
-        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
+        # main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
+        main_goal.operators.append('    pass')
         goal_code_source['main_goal'] = main_goal
         self.dump_functions(goal_code_source, 'hpy_goals.py')
 
@@ -207,7 +223,7 @@ class ETable:
                 # if 
                 rec_obj = ThisTable()
                 # rec_obj.__row_record__ = copy.copy(cell)
-                rec_obj.__recid__ = recid
+                # rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                 rec_obj.__touched_annotations__ = set()
                 # ThisTable.__annotations_type_set__ = defaultdict(set)
@@ -258,11 +274,12 @@ class ETable:
             clsv.__init__.__name__ = "__init__"
 
         # Now generate init for static object
+        HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
         init_f_code = []
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
             init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
         if init_f_code:
-            HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
+            
             full_f_code = '\n    '.join(init_f_code)
             full_code = f"def hct_stf_init(self):\n    {full_f_code}"
             fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
@@ -275,8 +292,10 @@ class ETable:
 
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
-        plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], globals_=self.methods_classes, extra_instantiations=just_classes, work_dir=self.tempdir )
+        # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
 
+        plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
+                                              extra_instantiations=just_classes)
         print("finish")
         # xl_mdl.calculate()
         # # xl_mdl.add_book(self.link_filename)
