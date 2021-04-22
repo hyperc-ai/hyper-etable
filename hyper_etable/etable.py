@@ -203,7 +203,7 @@ class ETable:
                 goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')
-        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL')
+        main_goal.operators.append('    assert HCT_STATIC_OBJECT.GOAL == True')
         main_goal.operators.append('    pass')
         goal_code_source['main_goal'] = main_goal
         self.dump_functions(goal_code_source, 'hpy_goals.py')

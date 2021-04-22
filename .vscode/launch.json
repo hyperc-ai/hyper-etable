@@ -31,7 +31,7 @@
                 "HYPERC_MAX_PROC": "1",
                 "HYPERC_USE_CACHE": "0",
                 "HYPERC_TEMPDIR": "./tmp",
-                "HYPERC_LOGLEVEL": "DEBUG"
+                // "HYPERC_LOGLEVEL": "DEBUG"
             },
             "justMyCode": false
         }
