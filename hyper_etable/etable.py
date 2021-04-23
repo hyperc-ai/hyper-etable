@@ -119,6 +119,7 @@ class ETable:
                 out_py = hyperc.xtj.str_to_py(output)
                 code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                 code_init.init.append(f'    #{node_key}')
+                used_cell_set.add(output)
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
