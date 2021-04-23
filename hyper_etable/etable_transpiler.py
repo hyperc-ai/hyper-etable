@@ -295,6 +295,10 @@ class FunctionCode:
 
 
     def clean(self):
+        if len(self.init) == 0:
+            return
+        if len(self.operators) == 0:
+            return
         found = False
         while not found:
             found = False
