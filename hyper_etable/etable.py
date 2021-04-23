@@ -246,12 +246,12 @@ class ETable:
             if xl_mdl.cells[cell].value is not schedula.EMPTY:
                 filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
                 sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
-                if sheet_name not in self.mod.HCT_OBJECTS:
-                    self.mod.HCT_OBJECTS[sheet_name] = []
-                if self.objects[py_table_name][recid] not in self.mod.HCT_OBJECTS[sheet_name]:
+                # if sheet_name not in self.mod.HCT_OBJECTS:
+                #     self.mod.HCT_OBJECTS[sheet_name] = []
+                if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                     setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                self.mod.HCT_OBJECTS[sheet_name].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}.{letter}')
+                # self.mod.HCT_OBJECTS[sheet_name].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}.{letter}')
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
 
         for clsv in self.classes.values():
