@@ -7,6 +7,7 @@ from collections import defaultdict
 import schedula as sh
 from formulas.cell import CellWrapper
 import os.path
+import openpyxl
 
 
 def to_dict(self):
@@ -34,10 +35,18 @@ class SpileTrancer:
         xl_model.finish()
         # self.xl_dict = xl_model.to_dict()
         self.xl_dict = to_dict(xl_model)
+        self.wb = openpyxl.load_workbook(filename=filename)
     
     def gen_xl_addr(self, filename, sheetname, letter, rownum):
         filename = os.path.basename(filename)
         return f"'[{filename}]{sheetname}'!{letter}{rownum}".upper()
+
+    def gen_opxl_addr(self, filename, sheetname, letter, rownum):
+        filename = os.path.basename(filename)
+        for shtn in self.wb.sheetnames:
+            if shtn.upper() == sheetname.upper():
+                sheetname = shtn
+        return sheetname, f"{letter}{rownum}".upper()
     
     def calculate_excel(self):
         "Return full xlsx"
@@ -59,6 +68,7 @@ class SpileTrancer:
                     if len(letter) > 3:
                         continue  # ignore trash?
                     xl_cell_ref = self.gen_xl_addr(self.filename, sheetname, letter, rownum)
+                    opxl_sht, opxl_cell_ref = self.gen_opxl_addr(self.filename, sheetname, letter, rownum)
 
                     # First, check what we currently have at this cell
                     if (type(self.xl_dict[xl_cell_ref]) == str and 
@@ -69,20 +79,30 @@ class SpileTrancer:
                         if type_ == str:
                             cellvalue = f'"{cellvalue}"'
                         # TODO: tokenize, rewrite, re-render
-                        cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
-                        all_inputs[xl_cell_ref] = cellvalue
+                        fm_cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
+                        all_inputs[xl_cell_ref] = fm_cellvalue
+
+                        # for opyxl
+                        orig_opxl_cell = self.wb[opxl_sht][opxl_cell_ref]
+                        orig_cell = orig_opxl_cell.value
+                        opxl_cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
+                        self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
                     elif (type(self.xl_dict[xl_cell_ref]) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=")):
                         pass
                     else:  # raw value? just write what we have
-                        all_inputs[xl_cell_ref] = getattr(getattr(self.static_objects, cell), letter)
+                        cellvalue = getattr(getattr(self.static_objects, cell), letter)
+                        all_inputs[xl_cell_ref] = cellvalue
+                        self.wb[opxl_sht][opxl_cell_ref] = cellvalue
+
 
         self.xl_model.calculate(inputs=all_inputs)
 
         # TODO: assert and double-check calculations
     
     def write(self, dir):
-        self.xl_model.write(dirpath=dir)
+        self.wb.save(os.path.join(dir, os.path.basename(self.filename)))
+        # self.xl_model.write(dirpath=dir)
 
 
 
