@@ -271,7 +271,9 @@ class CodeElement:
 class FunctionCode:
     def __init__(self, name, parent_name=None):
         self.name = name
-        self.parent_name = parent_name
+        self.parent_name = set()
+        if parent_name is not None:
+            self.parent_name.add(parent_name)
         self.init = []
         self.operators = []
         self.args = []
@@ -285,6 +287,12 @@ class FunctionCode:
         self.args.extend(other.args)
         self.selected_cell.extend(other.selected_cell)
         self.output.extend(other.output)
+        self.parent_name.update(self.parent_name)
+    
+    # return true if funtions has relation
+    def check_relation(self, other):
+        return not self.parent_name.isdisjoint(other.parent_name)
+
 
     def clean(self):
         found = False

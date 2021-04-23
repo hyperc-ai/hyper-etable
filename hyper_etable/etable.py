@@ -143,6 +143,8 @@ class ETable:
                 continue
             for s_c in code[func_name_other].selected_cell:
                 for func_name in list(code.keys()):
+                    if code[func_name].check_relation(code[func_name_other]):
+                        continue
                     if func_name_other in deleted_keys:
                         continue
                     if func_name == func_name_other:
