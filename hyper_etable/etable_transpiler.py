@@ -269,8 +269,9 @@ class CodeElement:
         self.contion_vars = collections.defaultdict(list)
 
 class FunctionCode:
-    def __init__(self, name):
+    def __init__(self, name, parent_name=None):
         self.name = name
+        self.parent_name = parent_name
         self.init = []
         self.operators = []
         self.args = []
@@ -319,7 +320,8 @@ class EtableTranspilerEasy(EtableTranspiler):
             if isinstance(code_chunk, CodeElement):
                 if len(code_chunk.code_chunk) > 1:
                     for ce in code_chunk.code_chunk:
-                        code[f'{self.init_code.name}_{ce}'] = FunctionCode(name=f'{self.init_code.name}_{ce}')
+                        code[f'{self.init_code.name}_{ce}'] = FunctionCode(
+                            name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                         code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = code_chunk.contion_vars[ce]
