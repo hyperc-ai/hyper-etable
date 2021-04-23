@@ -1,4 +1,5 @@
 from collections import defaultdict
+from os import mkdir
 import schedula
 import formulas.excel
 import formulas
@@ -6,12 +7,16 @@ import hyperc
 import hyperc.util
 import hyperc.settings
 import hyper_etable.etable_transpiler
+import hyper_etable.spiletrancer
 import hyperc.xtj
 import itertools
 import sys
+import time
 import types
 import collections
 import copy
+import os.path
+
 
 class TableElementMeta(type):
     @hyperc.util.side_effect_decorator
@@ -27,6 +32,11 @@ def operator_name_to_operator(op):
     return None
 
 
+# Define SELECTIF formula
+FUNCTIONS = formulas.get_functions()
+def STUB_SELECTIF(default, *args):
+    return default
+FUNCTIONS["SELECTIF"] = STUB_SELECTIF
 
 
 class ETable:
@@ -81,8 +91,8 @@ class ETable:
             self.methods_classes[func_code.name].orig_source = str(func_code)
 
         
-    def get_new_table(self, table_name):
-        ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name})
+    def get_new_table(self, table_name, sheet):
+        ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {}
         ThisTable.__annotations__['__table_name__'] = str
         ThisTable.__touched_annotations__ = set()
@@ -217,7 +227,7 @@ class ETable:
             py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             if recid not in self.objects[py_table_name]:
                 if py_table_name not in self.classes:
-                    ThisTable = self.get_new_table(py_table_name)
+                    ThisTable = self.get_new_table(py_table_name, sheet)
                 else:
                     ThisTable = self.classes[py_table_name]
                 # if 
@@ -298,11 +308,19 @@ class ETable:
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
         print("finish")
-        # xl_mdl.calculate()
-        # # xl_mdl.add_book(self.link_filename)
-        # xl_mdl.write(dirpath=os.path.dirname(__file__))
-        # # xl_mdl.finish()
-        # # xl_mdl.calculate()
+
+        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, HCT_STATIC_OBJECT)
+        stl.calculate_excel()
+        dirn = os.path.dirname(self.filename)
+        new_dirname = os.path.join(dirn, f"{self.filename}_out")
+        try:
+            mkdir(new_dirname)
+        except FileExistsError:
+            pass
+        new_dirname_forfile = os.path.join(dirn, f"{self.filename}_out", str(int(time.time())))
+        mkdir(new_dirname_forfile)
+        stl.write(new_dirname_forfile)
+
         # # xl_mdl.dsp.dispatch()
         # print('Finished excel-model')
 
