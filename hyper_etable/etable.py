@@ -235,13 +235,12 @@ class ETable:
             # rec_obj.__annotations__.add(letter)
             if xl_mdl.cells[cell].value is not schedula.EMPTY:
                 filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
-                sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
                 if sheet_name not in self.mod.HCT_OBJECTS:
                     self.mod.HCT_OBJECTS[sheet_name] = []
                 if self.objects[py_table_name][recid] not in self.mod.HCT_OBJECTS[sheet_name]:
-                    setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
+                    setattr(self.mod.HCT_STATIC_OBJECT, sheet_name + f'_{recid}', self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                self.mod.HCT_OBJECTS[sheet_name].append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}.{letter}')
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
 
         for clsv in self.classes.values():
@@ -297,6 +296,8 @@ class ETable:
 
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
+        # for 
+        #     xl_mdl.cells[output].value = formula.default
         print("finish")
         # xl_mdl.calculate()
         # # xl_mdl.add_book(self.link_filename)
