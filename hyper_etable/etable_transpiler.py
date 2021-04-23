@@ -287,7 +287,7 @@ class FunctionCode:
         self.args.extend(other.args)
         self.selected_cell.extend(other.selected_cell)
         self.output.extend(other.output)
-        self.parent_name.update(self.parent_name)
+        self.parent_name.update(other.parent_name)
     
     # return true if funtions has relation
     def check_relation(self, other):
@@ -337,6 +337,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
                     self.init_code.operators = code_chunk.code_chunk[ce]
+                    self.init_code.selected_cell = code_chunk.contion_vars[ce]
             else:
                 self.init_code.operators.append(code_chunk)
         if (len(code) > 0):

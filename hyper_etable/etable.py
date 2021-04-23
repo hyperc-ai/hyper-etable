@@ -142,18 +142,21 @@ class ETable:
             if func_name_other in deleted_keys:
                 continue
             for s_c in code[func_name_other].selected_cell:
+                is_merged = False
                 for func_name in list(code.keys()):
                     if code[func_name].check_relation(code[func_name_other]):
                         continue
                     if func_name_other in deleted_keys:
                         continue
-                    if func_name == func_name_other:
+                    if code[func_name] is code[func_name_other]:
                         continue
                     if s_c in code[func_name].selected_cell:
                         code[func_name].merge(code[func_name_other])
+                        is_merged = True
+                if is_merged:
+                    del code[func_name_other]
+                    deleted_keys.add(func_name_other)
 
-                        del code[func_name_other]
-                        deleted_keys.add(func_name_other)
 
         self.dump_functions(code, 'hpy_etable.py')
 
