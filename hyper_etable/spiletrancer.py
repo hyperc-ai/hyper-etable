@@ -67,6 +67,8 @@ class SpileTrancer:
                 for letter, type_ in cls_.__annotations__.items():
                     if len(letter) > 3:
                         continue  # ignore trash?
+                    if not hasattr(getattr(self.static_objects, cell), letter):
+                        continue
                     xl_cell_ref = self.gen_xl_addr(self.filename, sheetname, letter, rownum)
                     opxl_sht, opxl_cell_ref = self.gen_opxl_addr(self.filename, sheetname, letter, rownum)
 
