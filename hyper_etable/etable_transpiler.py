@@ -285,23 +285,45 @@ class FunctionCode:
             self.parent_name.add(parent_name)
         self.init = []
         self.operators = []
-        self.args = []
+        self.args = set()
         self.selected_cell = []
         self.output = []
+        self.collapsed = False
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
         self.operators.extend(other.operators)
-        self.args.extend(other.args)
+        self.args.update(other.args)
         self.selected_cell.extend(other.selected_cell)
         self.output.extend(other.output)
         self.parent_name.update(other.parent_name)
+
+    def collapse(self):
+        if self.collapsed:
+            return
+        collapsed_code = []
+        collapsed_code.extend(self.init)
+        collapsed_code.extend(self.operators)
+        collapsed_code.extend(self.output)
+        self.output = collapsed_code
+
+    def glue(self,other):
+        self.collapse()
+        self.name = f'{self.name}_{other.name}'
+        self.operators.extend(other.operators)
+        self.args.extend(other.args)
+        self.selected_cell.extend(other.selected_cell)
+        self.parent_name.update(other.parent_name)
+
     
     # return true if funtions has relation
     def check_relation(self, other):
         return not self.parent_name.isdisjoint(other.parent_name)
 
+    # return true if funtions has sequenc
+    def check_sequency(self, other):
+        return not self.args.isdisjoint(other.args)
 
     def clean(self):
         if len(self.init) == 0:
@@ -322,10 +344,16 @@ class FunctionCode:
                     break
 
     def __str__(self):
-        init = '\n'.join(self.init)
-        operators = '\n'.join(self.operators)
-        output = '\n'.join(self.output)
-        return f'''def {self.name}():
+        if self.collapsed:
+            operators = '\n'.join(self.operators)
+            return f'''def {self.name}():
+{operators}
+'''
+        else:
+            init = '\n'.join(self.init)
+            operators = '\n'.join(self.operators)
+            output = '\n'.join(self.output)
+            return f'''def {self.name}():
 {init}
 {operators}
 {output}

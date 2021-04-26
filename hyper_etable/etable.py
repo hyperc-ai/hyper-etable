@@ -158,6 +158,11 @@ class ETable:
                     del code[func_name_other]
                     deleted_keys.add(func_name_other)
 
+        # look for gluable actions
+        for func_name_other in list(code.keys()):
+            if func_name_other in deleted_keys:
+                continue
+
 
         self.dump_functions(code, 'hpy_etable.py')
 
