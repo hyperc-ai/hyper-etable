@@ -102,7 +102,7 @@ class EtableTranspiler:
         if len(args) == 2 and self.paren_level > 1:
             v1 = args[0]
             v2 = args[1]
-            return self.save_return(f"({v1} and {v2})", bool)
+            return self.save_return(StringLikeVars(f"({v1} and {v2})", [v1, v2]), bool)
         elif self.paren_level == 1:
             for what in args:
                 if what.startswith("(") and what.endswith(")"):
@@ -147,7 +147,8 @@ class EtableTranspiler:
         if isinstance(nodes, list):
             ret = ""
             for node in nodes:
-                ret = str(self.transpile(node))
+                ret = self.transpile(node)
+                pass
             return ret
         else:
             ret = self.transpile_node(nodes)
@@ -267,6 +268,7 @@ class CodeElement:
     def __init__(self):
         self.code_chunk = collections.defaultdict(list)
         self.contion_vars = collections.defaultdict(list)
+        self.all_vars = collections.defaultdict(list)
 
 class FunctionCode:
     def __init__(self, name, parent_name=None):
@@ -337,11 +339,13 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                         code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = code_chunk.contion_vars[ce]
+                        code[f'{self.init_code.name}_{ce}'].args.extend(code_chunk.all_vars)
                         code[f'{self.init_code.name}_{ce}'].idx = idx
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
                     self.init_code.operators = code_chunk.code_chunk[ce]
                     self.init_code.selected_cell = code_chunk.contion_vars[ce]
+                    code[f'{self.init_code.name}_{ce}'].args.extend(code_chunk.all_vars)
             else:
                 self.init_code.operators.append(code_chunk)
         if (len(code) > 0):
@@ -371,6 +375,8 @@ class EtableTranspilerEasy(EtableTranspiler):
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_var} = {args[idx+1]}")
             code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
+            code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
+            code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(args[idx+1].variables)
 
         return ret_var
 
