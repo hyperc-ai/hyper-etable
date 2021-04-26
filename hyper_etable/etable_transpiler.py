@@ -28,12 +28,19 @@ class StringLikeVars:
     def __init__(self,rendered_str, args):
         self.rendered_str = rendered_str
         self.args  = args
-        self.variables = []
+        self.variables = set()
         for arg in self.args:
             if isinstance(arg, str):
-                self.variables.append(arg)
+                self.variables.add(arg)
             elif isinstance(arg, StringLikeVars):
-                self.variables.extend(arg.variables)
+                self.variables.update(arg.variables)
+    
+    def extend(self, args):
+        for arg in args:
+            if isinstance(arg, str):
+                self.variables.add(arg)
+            elif isinstance(arg, StringLikeVars):
+                self.variables.update(arg.variables)
 
     def __str__(self):
         return self.rendered_str
@@ -365,7 +372,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         assert len(args) > 2, "Args should be 3 and more"
         if self.paren_level == 1:
             self.default = args[0]
-        ret_var = f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}'
+        ret_var = StringLikeVars(f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}', args)
         self.var_counter += 1
         code_element = CodeElement()
         self.code.append(code_element)
