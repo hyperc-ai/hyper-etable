@@ -315,7 +315,8 @@ class FunctionCode:
         self.collapse()
         other.collapse()
         self.name = f'{self.name}_{other.name}'
-        other.operators.extend(self.operators)
+        operators = copy.copy(other.operators)
+        operators.extend(self.operators)
         self.operators = other.operators
         self.args.update(other.args)
         self.selected_cell.update(other.selected_cell)
