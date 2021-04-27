@@ -268,6 +268,12 @@ class EtableTranspiler:
 
     def save_return(self, ret, type_):
         self.remember_types[ret] = type_
+        for arg in ret.args:
+            if not isinstance(arg, str):
+                continue
+            if 'var_tbl_' not in arg:
+                continue
+            self.init_code.args.add(arg)
         return ret
 
 class CodeElement:
@@ -309,15 +315,15 @@ class FunctionCode:
         collapsed_code.extend(self.init)
         collapsed_code.extend(self.operators)
         collapsed_code.extend(self.output)
+        self.init=[]
+        self.operators = []
         self.output = collapsed_code
 
     def glue(self,other):
         self.collapse()
         other.collapse()
         self.name = f'{self.name}_{other.name}'
-        operators = copy.copy(other.operators)
-        operators.extend(self.operators)
-        self.operators = other.operators
+        self.output.extend(other.output)
         self.args.update(other.args)
         self.selected_cell.update(other.selected_cell)
         self.parent_name.update(other.parent_name)
@@ -380,7 +386,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                     ce = list(code_chunk.code_chunk.keys())[0]
                     self.init_code.operators = code_chunk.code_chunk[ce]
                     self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
-                    self.init_code.args.update(code_chunk.all_vars)
+                    self.init_code.args.update(code_chunk.all_vars[ce])
                     self.init_code.selectable = True
             else:
                 self.init_code.operators.append(code_chunk)

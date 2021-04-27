@@ -151,12 +151,14 @@ class ETable:
                     continue
                 if code[func_name] is code[func_name_other]:
                     continue
-                if code[func_name].selected_cell.isdisjoint(code[func_name_other].selected_cell):
+                if not code[func_name].selected_cell.isdisjoint(code[func_name_other].selected_cell):
                     code[func_name].merge(code[func_name_other])
                     is_merged = True
             if is_merged:
                 del code[func_name_other]
                 deleted_keys.add(func_name_other)
+        # update keys
+        code = {v.name: v for k, v in code.items()}
 
         # look for gluable actions
         is_merged_some_one = True
@@ -181,6 +183,9 @@ class ETable:
                     del code[func_name_other]
                     deleted_keys.add(func_name_other)
                     is_merged_some_one = True
+
+        # update keys
+        code = {v.name: v for k, v in code.items()}
 
         self.dump_functions(code, 'hpy_etable.py')
 
