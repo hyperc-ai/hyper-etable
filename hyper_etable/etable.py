@@ -283,6 +283,9 @@ class ETable:
                 self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
             if xl_mdl.cells[cell].value is not schedula.EMPTY:
                 setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
+            else:
+                # TODO this is stumb for novalue cell. We should use Novalue ????
+                setattr(self.objects[py_table_name][recid], letter, 0)
             
         for clsv in self.classes.values():
             init_f_code = []
