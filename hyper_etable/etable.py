@@ -167,11 +167,11 @@ class ETable:
             for func_name_other in list(code.keys()):
                 if func_name_other in deleted_keys:
                     continue
-                if not code[func_name_other].selectable:
+                if code[func_name_other].selectable:
                     continue
                 is_merged = False
                 for func_name in list(code.keys()):
-                    if code[func_name].selectable:
+                    if not code[func_name].selectable:
                         continue
                     if code[func_name] is code[func_name_other]:
                         continue
