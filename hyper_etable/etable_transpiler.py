@@ -296,12 +296,14 @@ class FunctionCode:
         self.output = []
         self.collapsed = False
         self.selectable = False
+        self.effect_vars = set()
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
         self.operators.extend(other.operators)
         self.args.update(other.args)
+        self.effect_vars.update(other.effect_vars)
         self.selected_cell.update(other.selected_cell)
         self.output.extend(other.output)
         self.parent_name.update(other.parent_name)
@@ -323,8 +325,9 @@ class FunctionCode:
         self.collapse()
         other.collapse()
         self.name = f'{self.name}_{other.name}'
-        self.output.extend(other.output)
+        self.output = other.output + self.output
         self.args.update(other.args)
+        self.effect_vars.update(other.effect_vars)
         self.selected_cell.update(other.selected_cell)
         self.parent_name.update(other.parent_name)
         if other.selectable:
@@ -398,8 +401,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         else:
             code[self.init_code.name] = self.init_code
             code[self.init_code.name].clean()
-        for  c in code.values():
+        for c in code.values():
             c.output.extend(self.output_code)
+            c.effect_vars.add(self.return_var)
         self.code = code
 
     def f_selectif(self, *args):

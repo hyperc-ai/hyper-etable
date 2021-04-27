@@ -175,7 +175,7 @@ class ETable:
                         continue
                     if code[func_name] is code[func_name_other]:
                         continue
-                    if code[func_name].args.isdisjoint(code[func_name_other].args):
+                    if code[func_name].args.isdisjoint(code[func_name_other].effect_vars):
                         continue
                     code[func_name].glue(code[func_name_other])
                     is_merged = True
