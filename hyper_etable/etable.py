@@ -142,27 +142,45 @@ class ETable:
         for func_name_other in list(code.keys()):
             if func_name_other in deleted_keys:
                 continue
-            for s_c in code[func_name_other].selected_cell:
+            is_merged = False
+            for func_name in list(code.keys()):
+                #check that funtions is not parent and child
+                if not code[func_name].parent_name.isdisjoint(code[func_name_other].parent_name):
+                    continue
+                if func_name_other in deleted_keys:
+                    continue
+                if code[func_name] is code[func_name_other]:
+                    continue
+                if code[func_name].selected_cell.isdisjoint(code[func_name_other].selected_cell):
+                    code[func_name].merge(code[func_name_other])
+                    is_merged = True
+            if is_merged:
+                del code[func_name_other]
+                deleted_keys.add(func_name_other)
+
+        # look for gluable actions
+        is_merged_some_one = True
+        while is_merged_some_one:
+            is_merged_some_one = False
+            for func_name_other in list(code.keys()):
+                if func_name_other in deleted_keys:
+                    continue
+                if not code[func_name_other].selectable:
+                    continue
                 is_merged = False
                 for func_name in list(code.keys()):
-                    if code[func_name].check_relation(code[func_name_other]):
-                        continue
-                    if func_name_other in deleted_keys:
+                    if code[func_name].selectable:
                         continue
                     if code[func_name] is code[func_name_other]:
                         continue
-                    if s_c in code[func_name].selected_cell:
-                        code[func_name].merge(code[func_name_other])
-                        is_merged = True
+                    if code[func_name].args.isdisjoint(code[func_name_other].args):
+                        continue
+                    code[func_name].glue(code[func_name_other])
+                    is_merged = True
                 if is_merged:
                     del code[func_name_other]
                     deleted_keys.add(func_name_other)
-
-        # look for gluable actions
-        for func_name_other in list(code.keys()):
-            if func_name_other in deleted_keys:
-                continue
-
+                    is_merged_some_one = True
 
         self.dump_functions(code, 'hpy_etable.py')
 

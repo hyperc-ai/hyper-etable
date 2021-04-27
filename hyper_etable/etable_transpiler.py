@@ -286,18 +286,21 @@ class FunctionCode:
         self.init = []
         self.operators = []
         self.args = set()
-        self.selected_cell = []
+        self.selected_cell = set()
         self.output = []
         self.collapsed = False
+        self.selectable = False
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
         self.operators.extend(other.operators)
         self.args.update(other.args)
-        self.selected_cell.extend(other.selected_cell)
+        self.selected_cell.update(other.selected_cell)
         self.output.extend(other.output)
         self.parent_name.update(other.parent_name)
+        if other.selectable:
+            self.selectable = True
 
     def collapse(self):
         if self.collapsed:
@@ -310,20 +313,15 @@ class FunctionCode:
 
     def glue(self,other):
         self.collapse()
+        other.collapse()
         self.name = f'{self.name}_{other.name}'
-        self.operators.extend(other.operators)
-        self.args.extend(other.args)
-        self.selected_cell.extend(other.selected_cell)
+        other.operators.extend(self.operators)
+        self.operators = other.operators
+        self.args.update(other.args)
+        self.selected_cell.update(other.selected_cell)
         self.parent_name.update(other.parent_name)
-
-    
-    # return true if funtions has relation
-    def check_relation(self, other):
-        return not self.parent_name.isdisjoint(other.parent_name)
-
-    # return true if funtions has sequenc
-    def check_sequency(self, other):
-        return not self.args.isdisjoint(other.args)
+        if other.selectable:
+            self.selectable = True
 
     def clean(self):
         if len(self.init) == 0:
@@ -373,14 +371,16 @@ class EtableTranspilerEasy(EtableTranspiler):
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                         code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].selected_cell = code_chunk.contion_vars[ce]
-                        code[f'{self.init_code.name}_{ce}'].args.extend(code_chunk.all_vars)
+                        code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
+                        code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
                         code[f'{self.init_code.name}_{ce}'].idx = idx
+                        code[f'{self.init_code.name}_{ce}'].selectable = True
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
                     self.init_code.operators = code_chunk.code_chunk[ce]
-                    self.init_code.selected_cell = code_chunk.contion_vars[ce]
-                    code[f'{self.init_code.name}_{ce}'].args.extend(code_chunk.all_vars)
+                    self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
+                    self.init_code.args.update(code_chunk.all_vars)
+                    self.init_code.selectable = True
             else:
                 self.init_code.operators.append(code_chunk)
         if (len(code) > 0):
