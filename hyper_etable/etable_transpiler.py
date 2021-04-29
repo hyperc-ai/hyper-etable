@@ -5,14 +5,48 @@ import hyperc.xtj
 import schedula
 import copy
 
-def get_var_from_cell(cell_str):
-    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
-                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-    letter = cell['c1'].lower()
-    number = cell['r1']
-    sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
-    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
-    return var_name
+
+class StringLikeVariable:
+
+    def __init__(self, filename, sheet, letter, number):
+        self.filename = filename
+        self.sheet = sheet
+        self.letter = letter
+        self.number = number
+        self.neighbour = set()
+        self.types = set()
+        self.type_group_set = set()
+        if var_map is None:
+            self.type_group = None
+        else:
+            self.new_type_group(var_map)
+
+    def __str__(self):
+        return f'var_tbl_{self.sheet}__hct_direct_ref__{self.number}_{self.letter}'
+    
+    def __eq__(self, other):
+        return self.__str__() == str(other)
+    
+    def set_types(self,type):
+        if isinstance(type, set):
+            self.types.update(type)
+        else:
+            self.types.add(type)
+
+    def new_type_group(self, var_map):
+        # random duplicateless Generator
+        loop = True
+        rnd_len = 1
+        while loop:
+            loop = False
+            type_group = 'type_group_'+''.join(random.choices(string.ascii_uppercase + string.digits, k=rnd_len))
+            for k in var_map:
+                if var_map[k].type_group == type_group:
+                    loop = True
+            if not loop:
+                self.type_group = type_group
+                self.type_group_set.add(type_group)
+            rnd_len += 1
 
 def formulas_parser(formula_str):
     return formulas.Parser().ast("="+list(formulas.Parser().ast("=" + formula_str)
@@ -24,8 +58,14 @@ def split_cell(cell_str):
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
 
+
+def get_var_from_cell(cell_str):
+    filename, sheet, recid, letter = split_cell(self.output)
+    return StringLikeVariable(filename=filename, sheet=sheet, letter=letter, number=recid)
+
+
 class StringLikeVars:
-    def __init__(self,rendered_str, args):
+    def __init__(self,rendered_str, args, operator):
         self.rendered_str = rendered_str
         self.args  = args
         self.variables = set()
@@ -34,6 +74,7 @@ class StringLikeVars:
                 self.variables.add(arg)
             elif isinstance(arg, StringLikeVars):
                 self.variables.update(arg.variables)
+        self.operator = operator
     
     def extend(self, args):
         for arg in args:
@@ -47,7 +88,8 @@ class StringLikeVars:
 
 class EtableTranspiler:
 
-    def __init__(self, formula, inputs, output, init_code=None):
+    def __init__(self, formula, inputs, output, var_mapper,  init_code=None):
+        self.var_mapper = var_mapper
         self.formula = formula
         self.inputs = inputs
         self.output = output
@@ -121,34 +163,34 @@ class EtableTranspiler:
             raise TypeError("AND() only supports 2 arguments if used in complex formula")
 
     def f_eq(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} == {v2})", [v1, v2]), bool)
+        return self.save_return(StringLikeVars(f"({v1} == {v2})", [v1, v2], "=="), bool)
 
     def f_ne(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} != {v2})", [v1, v2]), bool)
+        return self.save_return(StringLikeVars(f"({v1} != {v2})", [v1, v2], "!="), bool)
 
     def f_add(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} + {v2})", [v1, v2]), int)
+        return self.save_return(StringLikeVars(f"({v1} + {v2})", [v1, v2], "+"), int)
 
     def f_sub(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} - {v2})", [v1, v2]), int)
+        return self.save_return(StringLikeVars(f"({v1} - {v2})", [v1, v2], "-"), int)
 
     def f_mul(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} * {v2})", [v1, v2]), int)
+        return self.save_return(StringLikeVars(f"({v1} * {v2})", [v1, v2], "*"), int)
 
     def f_div(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} // {v2})", [v1, v2]), int)
+        return self.save_return(StringLikeVars(f"({v1} // {v2})", [v1, v2], "//"), int)
 
     def f_lt(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} < {v2})", [v1, v2]), bool)
+        return self.save_return(StringLikeVars(f"({v1} < {v2})", [v1, v2], "<"), bool)
 
     def f_gt(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} > {v2})", [v1,v2]), bool)
+        return self.save_return(StringLikeVars(f"({v1} > {v2})", [v1, v2], ">"), bool)
 
     def f_le(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} <= {v2})", [v1, v2]), bool)
+        return self.save_return(StringLikeVars(f"({v1} <= {v2})", [v1, v2], "<="), bool)
 
     def f_ge(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} >= {v2})", [v1, v2]), bool)
+        return self.save_return(StringLikeVars(f"({v1} >= {v2})", [v1, v2], ">="), bool)
 
     def transpile(self, nodes):
         if isinstance(nodes, list):
@@ -274,7 +316,21 @@ class EtableTranspiler:
             if 'var_tbl_' not in arg:
                 continue
             self.init_code.args.add(arg)
+
+        if ret.operator in ['-', '+', '/', '*', '>', '<', '<=', '>=']:
+            for var in ret.args:
+                var.set_types(int)
+
+        # set neighbour
+        if len(ret.args) > 1 and:
+            for arg1 in ret.args:
+                for arg2 in ret.args:
+                    arg1.type_group_set.update(arg2.type_group_set)
+                    arg2.type_group_set.update(arg1.type_group_set)
+   
         return ret
+    
+    
 
 class CodeElement:
 

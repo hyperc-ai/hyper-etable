@@ -128,7 +128,7 @@ class ETable:
         
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(self.filename)
-
+        var_mapper = []
         code = {}
 
         used_cell_set = set()
@@ -152,7 +152,7 @@ class ETable:
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
                 formula = hyper_etable.etable_transpiler.EtableTranspilerEasy(
-                    node_key, node_val['inputs'].keys(), output, init_code=code_init)
+                    node_key, node_val['inputs'].keys(), output, init_code=code_init, var_mapper=var_mapper)
                 formula.transpile_start()
                 # set default value for selectif
                 xl_mdl.cells[output].value = formula.default
@@ -308,6 +308,27 @@ class ETable:
                 # TODO this is stumb for novalue cell. We should use Novalue ????
                 setattr(self.objects[py_table_name][recid], letter, 0)
             
+        # Type detector
+        # Match all group neighbor each other
+        # by Breadth-first search now
+        not_double_pass = True
+        while not_double_pass:
+            not_double_pass = False
+            for tm in global_table_type_mapper.values():
+                while tm.visited_group != tm.group:
+                    tm.visited_group = tm.group
+                    tmp_tm_group = copy.copy(tm.group)
+                    for tm_name in tmp_tm_group:
+                        tm.merge_group(global_table_type_mapper[tm_name])
+            for tm in global_table_type_mapper.values():
+                while tm.forward_visited_group != tm.group:
+                    tm.forward_visited_group = tm.group
+                    tmp_tm_group = copy.copy(tm.group)
+                    for tm_name in tmp_tm_group:
+                        tm.merge_group(global_table_type_mapper[tm_name])
+                if tm.forward_visited_group != tm.visited_group:
+                    not_double_pass = True
+
         for clsv in self.classes.values():
             init_f_code = []
             init_pars = []
