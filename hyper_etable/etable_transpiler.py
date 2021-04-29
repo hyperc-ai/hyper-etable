@@ -13,9 +13,57 @@ def split_cell(cell_str):
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
+
+
+class StringLikeConstant(object):
+
+    @staticmethod
+    def new(var_map, var):
+        if var in var_map:
+            return var_map[var]
+        else:
+            return StringLikeConstant(var_map, var)
+
+    def __init__(self, var_map, var):
+        self.var = var
+        self.types = set()
+        self.types.add(type(var))
+        self.type_group_set = set()
+        self.var_map = var_map
+        self.new_type_group(var_map)
+        self.var_map[self.var] = self
+
+    def __str__(self):
+        return str(self.var)
+
+    def new_type_group(self, var_map):
+        # random duplicateless Generator
+        loop = True
+        rnd_len = 1
+        while loop:
+            loop = False
+            type_group = 'type_group_'+''.join(random.choices(string.ascii_uppercase + string.digits, k=rnd_len))
+            for k in var_map:
+                if var_map[k].type_group == type_group:
+                    loop = True
+            if not loop:
+                self.type_group = type_group
+                self.type_group_set.add(type_group)
+            rnd_len += 1
+
 class StringLikeVariable:
 
+    @staticmethod
+    def new(var_map, cell_str=None, filename=None, sheet=None, letter=None, number=None, var_str=None):
+        if var_str in var_map:
+            return var_map[var_str]
+        else:
+            return StringLikeVariable(
+                var_map=var_map, cell_str=cell_str, filename=filename, sheet=sheet, letter=letter, number=number,
+                var_str=var_str)
+
     def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
+
         if cell_str is None:
             self.filename = filename
             self.sheet = sheet
@@ -26,18 +74,19 @@ class StringLikeVariable:
         self.var_str = var_str
         if self.var_str is None:
             self.var_str = f'var_tbl_{self.sheet}__hct_direct_ref__{self.number}_{self.letter}'
+        if self.var_str in var_map:
+            self = var_map[self.var_str]
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
-        self.var_map[self.var_str] = self
         self.new_type_group(var_map)
+        self.var_map[self.var_str] = self
 
     def __str__(self):
         return self.var_str
     
     def __eq__(self, other):
         return self.filename == other.filename and self.sheet == other.sheet and self.letter == other.letter and self.number == other.number
-
     
     def set_types(self,type):
         if isinstance(type, set):
@@ -123,7 +172,7 @@ class EtableTranspiler:
         self.function_parens_args = collections.defaultdict(list)
         self.code = []
         self.remember_types = {}
-        self.return_var = StringLikeVariable(var_map = self.var_mapper, cell_str=self.output)
+        self.return_var = StringLikeVariable.new(var_map = self.var_mapper, cell_str=self.output)
         transpiled_formula_return = self.transpile(self.nodes)
         filename, sheet, recid, letter = split_cell(self.output)
         sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
@@ -236,7 +285,7 @@ class EtableTranspiler:
                 ret = int(node.attr["name"])
             if self.paren_level in self.function_parens:
                 self.function_parens_args[self.paren_level].append(ret)
-            return ret
+            return StringLikeConstant.new(var_map=self.var_mapper, var=ret)
         elif isinstance(node, formulas.tokens.operand.String):
             isint = True
             if node.attr["name"].lower() == "true":  # FIX HERE: need to check inference
@@ -249,7 +298,7 @@ class EtableTranspiler:
                 ret = node.attr["expr"]
             if self.paren_level in self.function_parens:
                 self.function_parens_args[self.paren_level].append(ret)
-            return ret
+            return StringLikeConstant.new(var_map=self.var_mapper, var=ret)
 
         elif isinstance(node, formulas.tokens.operator.OperatorToken):
             if node.attr["name"] == "=":
@@ -291,7 +340,7 @@ class EtableTranspiler:
         if not 'sheet' in node.attr:
             raise formulas.errors.FormulaError(f"Formula reference without row ID")
         # return node.attr
-        return StringLikeVariable(var_map=self.var_mapper, cell_str=node.attr['name'])
+        return StringLikeVariable.new(var_map=self.var_mapper, cell_str=node.attr['name'])
 
     def save_return(self, ret, type_):
         self.remember_types[ret] = type_
@@ -451,7 +500,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         assert len(args) > 2, "Args should be 3 and more"
         if self.paren_level == 1:
             self.default = args[0]
-        ret_var = StringLikeVariable(var_map=self.var_mapper, cell_str=self.output, var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
         ret_expr = StringLikeVars(ret_var, args)
         self.var_counter += 1
         code_element = CodeElement()
