@@ -283,9 +283,10 @@ class EtableTranspiler:
                 isint = False
             if isint:
                 ret = int(node.attr["name"])
+            ret = StringLikeConstant.new(var_map=self.var_mapper, var=ret)
             if self.paren_level in self.function_parens:
                 self.function_parens_args[self.paren_level].append(ret)
-            return StringLikeConstant.new(var_map=self.var_mapper, var=ret)
+            return ret
         elif isinstance(node, formulas.tokens.operand.String):
             isint = True
             if node.attr["name"].lower() == "true":  # FIX HERE: need to check inference
@@ -296,9 +297,10 @@ class EtableTranspiler:
                 isint = False
             if isint:
                 ret = node.attr["expr"]
+            ret = StringLikeConstant.new(var_map=self.var_mapper, var=ret)
             if self.paren_level in self.function_parens:
                 self.function_parens_args[self.paren_level].append(ret)
-            return StringLikeConstant.new(var_map=self.var_mapper, var=ret)
+            return ret
 
         elif isinstance(node, formulas.tokens.operator.OperatorToken):
             if node.attr["name"] == "=":
