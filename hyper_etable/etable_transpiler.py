@@ -4,28 +4,40 @@ import hyperc.settings
 import hyperc.xtj
 import schedula
 import copy
+import random
+import string
 
 
+def split_cell(cell_str):
+    # return (file, sheet, rec_id , letter)
+    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
+                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
+    return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
 class StringLikeVariable:
 
-    def __init__(self, filename, sheet, letter, number):
-        self.filename = filename
-        self.sheet = sheet
-        self.letter = letter
-        self.number = number
-        self.neighbour = set()
+    def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
+        if cell_str is None:
+            self.filename = filename
+            self.sheet = sheet
+            self.letter = letter
+            self.number = number
+        else:
+            self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
+        self.var_str = var_str
+        if self.var_str is None:
+            self.var_str = f'var_tbl_{self.sheet}__hct_direct_ref__{self.number}_{self.letter}'
         self.types = set()
         self.type_group_set = set()
-        if var_map is None:
-            self.type_group = None
-        else:
-            self.new_type_group(var_map)
+        self.var_map = var_map
+        self.var_map[self.var_str] = self
+        self.new_type_group(var_map)
 
     def __str__(self):
-        return f'var_tbl_{self.sheet}__hct_direct_ref__{self.number}_{self.letter}'
+        return self.var_str
     
     def __eq__(self, other):
-        return self.__str__() == str(other)
+        return self.filename == other.filename and self.sheet == other.sheet and self.letter == other.letter and self.number == other.number
+
     
     def set_types(self,type):
         if isinstance(type, set):
@@ -52,17 +64,15 @@ def formulas_parser(formula_str):
     return formulas.Parser().ast("="+list(formulas.Parser().ast("=" + formula_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
 
-def split_cell(cell_str):
-    # return (file, sheet, rec_id , letter) 
-    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
-                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-    return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
-
 
 def get_var_from_cell(cell_str):
-    filename, sheet, recid, letter = split_cell(self.output)
-    return StringLikeVariable(filename=filename, sheet=sheet, letter=letter, number=recid)
-
+    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
+                                           - [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
+    letter = cell['c1'].lower()
+    number = cell['r1']
+    sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
+    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
+    return var_name
 
 class StringLikeVars:
     def __init__(self,rendered_str, args, operator):
@@ -113,7 +123,7 @@ class EtableTranspiler:
         self.function_parens_args = collections.defaultdict(list)
         self.code = []
         self.remember_types = {}
-        self.return_var = get_var_from_cell(self.output)
+        self.return_var = StringLikeVariable(var_map = self.var_mapper, cell_str=self.output)
         transpiled_formula_return = self.transpile(self.nodes)
         filename, sheet, recid, letter = split_cell(self.output)
         sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
@@ -121,31 +131,6 @@ class EtableTranspiler:
         self.output_code.append(f'    {self.return_var} = {transpiled_formula_return}')
         self.output_code.append(f'    HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
         self.output_code.append(f'    # side effect with {self.return_var} can be added here')
-
-
-    def f_selectif(self, *args):
-        assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
-        assert len(args) > 2, "Args should be 3 and more"
-        if self.paren_level == 1:
-            self.default = args[0]
-        ret_var = f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}'
-        self.var_counter += 1
-        for idx, arg in enumerate(args):
-            if idx % 2 == 0:
-                continue
-            if idx == 1:
-                self.code.append(f"    if {arg}:")
-                self.code.append(f"        assert True")
-                self.code.append(f"        {ret_var} = {args[idx+1]}")
-            else:
-                self.code.append(f"    elif {arg}:")
-                self.code.append(f"        assert True")
-                self.code.append(f"        {ret_var} = {args[idx+1]}")
-        self.code.append(f"    else:")
-        self.code.append(f"        assert False")
-
-
-        return ret_var
 
     def f_and(self, *args):
         if len(args) == 2 and self.paren_level > 1:
@@ -306,7 +291,7 @@ class EtableTranspiler:
         if not 'sheet' in node.attr:
             raise formulas.errors.FormulaError(f"Formula reference without row ID")
         # return node.attr
-        return get_var_from_cell(node.attr['name'])
+        return StringLikeVariable(var_map=self.var_mapper, cell_str=node.attr['name'])
 
     def save_return(self, ret, type_):
         self.remember_types[ret] = type_
@@ -322,15 +307,14 @@ class EtableTranspiler:
                 var.set_types(int)
 
         # set neighbour
-        if len(ret.args) > 1 and:
+        if len(ret.args) > 1 :
             for arg1 in ret.args:
                 for arg2 in ret.args:
                     arg1.type_group_set.update(arg2.type_group_set)
                     arg2.type_group_set.update(arg1.type_group_set)
    
         return ret
-    
-    
+   
 
 class CodeElement:
 
@@ -467,7 +451,8 @@ class EtableTranspilerEasy(EtableTranspiler):
         assert len(args) > 2, "Args should be 3 and more"
         if self.paren_level == 1:
             self.default = args[0]
-        ret_var = StringLikeVars(f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}', args)
+        ret_var = StringLikeVariable(var_map=self.var_mapper, cell_str=self.output, var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_expr = StringLikeVars(ret_var, args)
         self.var_counter += 1
         code_element = CodeElement()
         self.code.append(code_element)
@@ -475,12 +460,12 @@ class EtableTranspilerEasy(EtableTranspiler):
             if idx % 2 == 0:
                 continue
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
-            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_var} = {args[idx+1]}")
+            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_expr} = {args[idx+1]}")
             code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(args[idx+1].variables)
 
-        return ret_var
+        return ret_expr
 
 
 class EtableTranspilerBreeder(EtableTranspiler):
