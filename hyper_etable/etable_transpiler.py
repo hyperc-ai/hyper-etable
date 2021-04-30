@@ -6,7 +6,7 @@ import schedula
 import copy
 import random
 import string
-
+import hyper_etable.type_mapper
 
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
@@ -159,8 +159,9 @@ class StringLikeVars:
 
 class EtableTranspiler:
 
-    def __init__(self, formula, inputs, output, var_mapper,  init_code=None):
+    def __init__(self, formula, inputs, output, var_mapper, table_type_mapper, init_code=None):
         self.var_mapper = var_mapper
+        self.table_type_mapper = table_type_mapper
         self.formula = formula
         self.inputs = inputs
         self.output = output
@@ -356,7 +357,7 @@ class EtableTranspiler:
         # return node.attr
         return StringLikeVariable.new(var_map=self.var_mapper, cell_str=node.attr['name'])
 
-    def save_return(self, ret, type_):
+    def save_return(self, ret, type_=None):
         self.remember_types[ret] = type_
         for arg in ret.args:
             if not isinstance(arg, str):
@@ -366,16 +367,23 @@ class EtableTranspiler:
             self.init_code.args.add(arg)
 
         if ret.operator in ['-', '+', '/', '*', '>', '<', '<=', '>=']:
-            for var in ret.args:
+            for var in ret.variables:
                 var.set_types(int)
 
+
         # set neighbour
-        if len(ret.args) > 1 :
-            for arg1 in ret.args:
-                for arg2 in ret.args:
-                    arg1.type_group_set.update(arg2.type_group_set)
-                    arg2.type_group_set.update(arg1.type_group_set)
-   
+        if len(ret.variables) > 1 :
+            for var1 in ret.variables:
+                for var2 in ret.variables:
+                    var1.type_group_set.update(var2.type_group_set)
+                    var2.type_group_set.update(var1.type_group_set)
+        
+        # create type group mapper
+        for var in ret.variables:
+            if var.type_group not in self.table_type_mapper:
+                self.table_type_mapper[var.type_group] = hyper_etable.type_mapper.TypeMapper(
+                    group=var.type_group_set, name=var.type_group, types=var.types)
+
         return ret
    
 
@@ -526,6 +534,9 @@ class EtableTranspilerEasy(EtableTranspiler):
                 continue
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_expr} = {args[idx+1]}")
+
+            self.save_return(StringLikeVars(f"{ret_expr} = {args[idx+1]}", [ret_var, args[idx+1]], "="))
+
             code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(args[idx+1].variables)

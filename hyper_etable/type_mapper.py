@@ -2,7 +2,7 @@
 
 class TypeMapper:
 
-    def __init__(self, table, coords, group, name, types):
+    def __init__(self, group, name, types, table=None, coords=None):
         self.table = table
         self.coords = coords
         self.group = group

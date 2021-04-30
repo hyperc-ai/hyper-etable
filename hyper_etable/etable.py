@@ -129,6 +129,7 @@ class ETable:
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(self.filename)
         var_mapper = {}
+        global_table_type_mapper = {}
         code = {}
 
         used_cell_set = set()
@@ -152,7 +153,8 @@ class ETable:
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
                 formula = hyper_etable.etable_transpiler.EtableTranspilerEasy(
-                    node_key, node_val['inputs'].keys(), output, init_code=code_init, var_mapper=var_mapper)
+                    node_key, node_val['inputs'].keys(),
+                    output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                 formula.transpile_start()
                 # set default value for selectif
                 xl_mdl.cells[output].value = formula.default
