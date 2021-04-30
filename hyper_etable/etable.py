@@ -124,6 +124,10 @@ class ETable:
         self.mod.HCT_OBJECTS[table_name] = []
         return ThisTable
 
+    def get_object_from_var(self, var):
+        py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+        return self.objects[py_table_name][var.number]
+
     def calculate(self):
         
         xl_mdl = formulas.excel.ExcelModel()
@@ -157,7 +161,10 @@ class ETable:
                     output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                 formula.transpile_start()
                 # set default value for selectif
-                xl_mdl.cells[output].value = formula.default
+                var = formula.default
+                if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
+                    var = formula.default.var
+                xl_mdl.cells[output].value = var
                 code.update(formula.code)
         
         # look for mergable actions
@@ -298,7 +305,7 @@ class ETable:
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
             self.objects[py_table_name][recid].__touched_annotations__.add(letter)
             #TODO add type detector
-            self.classes[py_table_name].__annotations__[letter] = int
+            # self.classes[py_table_name].__annotations__[letter] = int
             # rec_obj.__annotations__.add(letter)
             sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
             if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
@@ -330,6 +337,14 @@ class ETable:
                         tm.merge_group(global_table_type_mapper[tm_name])
                 if tm.forward_visited_group != tm.visited_group:
                     not_double_pass = True
+
+        for var in var_mapper.values():
+            if isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
+                line_object = self.get_object_from_var(var)
+                if int in var.types:
+                    line_object.__annotations__[var.letter] = int
+                    line_object.__class__.__annotations__[var.letter] = int
+
 
         for clsv in self.classes.values():
             init_f_code = []
