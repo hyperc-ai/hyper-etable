@@ -313,23 +313,23 @@ class ETable:
         # Type detector
         # Match all group neighbor each other
         # by Breadth-first search now
-        # not_double_pass = True
-        # while not_double_pass:
-        #     not_double_pass = False
-        #     for tm in global_table_type_mapper.values():
-        #         while tm.visited_group != tm.group:
-        #             tm.visited_group = tm.group
-        #             tmp_tm_group = copy.copy(tm.group)
-        #             for tm_name in tmp_tm_group:
-        #                 tm.merge_group(global_table_type_mapper[tm_name])
-        #     for tm in global_table_type_mapper.values():
-        #         while tm.forward_visited_group != tm.group:
-        #             tm.forward_visited_group = tm.group
-        #             tmp_tm_group = copy.copy(tm.group)
-        #             for tm_name in tmp_tm_group:
-        #                 tm.merge_group(global_table_type_mapper[tm_name])
-        #         if tm.forward_visited_group != tm.visited_group:
-        #             not_double_pass = True
+        not_double_pass = True
+        while not_double_pass:
+            not_double_pass = False
+            for tm in global_table_type_mapper.values():
+                while tm.visited_group != tm.group:
+                    tm.visited_group = tm.group
+                    tmp_tm_group = copy.copy(tm.group)
+                    for tm_name in tmp_tm_group:
+                        tm.merge_group(global_table_type_mapper[tm_name])
+            for tm in global_table_type_mapper.values():
+                while tm.forward_visited_group != tm.group:
+                    tm.forward_visited_group = tm.group
+                    tmp_tm_group = copy.copy(tm.group)
+                    for tm_name in tmp_tm_group:
+                        tm.merge_group(global_table_type_mapper[tm_name])
+                if tm.forward_visited_group != tm.visited_group:
+                    not_double_pass = True
 
         for clsv in self.classes.values():
             init_f_code = []

@@ -138,10 +138,10 @@ class StringLikeVars:
         self.args  = args
         self.variables = set()
         for arg in self.args:
-            if isinstance(arg, str):
-                self.variables.add(arg)
-            elif isinstance(arg, StringLikeVars):
+            if isinstance(arg, StringLikeVars):
                 self.variables.update(arg.variables)
+            else:
+                self.variables.add(arg)
         self.operator = operator
     
     def extend(self, args):
