@@ -36,6 +36,15 @@ class StringLikeConstant(object):
     def __str__(self):
         return str(self.var)
 
+    def __hash__(self):
+        return hash(self.var)
+
+    def set_types(self, type):
+        if isinstance(type, set):
+            self.types.update(type)
+        else:
+            self.types.add(type)
+
     def new_type_group(self, var_map):
         # random duplicateless Generator
         loop = True
@@ -63,7 +72,6 @@ class StringLikeVariable:
                 var_str=var_str)
 
     def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
-
         if cell_str is None:
             self.filename = filename
             self.sheet = sheet
@@ -74,8 +82,6 @@ class StringLikeVariable:
         self.var_str = var_str
         if self.var_str is None:
             self.var_str = f'var_tbl_{self.sheet}__hct_direct_ref__{self.number}_{self.letter}'
-        if self.var_str in var_map:
-            self = var_map[self.var_str]
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
@@ -84,6 +90,9 @@ class StringLikeVariable:
 
     def __str__(self):
         return self.var_str
+    
+    def __hash__(self):
+        return hash(str(self.var_str))
     
     def __eq__(self, other):
         return self.filename == other.filename and self.sheet == other.sheet and self.letter == other.letter and self.number == other.number
@@ -115,8 +124,7 @@ def formulas_parser(formula_str):
 
 
 def get_var_from_cell(cell_str):
-    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
-                                           - [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
+    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)[1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     letter = cell['c1'].lower()
     number = cell['r1']
     sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
@@ -143,7 +151,10 @@ class StringLikeVars:
                 self.variables.update(arg.variables)
 
     def __str__(self):
-        return self.rendered_str
+        return str(self.rendered_str)
+
+    def __hash__(self):
+        return hash(str(self.rendered_str))
 
 class EtableTranspiler:
 
@@ -505,7 +516,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, cell_str=self.output,
             var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
-        ret_expr = StringLikeVars(ret_var, args)
+        ret_expr = StringLikeVars(ret_var, args, "selectif")
         self.var_counter += 1
         code_element = CodeElement()
         self.code.append(code_element)
