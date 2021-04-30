@@ -15,6 +15,15 @@ def split_cell(cell_str):
     return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
 
 
+def get_var_from_cell(cell_str):
+    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
+                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
+    letter = cell['c1'].lower()
+    number = cell['r1']
+    sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
+    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
+    return var_name
+
 class StringLikeConstant(object):
 
     @staticmethod
@@ -81,7 +90,8 @@ class StringLikeVariable:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
         self.var_str = var_str
         if self.var_str is None:
-            self.var_str = f'var_tbl_{self.sheet}__hct_direct_ref__{self.number}_{self.letter}'
+            sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
+            self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
@@ -93,10 +103,7 @@ class StringLikeVariable:
     
     def __hash__(self):
         return hash(str(self.var_str))
-    
-    def __eq__(self, other):
-        return self.filename == other.filename and self.sheet == other.sheet and self.letter == other.letter and self.number == other.number
-    
+       
     def set_types(self,type):
         if isinstance(type, set):
             self.types.update(type)
@@ -123,13 +130,7 @@ def formulas_parser(formula_str):
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
 
 
-def get_var_from_cell(cell_str):
-    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)[1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-    letter = cell['c1'].lower()
-    number = cell['r1']
-    sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
-    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
-    return var_name
+
 
 class StringLikeVars:
     def __init__(self,rendered_str, args, operator):
