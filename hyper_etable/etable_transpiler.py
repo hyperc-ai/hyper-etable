@@ -133,7 +133,7 @@ def formulas_parser(formula_str):
 
 
 class StringLikeVars:
-    def __init__(self,rendered_str, args, operator):
+    def __init__(self,rendered_str, args, operator, sync_cell = None):
         self.rendered_str = rendered_str
         self.args  = args
         self.variables = set()
@@ -143,6 +143,9 @@ class StringLikeVars:
             else:
                 self.variables.add(arg)
         self.operator = operator
+        self.sync_cell = set()
+        if sync_cell is not None:
+            self.sync_cell.update(set(sync_cell))
     
     def extend(self, args):
         for arg in args:
@@ -517,9 +520,10 @@ class EtableTranspilerEasy(EtableTranspiler):
             c.effect_vars.add(self.return_var)
         self.code = code
 
+    
     def f_selectif(self, *args):
-        assert ((len(args)+1) % 2) == 0, "Args in selectif should be odd"
-        assert len(args) > 2, "Args should be 3 and more"
+        assert ((len(args)-1) % 3) == 0, "Args in selectif should be multiple of three"
+        assert len(args) > 3, "Args should be 4 and more"
         if self.paren_level == 1:
             self.default = args[0]
         ret_var = StringLikeVariable.new(
@@ -532,10 +536,15 @@ class EtableTranspilerEasy(EtableTranspiler):
         for idx, arg in enumerate(args):
             if idx % 2 == 0:
                 continue
+            if idx % 3 == 0:
+                continue
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
             code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_expr} = {args[idx+1]}")
 
-            self.save_return(StringLikeVars(f"{ret_expr} = {args[idx+1]}", [ret_var, args[idx+1]], "="))
+            self.save_return(
+                StringLikeVars(
+                    f"{ret_expr} = {args[idx+1]}", [ret_var, args[idx + 1]],
+                    "=", sync_cell=args[idx + 2]))
 
             code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
