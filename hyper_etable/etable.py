@@ -150,11 +150,14 @@ class ETable:
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
                     filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(input)
+                    py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+                    if py_table_name not in self.classes:
+                        self.get_new_table(py_table_name, sheet)
                     if isinstance(recid, list):
                         continue
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
-                    var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{recid}_{letter}'
-                    code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter}')
+                    var_name = f'var_tbl_{py_table_name}__hct_direct_ref__{recid}_{letter}'
+                    code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}')
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
@@ -285,35 +288,43 @@ class ETable:
 
         for cell in used_cell_set:
 
-            filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+            filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
             py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
-            if recid not in self.objects[py_table_name]:
-                if py_table_name not in self.classes:
-                    ThisTable = self.get_new_table(py_table_name, sheet)
-                else:
-                    ThisTable = self.classes[py_table_name]
-                # if 
-                rec_obj = ThisTable()
-                # rec_obj.__row_record__ = copy.copy(cell)
-                # rec_obj.__recid__ = recid
-                rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
-                # ThisTable.__annotations_type_set__ = defaultdict(set)
-                self.objects[py_table_name][recid] = rec_obj
-                self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-            self.objects[py_table_name][recid].__touched_annotations__.add(letter)
-            #TODO add type detector
-            # self.classes[py_table_name].__annotations__[letter] = int
-            # rec_obj.__annotations__.add(letter)
-            sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
-            if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
-                setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
-                self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-            if xl_mdl.cells[cell].value is not schedula.EMPTY:
-                setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
+            if isinstance(recid_ret, list):
+                recid_ret = range(recid_ret[0], recid_ret[1] + 1)
+                letter = letter[0]
             else:
-                # TODO this is stumb for novalue cell. We should use Novalue ????
-                setattr(self.objects[py_table_name][recid], letter, 0)
+                recid_ret = [recid_ret]
+                
+            for recid in recid_ret:
+                if recid not in self.objects[py_table_name]:
+                    if py_table_name not in self.classes:
+                        ThisTable = self.get_new_table(py_table_name, sheet)
+                    else:
+                        ThisTable = self.classes[py_table_name]
+                    # if 
+                    rec_obj = ThisTable()
+                    # rec_obj.__row_record__ = copy.copy(cell)
+                    # rec_obj.__recid__ = recid
+                    rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
+                    rec_obj.__touched_annotations__ = set()
+                    # ThisTable.__annotations_type_set__ = defaultdict(set)
+                    self.objects[py_table_name][recid] = rec_obj
+                    self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+                self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+                #TODO add type detector
+                # self.classes[py_table_name].__annotations__[letter] = int
+                # rec_obj.__annotations__.add(letter)
+                sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
+                    setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
+                    self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+                cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
+                if xl_mdl.cells[cell].value is not schedula.EMPTY:
+                    setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
+                else:
+                    # TODO this is stumb for novalue cell. We should use Novalue ????
+                    setattr(self.objects[py_table_name][recid], letter, 0)
             
         # Type detector
         # Match all group neighbor each other
@@ -338,10 +349,20 @@ class ETable:
 
         for var in var_mapper.values():
             if isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
-                line_object = self.get_object_from_var(var)
-                if int in var.types:
-                    line_object.__annotations__[var.letter] = int
-                    line_object.__class__.__annotations__[var.letter] = int
+                if var.is_range:
+                    recid_ret = range(var.number[0], var.number[1]+1)
+                    letter = var.letter[0]
+                else:
+                    recid_ret = [var.number]
+                    letter = var.letter
+                py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+                for recid in recid_ret:
+                    line_object = self.objects[py_table_name][recid]
+                    if int in var.types:
+                        line_object.__annotations__[letter] = int
+                        line_object.__class__.__annotations__[letter] = int
+
+
 
 
         for clsv in self.classes.values():

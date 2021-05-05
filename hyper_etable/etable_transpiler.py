@@ -13,9 +13,9 @@ def split_cell(cell_str):
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
-        return (cell['excel'], cell['sheet'], [cell['r1'], cell['r2']], [cell['c1'].lower(), cell['c2'].lower()])
+        return (cell['excel'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
     else:
-        return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
+        return (cell['excel'], cell['sheet'], int(cell['r1']), cell['c1'].lower())
 
 
 def get_var_from_cell(cell_str):
@@ -88,7 +88,7 @@ class StringLikeVariable:
             self.filename = filename
             self.sheet = sheet
             self.letter = letter
-            self.number = number
+            self.number = int(number)
         else:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
         if isinstance(self.number, list):
