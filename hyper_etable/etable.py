@@ -150,6 +150,8 @@ class ETable:
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
                     filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(input)
+                    if isinstance(recid, list):
+                        continue
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
                     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{recid}_{letter}'
                     code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter}')

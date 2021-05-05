@@ -100,7 +100,7 @@ class StringLikeVariable:
         if self.var_str is None:
             sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
             if self.is_range:
-                self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
+                self.var_str = f'var_tbl_{sheet_name}__range_{self.number[0]}_{self.number[1]}_{self.letter[0]}'
             else:
                 self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
         self.types = set()
@@ -479,7 +479,7 @@ class FunctionCode:
                     break
 
     def __str__(self):
-        function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args])
+        function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
             operators = '\n'.join(self.operators)
             return f'''def {self.name}({function_args}):
@@ -537,12 +537,19 @@ class EtableTranspilerEasy(EtableTranspiler):
     def f_selectfromrange(self, default, range):
         if self.paren_level == 1:
             self.default = default
-        # assert self.paren_level == 1, "only parent_level 1 is support for selectfromrange"
-        # ret_var = StringLikeVariable.new(
-        #     var_map=self.var_mapper, sheet=range.sheet, ,
-        #     var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
-        self.args.add(range)
-        # self.init_code.operators.
+        assert self.paren_level == 1, "only parent_level 1 is support for selectfromrange"
+        range.var_str = f'{range.var_str}_{self.var_counter}'
+        self.var_counter += 1
+        # select_var = StringLikeVariable.new(
+        #     var_map=self.var_mapper, cell_str=range.attr['name'])
+        # select_var.var_str
+        self.init_code.function_args[range] = hyperc.xtj.str_to_py(f'[{range.filename}]{range.sheet}')
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
+        self.var_counter += 1
+        self.init_code.init.append(f'    {ret_var} = {range}.{range.letter[0]}')
+        return ret_var
 
     def f_selectif(self, *args):
         assert self.paren_level == 1, "only parent_level 1 is support for selectif"
