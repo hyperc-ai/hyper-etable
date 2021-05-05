@@ -12,7 +12,10 @@ def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-    return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
+    if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
+        return (cell['excel'], cell['sheet'], [cell['r1'], cell['r2']], [cell['c1'].lower(), cell['c2'].lower()])
+    else:
+        return (cell['excel'], cell['sheet'], cell['r1'], cell['c1'].lower())
 
 
 def get_var_from_cell(cell_str):
@@ -88,10 +91,18 @@ class StringLikeVariable:
             self.number = number
         else:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
+        if isinstance(self.number, list):
+            self.is_range = True
+        else:
+           self.is_range = False
+
         self.var_str = var_str
         if self.var_str is None:
             sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
-            self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
+            if self.is_range:
+                self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
+            else:
+                self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
@@ -172,6 +183,7 @@ class EtableTranspiler:
         if self.init_code is None:
             self.init_code = []
         self.default = schedula.EMPTY
+        self.args = set()
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
@@ -406,6 +418,7 @@ class FunctionCode:
         self.init = []
         self.operators = []
         self.args = set()
+        self.function_args = {}
         self.selected_cell = set()
         self.output = []
         self.collapsed = False
@@ -466,16 +479,17 @@ class FunctionCode:
                     break
 
     def __str__(self):
+        function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args])
         if self.collapsed:
             operators = '\n'.join(self.operators)
-            return f'''def {self.name}():
+            return f'''def {self.name}({function_args}):
 {operators}
 '''
         else:
             init = '\n'.join(self.init)
             operators = '\n'.join(self.operators)
             output = '\n'.join(self.output)
-            return f'''def {self.name}():
+            return f'''def {self.name}({function_args}):
 {init}
 {operators}
 {output}
@@ -520,8 +534,18 @@ class EtableTranspilerEasy(EtableTranspiler):
             c.effect_vars.add(self.return_var)
         self.code = code
 
-    
+    def f_selectfromrange(self, default, range):
+        if self.paren_level == 1:
+            self.default = default
+        # assert self.paren_level == 1, "only parent_level 1 is support for selectfromrange"
+        # ret_var = StringLikeVariable.new(
+        #     var_map=self.var_mapper, sheet=range.sheet, ,
+        #     var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        self.args.add(range)
+        # self.init_code.operators.
+
     def f_selectif(self, *args):
+        assert self.paren_level == 1, "only parent_level 1 is support for selectif"
         assert ((len(args)-1) % 3) == 0, "Args in selectif should be multiple of three"
         assert len(args) > 3, "Args should be 4 and more"
         if self.paren_level == 1:
