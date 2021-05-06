@@ -233,6 +233,12 @@ class ETable:
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     for rule in rule_cell.rules:
                         value = hyper_etable.etable_transpiler.formulas_parser(rule.formula[0])[0]
+                        r = int(rule.dxf.fill.end_color.rgb[2:4], 16)
+                        g = int(rule.dxf.fill.end_color.rgb[4:6], 16)
+                        b = int(rule.dxf.fill.end_color.rgb[6:8], 16)
+                        h, s, v = rgb_to_hsv(r=r, b=b, g=g)
+                        if (h < 75) or (h > 150):
+                            continue
                         if isinstance(value, formulas.tokens.operand.Range):
                             filename_value, sheet_value, recid_value, letter_value = hyper_etable.etable_transpiler.split_cell(
                                 rule.formula[0])
