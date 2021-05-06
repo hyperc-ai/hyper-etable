@@ -358,9 +358,12 @@ class ETable:
                 py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
                 for recid in recid_ret:
                     line_object = self.objects[py_table_name][recid]
-                    if int in var.types:
-                        line_object.__annotations__[letter] = int
-                        line_object.__class__.__annotations__[letter] = int
+                    #TODO fix type detector for ranges
+                    # if int in var.types:
+                        # line_object.__annotations__[letter] = int
+                        # line_object.__class__.__annotations__[letter] = int
+                    line_object.__annotations__[letter] = int
+                    line_object.__class__.__annotations__[letter] = int
 
 
 
