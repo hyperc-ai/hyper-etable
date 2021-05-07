@@ -466,6 +466,7 @@ class FunctionCode:
         self.name = f'{self.name}_{other.name}'
         self.output = other.output + self.output
         self.args.update(other.args)
+        self.function_args.update(other.function_args)
         self.effect_vars.update(other.effect_vars)
         self.selected_cell.update(other.selected_cell)
         self.parent_name.update(other.parent_name)
