@@ -17,6 +17,12 @@ import collections
 import copy
 import os.path
 
+class FunctionContainer:
+
+    def __init__(self, functions=None):
+        self.functions = []
+        if functions is not None:
+            self.functions.extend(functions)
 
 class TableElementMeta(type):
     @hyperc.util.side_effect_decorator
@@ -194,6 +200,8 @@ class ETable:
                 deleted_keys.add(func_name_other)
         # update keys
         code = {v.name: v for k, v in code.items()}
+
+        code_containers = {v.name: FunctionContainer(functions=[v]) for v in code.values()}
 
         # look for gluable actions
         is_merged_some_one = True
