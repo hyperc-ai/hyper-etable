@@ -365,9 +365,6 @@ class ETable:
                     line_object.__annotations__[letter] = int
                     line_object.__class__.__annotations__[letter] = int
 
-
-
-
         for clsv in self.classes.values():
             init_f_code = []
             init_pars = []

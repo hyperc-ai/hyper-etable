@@ -44,6 +44,8 @@ class StringLikeConstant(object):
         self.var_map = var_map
         self.new_type_group(var_map)
         self.var_map[self.var] = self
+        self.variables = set()
+        self.variables.add(self)
 
     def __str__(self):
         return str(self.var)
@@ -108,6 +110,8 @@ class StringLikeVariable:
         self.var_map = var_map
         self.new_type_group(var_map)
         self.var_map[self.var_str] = self
+        self.variables = set()
+        self.variables.add(self)
 
     def __str__(self):
         return self.var_str
@@ -184,6 +188,7 @@ class EtableTranspiler:
             self.init_code = []
         self.default = schedula.EMPTY
         self.args = set()
+        self.sync_cell = set()
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
@@ -253,6 +258,9 @@ class EtableTranspiler:
 
     def f_ge(self, v1, v2):
         return self.save_return(StringLikeVars(f"({v1} >= {v2})", [v1, v2], ">="), bool)
+    
+    def f_true(self):
+        return self.save_return(StringLikeVars("True", [StringLikeConstant.new(var_map=self.var_mapper,var=True)], "" ), bool)
 
     def transpile(self, nodes):
         if isinstance(nodes, list):
@@ -550,7 +558,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.var_counter += 1
         self.init_code.init.append(f'    {ret_var} = {range}.{range.letter[0]}')
         return ret_var
-
+    # selectif(default_value, precondition_1, effect_1, select_cell_1, precondition_2, effect_2, select_cell_2, .....
     def f_selectif(self, *args):
         assert self.paren_level == 1, "only parent_level 1 is support for selectif"
         assert ((len(args)-1) % 3) == 0, "Args in selectif should be multiple of three"
@@ -575,8 +583,8 @@ class EtableTranspilerEasy(EtableTranspiler):
             self.save_return(
                 StringLikeVars(
                     f"{ret_expr} = {args[idx+1]}", [ret_var, args[idx + 1]],
-                    "=", sync_cell=args[idx + 2]))
-
+                    "="))
+            self.sync_cell.add(args[idx + 2])
             code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
             code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(args[idx+1].variables)
