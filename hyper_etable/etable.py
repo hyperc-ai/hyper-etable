@@ -200,6 +200,8 @@ class ETable:
         while is_merged_some_one:
             is_merged_some_one = False
             for func_name_other in list(code.keys()):
+                if code[func_name_other].selectable :
+                    continue
                 if func_name_other in deleted_keys:
                     continue
                 is_merged = False

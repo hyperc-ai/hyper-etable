@@ -117,8 +117,12 @@ class StringLikeVariable:
         return self.var_str
     
     def __hash__(self):
-        return hash(str(self.var_str))
-       
+        self.hash = hash(str(self.var_str))
+        return self.hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def set_types(self,type):
         if isinstance(type, set):
             self.types.update(type)
