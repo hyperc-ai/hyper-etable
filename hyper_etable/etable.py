@@ -34,22 +34,22 @@ def stack_code_gen(obj_name):
         add.append(f'        self.row{i} = obj')
         add.append(f'        self.row{i}_letter = letter')
         # def drop(self):
-        add.append(f'    if hasattr(self, "row{i}"):')
-        add.append(f'        delattr(self,"row{i}"')
-        add.append(f'        delattr(self, "row{i}_letter"')
+        drop.append(f'    if hasattr(self, "row{i}"):')
+        drop.append(f'        delattr(self,"row{i}")')
+        drop.append(f'        delattr(self, "row{i}_letter")')
     
     declare = "\n".join(declare)
-    add = '\n'.join(add)
-    drop = '\n'.join(drop)
+    add = '\n    '.join(add)
+    drop = '\n    '.join(drop)
 
     return f'''
 from hyperc import not_hasattr    
 class StaticStackSheet:
 {declare}
     def add(self, obj: Sheet1, letter: str):
-{add}
+    {add}
     def drop(self):
-{drop}
+    {drop}
 '''
 
 class TableElementMeta(type):
@@ -427,7 +427,11 @@ class ETable:
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
         
-        stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{range.filename}]{range.sheet}'))
+        stack_code = ''
+        for cell in used_cell_set:
+            filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
+            stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
+            break
 
         fn = f"{self.tempdir}/hpy_stack_code.py"
         with open(fn, "w+") as f:
