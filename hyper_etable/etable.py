@@ -143,7 +143,7 @@ class ETable:
                 output = node_val['outputs'][0]
                 out_py = hyperc.xtj.str_to_py(output)
                 code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
-                code_init.init.append(f'    #{node_key}')
+                code_init.init.append(f'#{node_key}')
                 used_cell_set.add(output)
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
@@ -156,7 +156,7 @@ class ETable:
                         continue
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
                     var_name = f'var_tbl_{py_table_name}__hct_direct_ref__{recid}_{letter}'
-                    code_init.init.append(f'    {var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}')
+                    code_init.init.append(f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}')
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
@@ -220,13 +220,13 @@ class ETable:
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
                         elif isinstance(value, formulas.tokens.operand.Number):
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
                         elif isinstance(value, formulas.tokens.operand.String):
                             goal_code[cell].append(
-                                f'    assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal')
         goal_code_source = {}
@@ -250,7 +250,7 @@ class ETable:
                     counter_was += 1
 
             for idx in goal_code_source:
-                goal_code_source[idx].operators.append(f'    #{goal_name}')
+                goal_code_source[idx].operators.append(f'#{goal_name}')
                 goal_code_source[idx].operators.append(g_c[idx % len(g_c)])
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal')

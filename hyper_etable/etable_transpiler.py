@@ -214,9 +214,9 @@ class EtableTranspiler:
         filename, sheet, recid, letter = split_cell(self.output)
         sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
         self.output_code = []
-        self.output_code.append(f'    {self.return_var} = {transpiled_formula_return}')
-        self.output_code.append(f'    HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
-        self.output_code.append(f'    # side effect with {self.return_var} can be added here')
+        self.output_code.append(f'{self.return_var} = {transpiled_formula_return}')
+        self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
+        self.output_code.append(f'# side effect with {self.return_var} can be added here')
 
     def f_and(self, *args):
         if len(args) == 2 and self.paren_level > 1:
@@ -491,21 +491,30 @@ class FunctionCode:
                     self.init.remove(init)
                     break
 
+    def gen_not_hasattr(self):
+        not_hasattrs = []
+        for eff_var in self.effect_vars:
+            py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+            not_hasattrs.append(f'not_hasattr(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}, {eff_var.letter})')
+        return f'if {" and ".join(not_hasattrs)}:'
+
     def __str__(self):
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
-            operators = '\n'.join(self.operators)
+            operators = '\n        '.join(self.operators)
             return f'''def {self.name}({function_args}):
-{operators}
+    {self.gen_not_hasattr()}
+        {operators}
 '''
         else:
-            init = '\n'.join(self.init)
-            operators = '\n'.join(self.operators)
-            output = '\n'.join(self.output)
+            init = '\n        '.join(self.init)
+            operators = '\n        '.join(self.operators)
+            output = '\n        '.join(self.output)
             return f'''def {self.name}({function_args}):
-{init}
-{operators}
-{output}
+    {self.gen_not_hasattr()}
+        {init}
+        {operators}
+        {output}
 '''
 
 
@@ -561,8 +570,9 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_map=self.var_mapper, cell_str=self.output,
             var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'    {ret_var} = {range}.{range.letter[0]}')
+        self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
         return ret_var
+   
     # selectif(default_value, precondition_1, effect_1, select_cell_1, precondition_2, effect_2, select_cell_2, .....
     def f_selectif(self, *args):
         assert self.paren_level == 1, "only parent_level 1 is support for selectif"
@@ -582,8 +592,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                 continue
             if idx % 3 == 0:
                 continue
-            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    assert {arg}")
-            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"    {ret_expr} = {args[idx+1]}")
+            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"assert {arg}")
+            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"{ret_expr} = {args[idx+1]}")
 
             self.save_return(
                 StringLikeVars(
