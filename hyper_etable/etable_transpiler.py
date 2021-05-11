@@ -422,7 +422,7 @@ class CodeElement:
         self.all_vars = collections.defaultdict(list)
 
 class FunctionCode:
-    def __init__(self, name, parent_name=None):
+    def __init__(self, name, parent_name=None, is_goal=False):
         self.name = name
         self.parent_name = set()
         if parent_name is not None:
@@ -436,6 +436,7 @@ class FunctionCode:
         self.collapsed = False
         self.selectable = False
         self.effect_vars = set()
+        self.is_goal = is_goal
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
@@ -499,19 +500,20 @@ class FunctionCode:
         return f'if {" and ".join(not_hasattrs)}:'
 
     def __str__(self):
+        if_not_hasattr = ""
+        if not self.is_goal:
+            if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
             operators = '\n        '.join(self.operators)
-            return f'''def {self.name}({function_args}):
-    {self.gen_not_hasattr()}
+            return f'''def {self.name}({function_args}):{if_not_hasattr}
         {operators}
 '''
         else:
             init = '\n        '.join(self.init)
             operators = '\n        '.join(self.operators)
             output = '\n        '.join(self.output)
-            return f'''def {self.name}({function_args}):
-    {self.gen_not_hasattr()}
+            return f'''def {self.name}({function_args}):{if_not_hasattr}
         {init}
         {operators}
         {output}
