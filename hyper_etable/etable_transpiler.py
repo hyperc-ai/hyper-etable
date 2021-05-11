@@ -501,6 +501,15 @@ class FunctionCode:
 
     def __str__(self):
         if_not_hasattr = ""
+        stack_code = []
+        if self.selectable:
+            stack_code.append('static_stack_sheet.drop()')
+        else:
+            for eff_var in self.effect_vars:
+                py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+                stack_code.append(
+                f'static_stack_sheet.add(obj=HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},lentter={eff_var.letter})')
+        stack_code = '\n        '.join(stack_code)
         if not self.is_goal:
             if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
@@ -508,6 +517,7 @@ class FunctionCode:
             operators = '\n        '.join(self.operators)
             return f'''def {self.name}({function_args}):{if_not_hasattr}
         {operators}
+        {stack_code}
 '''
         else:
             init = '\n        '.join(self.init)
@@ -517,6 +527,7 @@ class FunctionCode:
         {init}
         {operators}
         {output}
+        {stack_code}
 '''
 
 

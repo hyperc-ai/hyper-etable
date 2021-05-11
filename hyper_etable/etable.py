@@ -50,6 +50,7 @@ class StaticStackSheet:
     {add}
     def drop(self):
     {drop}
+static_stack_sheet = StaticStackSheet()
 '''
 
 class TableElementMeta(type):
@@ -378,6 +379,9 @@ class ETable:
                     line_object.__annotations__[letter] = int
                     line_object.__class__.__annotations__[letter] = int
 
+        stack_code = q
+
+
         for clsv in self.classes.values():
             init_f_code = []
             init_pars = []
@@ -427,19 +431,6 @@ class ETable:
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
         
-        stack_code = ''
-        for cell in used_cell_set:
-            filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
-            stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
-            break
-
-        fn = f"{self.tempdir}/hpy_stack_code.py"
-        with open(fn, "w+") as f:
-            f.write(str(stack_code))
-
-        f_code = compile(stack_code, fn, 'exec')
-        exec(f_code, self.mod.__dict__)
-
         # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
 
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
