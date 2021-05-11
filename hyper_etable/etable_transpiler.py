@@ -574,7 +574,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
         return ret_var
-   
+
     # selectif(default_value, precondition_1, effect_1, select_cell_1, precondition_2, effect_2, select_cell_2, .....
     def f_selectif(self, *args):
         assert self.paren_level == 1, "only parent_level 1 is support for selectif"
@@ -608,3 +608,5 @@ class EtableTranspilerEasy(EtableTranspiler):
 
         return ret_expr
 
+    def f_take(self, *args):
+        return self.f_selectif(args)

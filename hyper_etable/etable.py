@@ -17,6 +17,41 @@ import collections
 import copy
 import os.path
 
+
+def stack_code_gen(obj_name):
+    declare = []
+    add = []
+    drop = []
+    for i in range(5):
+        #declare
+        declare.append(f'    row{i}: {obj_name}')
+        declare.append(f'    row{i}_letter: str')
+        #def add(self, obj: Sheet1, letter: str)
+        if i == 0:
+            add.append(f'    if not_hasattr(self, "row{i}"):')
+        else:
+            add.append(f'    elif not_hasattr(self, "row{i}"):')
+        add.append(f'        self.row{i} = obj')
+        add.append(f'        self.row{i}_letter = letter')
+        # def drop(self):
+        add.append(f'    if hasattr(self, "row{i}"):')
+        add.append(f'        delattr(self,"row{i}"')
+        add.append(f'        delattr(self, "row{i}_letter"')
+    
+    declare = "\n".join(declare)
+    add = '\n'.join(add)
+    drop = '\n'.join(drop)
+
+    return f'''
+from hyperc import not_hasattr    
+class StaticStackSheet:
+{declare}
+    def add(self, obj: Sheet1, letter: str):
+{add}
+    def drop(self):
+{drop}
+'''
+
 class TableElementMeta(type):
     @hyperc.util.side_effect_decorator
     def __str__(self):
@@ -97,6 +132,8 @@ class ETable:
         s_code = ''
         fn = f"{self.tempdir}/{filename}"
         with open(fn, "w+") as f:
+            f.write('from hyperc import not_hasattr')
+            f.write('\n')
             for func in code.values():
                 f.write(str(func))
                 f.write('\n')
@@ -389,6 +426,15 @@ class ETable:
 
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
+        
+        stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{range.filename}]{range.sheet}'))
+
+        fn = f"{self.tempdir}/hpy_stack_code.py"
+        with open(fn, "w+") as f:
+            f.write(str(stack_code))
+
+        f_code = compile(stack_code, fn, 'exec')
+        exec(f_code, self.mod.__dict__)
 
         # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
 
