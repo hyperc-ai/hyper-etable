@@ -508,7 +508,7 @@ class FunctionCode:
             for eff_var in self.effect_vars:
                 py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                 stack_code.append(
-                f'static_stack_sheet.add(obj=HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},letter="{eff_var.letter}")')
+                f'static_stack_sheet.add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code = '\n        '.join(stack_code)
         if not self.is_goal:
             if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
