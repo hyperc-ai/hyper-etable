@@ -46,7 +46,7 @@ def stack_code_gen(obj_name):
 from hyperc import not_hasattr    
 class StaticStackSheet:
 {declare}
-    def add(self, obj: Sheet1, letter: str):
+    def add(self, obj: {obj_name}, letter: str):
     {add}
     def drop(self):
     {drop}
@@ -379,8 +379,18 @@ class ETable:
                     line_object.__annotations__[letter] = int
                     line_object.__class__.__annotations__[letter] = int
 
-        stack_code = q
+        stack_code = ''
+        for cell in used_cell_set:
+            filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
+            stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
+            break
 
+        fn = f"{self.tempdir}/hpy_stack_code.py"
+        with open(fn, "w+") as f:
+            f.write(str(stack_code))
+
+        f_code = compile(stack_code, fn, 'exec')
+        exec(f_code, self.mod.__dict__)
 
         for clsv in self.classes.values():
             init_f_code = []
