@@ -25,7 +25,7 @@ def stack_code_gen(obj_name):
     init = []
     for i in range(5):
         #init
-        init.append(f'self.row{i}_hasattr = True')
+        init.append(f'self.row{i}_not_hasattr = True')
 
         #declare
         declare.append(f'row{i}: {obj_name}')
