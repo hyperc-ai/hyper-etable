@@ -496,8 +496,9 @@ class FunctionCode:
         not_hasattrs = []
         for eff_var in self.effect_vars:
             py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
-            not_hasattrs.append(f'not_hasattr(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}, "{eff_var.letter}")')
-        return f'if {" and ".join(not_hasattrs)}:'
+            not_hasattrs.append(
+                f'assert HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr')
+        return "\n    ".join(not_hasattrs)
 
     def __str__(self):
         if_not_hasattr = ""
@@ -509,25 +510,25 @@ class FunctionCode:
                 py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                 stack_code.append(
                 f'static_stack_sheet.add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
-        stack_code = '\n        '.join(stack_code)
+        stack_code = '\n    '.join(stack_code)
         if not self.is_goal:
             if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
-            operators = '\n        '.join(self.operators)
+            operators = '\n    '.join(self.operators)
             return f'''def {self.name}({function_args}):{if_not_hasattr}
-        {operators}
-        {stack_code}
+    {operators}
+    {stack_code}
 '''
         else:
-            init = '\n        '.join(self.init)
-            operators = '\n        '.join(self.operators)
-            output = '\n        '.join(self.output)
+            init = '\n    '.join(self.init)
+            operators = '\n    '.join(self.operators)
+            output = '\n    '.join(self.output)
             return f'''def {self.name}({function_args}):{if_not_hasattr}
-        {init}
-        {operators}
-        {output}
-        {stack_code}
+    {init}
+    {operators}
+    {output}
+    {stack_code}
 '''
 
 

@@ -22,34 +22,48 @@ def stack_code_gen(obj_name):
     declare = []
     add = []
     drop = []
+    init = []
     for i in range(5):
+        #init
+        init.append(f'self.row{i}_hasattr = True')
+
         #declare
-        declare.append(f'    row{i}: {obj_name}')
-        declare.append(f'    row{i}_letter: str')
+        declare.append(f'row{i}: {obj_name}')
+        declare.append(f'row{i}_letter: str')
+        declare.append(f'row{i}_not_hasattr: bool')
+
         #def add(self, obj: Sheet1, letter: str)
         if i == 0:
-            add.append(f'    if not_hasattr(self, "row{i}"):')
+            add.append(f'if self.row{i}_not_hasattr:')
         else:
-            add.append(f'    elif not_hasattr(self, "row{i}"):')
-        add.append(f'        self.row{i} = obj')
-        add.append(f'        self.row{i}_letter = letter')
+            add.append(f'elif self.row{i}_not_hasattr:')
+        add.append(f'    self.row{i} = obj')
+        add.append(f'    self.row{i}_letter = letter')
+        add.append(f'    self.row{i}_not_hasattr = False')
+
         # def drop(self):
-        drop.append(f'    if hasattr(self, "row{i}"):')
-        drop.append(f'        delattr(self,"row{i}")')
-        drop.append(f'        delattr(self, "row{i}_letter")')
+        drop.append(f'self.row{i}_not_hasattr = True')
     
-    declare = "\n".join(declare)
-    add = '\n    '.join(add)
-    drop = '\n    '.join(drop)
+    declare = "\n    ".join(declare)
+    init = '\n        '.join(init)
+    add = '\n        '.join(add)
+    drop = '\n        '.join(drop)
 
     return f'''
-from hyperc import not_hasattr    
+from hyperc import not_hasattr
+
 class StaticStackSheet:
-{declare}
+    {declare}
+
+    def __init__(self):
+        {init}
+
     def add(self, obj: {obj_name}, letter: str):
-    {add}
+        {add}
+
     def drop(self):
-    {drop}
+        {drop}
+
 static_stack_sheet = StaticStackSheet()
 '''
 
@@ -326,6 +340,7 @@ class ETable:
                     self.objects[py_table_name][recid] = rec_obj
                     self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+                self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
                 #TODO add type detector
                 # self.classes[py_table_name].__annotations__[letter] = int
                 # rec_obj.__annotations__.add(letter)
@@ -336,9 +351,11 @@ class ETable:
                 cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
                 if xl_mdl.cells[cell].value is not schedula.EMPTY:
                     setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
+                    setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
                 else:
                     # TODO this is stumb for novalue cell. We should use Novalue ????
                     setattr(self.objects[py_table_name][recid], letter, 0)
+                    setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
             
         # Type detector
         # Match all group neighbor each other
