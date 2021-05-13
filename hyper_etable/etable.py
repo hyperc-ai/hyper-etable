@@ -34,9 +34,9 @@ def stack_code_gen(obj_name):
 
         #def add(self, obj: Sheet1, letter: str)
         if i == 0:
-            add.append(f'if self.row{i}_not_hasattr:')
+            add.append(f'if self.row{i}_not_hasattr == True:')
         else:
-            add.append(f'elif self.row{i}_not_hasattr:')
+            add.append(f'elif self.row{i}_not_hasattr == True:')
         add.append(f'    self.row{i} = obj')
         add.append(f'    self.row{i}_letter = letter')
         add.append(f'    self.row{i}_not_hasattr = False')

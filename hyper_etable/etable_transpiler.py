@@ -497,7 +497,7 @@ class FunctionCode:
         for eff_var in self.effect_vars:
             py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
             not_hasattrs.append(
-                f'assert HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr')
+                f'assert HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr == True')
         return "\n    ".join(not_hasattrs)
 
     def __str__(self):
