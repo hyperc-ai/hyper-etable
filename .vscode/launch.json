@@ -34,6 +34,28 @@
                 // "HYPERC_LOGLEVEL": "DEBUG"
             },
             "justMyCode": false
+        },
+        {
+            "name": " PyTest test_selectif_double",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "-s",
+                "tests/test_etable.py::test_selectif_double"
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHON": "pypy3",
+                "HYPERC_SEARCH_CONFIG": "lmcount_alt5",
+                "HYPERC_SPLIT_OFF": "1",
+                "HYPERC_SOLVER_MAX_TIME": "999900",
+                "HYPERC_MAX_PROC": "1",
+                "HYPERC_USE_CACHE": "0",
+                "HYPERC_TEMPDIR": "./tmp",
+                // "HYPERC_LOGLEVEL": "DEBUG"
+            },
+            "justMyCode": false
         }
     ]
 }
