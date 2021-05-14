@@ -504,12 +504,12 @@ class FunctionCode:
         if_not_hasattr = ""
         stack_code = []
         if self.selectable:
-            stack_code.append('static_stack_sheet.drop()')
+            stack_code.append('stack_drop()')
         else:
             for eff_var in self.effect_vars:
                 py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                 stack_code.append(
-                f'static_stack_sheet.add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+                f'stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code = '\n    '.join(stack_code)
         if not self.is_goal:
             if_not_hasattr = f'\n    {self.gen_not_hasattr()}'

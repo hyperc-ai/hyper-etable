@@ -34,20 +34,20 @@ def stack_code_gen(obj_name):
 
         #def add(self, obj: Sheet1, letter: str)
         if i == 0:
-            add.append(f'if self.row{i}_not_hasattr == True:')
+            add.append(f'if static_stack_sheet.row{i}_not_hasattr == True:')
         else:
-            add.append(f'elif self.row{i}_not_hasattr == True:')
-        add.append(f'    self.row{i} = obj')
-        add.append(f'    self.row{i}_letter = letter')
-        add.append(f'    self.row{i}_not_hasattr = False')
+            add.append(f'elif static_stack_sheet.row{i}_not_hasattr == True:')
+        add.append(f'    static_stack_sheet.row{i} = obj')
+        add.append(f'    static_stack_sheet.row{i}_letter = letter')
+        add.append(f'    static_stack_sheet.row{i}_not_hasattr = False')
 
         # def drop(self):
-        drop.append(f'self.row{i}_not_hasattr = True')
+        drop.append(f'static_stack_sheet.row{i}_not_hasattr = True')
     
     declare = "\n    ".join(declare)
     init = '\n        '.join(init)
-    add = '\n        '.join(add)
-    drop = '\n        '.join(drop)
+    add = '\n    '.join(add)
+    drop = '\n    '.join(drop)
 
     return f'''
 from hyperc import not_hasattr
@@ -57,14 +57,15 @@ class StaticStackSheet:
 
     def __init__(self):
         {init}
-
-    def add(self, obj: {obj_name}, letter: str):
-        {add}
-
-    def drop(self):
-        {drop}
-
+        
 static_stack_sheet = StaticStackSheet()
+
+def stack_add(obj: {obj_name}, letter: str):
+    {add}
+
+def stack_drop():
+    {drop}
+
 '''
 
 class TableElementMeta(type):
