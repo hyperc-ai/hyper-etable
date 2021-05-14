@@ -42,7 +42,7 @@
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_etable.py::test_selectif_double"
+                "tests/test_etable.py::test_selectfromrange_selectif_twice"
             ],
             "console": "integratedTerminal",
             "env": {
