@@ -503,16 +503,17 @@ class FunctionCode:
     def __str__(self):
         if_not_hasattr = ""
         stack_code = []
-        if self.selectable:
-            stack_code.append('stack_drop()')
-        else:
-            for eff_var in self.effect_vars:
-                py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
-                stack_code.append(
-                f'stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
-        stack_code = '\n    '.join(stack_code)
         if not self.is_goal:
-            if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
+            if self.selectable:
+                stack_code.append('stack_drop()')
+            else:
+                if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
+                for eff_var in self.effect_vars:
+                    py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+                    stack_code.append(
+                    f'stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+        stack_code = '\n    '.join(stack_code)
+
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
             operators = '\n    '.join(self.operators)
@@ -570,9 +571,7 @@ class EtableTranspilerEasy(EtableTranspiler):
             c.effect_vars.add(self.return_var)
         self.code = code
 
-    def f_selectfromrange(self, default, range):
-        if self.paren_level == 1:
-            self.default = default
+    def f_selectfromrange(self, range):
         assert self.paren_level == 1, "only parent_level 1 is support for selectfromrange"
         range.var_str = f'{range.var_str}_{self.var_counter}'
         self.var_counter += 1
