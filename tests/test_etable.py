@@ -23,3 +23,19 @@ def test_selectfromrange_selectif_twice():
 
     et = hyper_etable.etable.ETable(os.path.join(mydir, file), "selectfromrange_selectif_twice")
     et.calculate()
+
+
+def test_selectfromrange_selectif_twice():
+    mydir = os.path.dirname(__file__)
+    file = 'selectfromrange_selectif_twice_synced.xlsx'
+
+    et = hyper_etable.etable.ETable(os.path.join(mydir, file), "selectfromrange_selectif_twice_synced")
+    et.calculate()
+
+
+def test_selectfromrange_from_select():
+    mydir = os.path.dirname(__file__)
+    file = 'selectfromrange_from_select.xlsx'
+
+    et = hyper_etable.etable.ETable(os.path.join(mydir, file), "selectfromrange_from_select")
+    et.calculate()
