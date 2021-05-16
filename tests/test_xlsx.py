@@ -1,3 +1,4 @@
+"""PYTEST_DONT_REWRITE"""
 import hyper_etable.etable
 import os
 import pytest
