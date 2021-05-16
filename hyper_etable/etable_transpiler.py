@@ -199,7 +199,7 @@ class EtableTranspiler:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
         except formulas.errors.FormulaError as e:
-            # print(f"Can't parse {v}: {e}")
+            # print(f"Can't parse {formula}: {e}")
             raise e
 
     def transpile_start(self):
@@ -534,6 +534,10 @@ class FunctionCode:
     {stack_code}
 '''
 
+def divide_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n): 
+        yield l[i:i + n]
 
 class EtableTranspilerEasy(EtableTranspiler):
 
@@ -588,38 +592,35 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
         return ret_var
 
-    # selectif(default_value, precondition_1, effect_1, select_cell_1, precondition_2, effect_2, select_cell_2, .....
-    def f_selectif(self, *args):
-        assert self.paren_level == 1, "only parent_level 1 is support for selectif"
-        assert ((len(args)-1) % 3) == 0, "Args in selectif should be multiple of three"
-        assert len(args) > 3, "Args should be 4 and more"
+    # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
+    def f_takeif(self, *args):
+        assert self.paren_level == 1, "Nested TAKEIF() is not supported"
+        assert ((len(args)-1) % 3) == 0, "Args in TAKEIF() should be multiple of three plus one"
+        assert len(args) > 3, "TAKEIF() args should be 4 and more"
         if self.paren_level == 1:
             self.default = args[0]
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_SELECT_IF_{get_var_from_cell(self.output)}_{self.var_counter}')
-        ret_expr = StringLikeVars(ret_var, args, "selectif")
+            var_str=f'var_tbl_TAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_expr = StringLikeVars(ret_var, args, "takeif")
         self.var_counter += 1
         code_element = CodeElement()
         self.code.append(code_element)
-        for idx, arg in enumerate(args):
-            if idx % 2 == 0:
-                continue
-            if idx % 3 == 0:
-                continue
-            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"assert {arg}")
-            code_element.code_chunk[f'branch{int((idx-1)/2)}'].append(f"{ret_expr} = {args[idx+1]}")
+        part = 0
+        for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
+            code_element.code_chunk[f'branch{part}'].append(f"assert {a_condition} == True")
+            code_element.code_chunk[f'branch{part}'].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
                 StringLikeVars(
-                    f"{ret_expr} = {args[idx+1]}", [ret_var, args[idx + 1]],
+                    f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
-            self.sync_cell.add(args[idx + 2])
-            code_element.contion_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
-            code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(arg.variables)
-            code_element.all_vars[f'branch{int((idx-1)/2)}'].extend(args[idx+1].variables)
+            self.sync_cell.add(a_syncon)
+            code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
+            code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
+            code_element.all_vars[f'branch{part}'].extend(a_value.variables)
+            part += 1
 
         return ret_expr
-
-    def f_take(self, *args):
-        return self.f_selectif(args)
+    
+    f_selectif = f_takeif

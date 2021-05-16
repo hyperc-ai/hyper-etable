@@ -74,20 +74,20 @@ class SpileTrancer:
 
                     # First, check what we currently have at this cell
                     if (type(self.xl_dict[xl_cell_ref]) == str and 
-                            self.xl_dict[xl_cell_ref].upper().startswith("=SELECTIF")):
-                        # Selectif -> replace default value
+                            self.xl_dict[xl_cell_ref].upper().startswith("=TAKEIF")):
+                        # TAKRIF -> replace default value
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
                         orig_cell = self.xl_dict[xl_cell_ref]
                         if type_ == str:
                             cellvalue = f'"{cellvalue}"'
                         # TODO: tokenize, rewrite, re-render
-                        fm_cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
+                        fm_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
                         all_inputs[xl_cell_ref] = fm_cellvalue
 
                         # for opyxl
                         orig_opxl_cell = self.wb[opxl_sht][opxl_cell_ref]
                         orig_cell = orig_opxl_cell.value
-                        opxl_cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
+                        opxl_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
                     elif (type(self.xl_dict[xl_cell_ref]) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=")):

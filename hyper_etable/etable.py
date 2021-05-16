@@ -16,6 +16,7 @@ import types
 import collections
 import copy
 import os.path
+import pathlib
 
 
 def stack_code_gen(obj_name):
@@ -103,18 +104,24 @@ def rgb_to_hsv(r, g, b):
     return h, s, v
 
 
-# Define SELECTIF formula
+# Define TAKEIF formula
 FUNCTIONS = formulas.get_functions()
-def STUB_SELECTIF(default, *args):
+def STUB_TAKEIF(default, *args):
     return default
-FUNCTIONS["SELECTIF"] = STUB_SELECTIF
+FUNCTIONS["TAKEIF"] = STUB_TAKEIF
+
+# Define SELECTFROMRANGE formula
+def STUB_SELECTFROMRANGE(*args):
+    return 0
+FUNCTIONS["SELECTFROMRANGE"] = STUB_SELECTFROMRANGE
 
 
 class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
+        filename = pathlib.PosixPath(filename)
         self.filename = filename
         APPENDIX = hyperc.settings.APPENDIX
-        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(filename) + "_" + project_name
+        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(filename)) + "_" + project_name
         self.tempdir = hyperc.util.get_work_dir()
         hyperc.settings.APPENDIX = APPENDIX
         self.session_name = "etable_mod"
@@ -183,7 +190,7 @@ class ETable:
     def calculate(self):
         
         xl_mdl = formulas.excel.ExcelModel()
-        xl_mdl.loads(self.filename)
+        xl_mdl.loads(str(self.filename))
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
@@ -217,7 +224,7 @@ class ETable:
                     node_key, node_val['inputs'].keys(),
                     output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                 formula.transpile_start()
-                # set default value for selectif
+                # set default value for takeif 
                 var = formula.default
                 if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
                     var = formula.default.var
@@ -350,9 +357,15 @@ class ETable:
                     setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
                 cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
+                if not cell in xl_mdl.cells:
+                    raise ReferenceError(f"Referencing empty cell {cell}")
                 if xl_mdl.cells[cell].value is not schedula.EMPTY:
-                    setattr(self.objects[py_table_name][recid], letter, xl_mdl.cells[cell].value)
+                    cell_value = xl_mdl.cells[cell].value
+                    setattr(self.objects[py_table_name][recid], letter, cell_value)
                     setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
+                    self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
+                    self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
+
                 else:
                     # TODO this is stumb for novalue cell. We should use Novalue ????
                     setattr(self.objects[py_table_name][recid], letter, 0)
@@ -361,41 +374,41 @@ class ETable:
         # Type detector
         # Match all group neighbor each other
         # by Breadth-first search now
-        not_double_pass = True
-        while not_double_pass:
-            not_double_pass = False
-            for tm in global_table_type_mapper.values():
-                while tm.visited_group != tm.group:
-                    tm.visited_group = tm.group
-                    tmp_tm_group = copy.copy(tm.group)
-                    for tm_name in tmp_tm_group:
-                        tm.merge_group(global_table_type_mapper[tm_name])
-            for tm in global_table_type_mapper.values():
-                while tm.forward_visited_group != tm.group:
-                    tm.forward_visited_group = tm.group
-                    tmp_tm_group = copy.copy(tm.group)
-                    for tm_name in tmp_tm_group:
-                        tm.merge_group(global_table_type_mapper[tm_name])
-                if tm.forward_visited_group != tm.visited_group:
-                    not_double_pass = True
+        # not_double_pass = True
+        # while not_double_pass:
+        #     not_double_pass = False
+        #     for tm in global_table_type_mapper.values():
+        #         while tm.visited_group != tm.group:
+        #             tm.visited_group = tm.group
+        #             tmp_tm_group = copy.copy(tm.group)
+        #             for tm_name in tmp_tm_group:
+        #                 tm.merge_group(global_table_type_mapper[tm_name])
+        #     for tm in global_table_type_mapper.values():
+        #         while tm.forward_visited_group != tm.group:
+        #             tm.forward_visited_group = tm.group
+        #             tmp_tm_group = copy.copy(tm.group)
+        #             for tm_name in tmp_tm_group:
+        #                 tm.merge_group(global_table_type_mapper[tm_name])
+        #         if tm.forward_visited_group != tm.visited_group:
+        #             not_double_pass = True
 
-        for var in var_mapper.values():
-            if isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
-                if var.is_range:
-                    recid_ret = range(var.number[0], var.number[1]+1)
-                    letter = var.letter[0]
-                else:
-                    recid_ret = [var.number]
-                    letter = var.letter
-                py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
-                for recid in recid_ret:
-                    line_object = self.objects[py_table_name][recid]
-                    #TODO fix type detector for ranges
-                    # if int in var.types:
-                        # line_object.__annotations__[letter] = int
-                        # line_object.__class__.__annotations__[letter] = int
-                    line_object.__annotations__[letter] = int
-                    line_object.__class__.__annotations__[letter] = int
+        # for var in var_mapper.values():
+        #     if isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
+        #         if var.is_range:
+        #             recid_ret = range(var.number[0], var.number[1]+1)
+        #             letter = var.letter[0]
+        #         else:
+        #             recid_ret = [var.number]
+        #             letter = var.letter
+        #         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+        #         for recid in recid_ret:
+        #             line_object = self.objects[py_table_name][recid]
+        #             #TODO fix type detector for ranges
+        #             # if int in var.types:
+        #                 # line_object.__annotations__[letter] = int
+        #                 # line_object.__class__.__annotations__[letter] = int
+        #             line_object.__annotations__[letter] = int
+        #             line_object.__class__.__annotations__[letter] = int
 
         stack_code = ''
         for cell in used_cell_set:
@@ -468,12 +481,12 @@ class ETable:
         stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, HCT_STATIC_OBJECT)
         stl.calculate_excel()
         dirn = os.path.dirname(self.filename)
-        new_dirname = os.path.join(dirn, f"{self.filename}_out")
+        new_dirname = os.path.join(dirn, f"{self.filename.name}_out")
         try:
             mkdir(new_dirname)
         except FileExistsError:
             pass
-        new_dirname_forfile = os.path.join(dirn, f"{self.filename}_out", str(int(time.time())))
+        new_dirname_forfile = os.path.join(dirn, f"{self.filename.name}_out", str(int(time.time())))
         mkdir(new_dirname_forfile)
         stl.write(new_dirname_forfile)
 
