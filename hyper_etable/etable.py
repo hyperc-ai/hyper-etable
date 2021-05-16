@@ -363,8 +363,12 @@ class ETable:
                     cell_value = xl_mdl.cells[cell].value
                     setattr(self.objects[py_table_name][recid], letter, cell_value)
                     setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
-                    self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
-                    self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
+                    # FIXME: needs type detector, then these lines can be removed -->
+                    # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
+                    # self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
+                    self.objects[py_table_name][recid].__class__.__annotations__[letter] = str  # bug hyperc#453
+                    self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453 
+                    # <-- end FIXME
 
                 else:
                     # TODO this is stumb for novalue cell. We should use Novalue ????
