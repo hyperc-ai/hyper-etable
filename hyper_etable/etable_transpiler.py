@@ -184,6 +184,8 @@ class EtableTranspiler:
     def __init__(self, formula, inputs, output, var_mapper, table_type_mapper, init_code=None):
         self.var_mapper = var_mapper
         self.table_type_mapper = table_type_mapper
+        if formula.endswith("<0>"):
+            formula = formula[:-3]
         self.formula = formula
         self.inputs = inputs
         self.output = output
