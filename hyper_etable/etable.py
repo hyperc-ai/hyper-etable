@@ -239,13 +239,11 @@ class ETable:
             is_merged = False
             for func_name in list(code.keys()):
                 #check that funtions is not parent and child
-                if not code[func_name].parent_name.isdisjoint(code[func_name_other].parent_name):
-                    continue
                 if func_name_other in deleted_keys:
                     continue
                 if code[func_name] is code[func_name_other]:
                     continue
-                if not code[func_name].selected_cell.isdisjoint(code[func_name_other].selected_cell):
+                if not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell):
                     code[func_name].merge(code[func_name_other])
                     is_merged = True
             if is_merged:

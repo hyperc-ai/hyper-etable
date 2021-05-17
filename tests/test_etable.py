@@ -25,7 +25,7 @@ def test_selectfromrange_selectif_twice():
     et.calculate()
 
 
-def test_selectfromrange_selectif_twice():
+def test_selectfromrange_selectif_twice_synced():
     mydir = os.path.dirname(__file__)
     file = 'selectfromrange_selectif_twice_synced.xlsx'
 

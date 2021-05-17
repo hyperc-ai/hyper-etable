@@ -152,7 +152,7 @@ def formulas_parser(formula_str):
 
 
 class StringLikeVars:
-    def __init__(self,rendered_str, args, operator, sync_cell = None):
+    def __init__(self,rendered_str, args, operator):
         self.rendered_str = rendered_str
         self.args  = args
         self.variables = set()
@@ -162,9 +162,6 @@ class StringLikeVars:
             else:
                 self.variables.add(arg)
         self.operator = operator
-        self.sync_cell = set()
-        if sync_cell is not None:
-            self.sync_cell.update(set(sync_cell))
     
     def extend(self, args):
         for arg in args:
@@ -194,7 +191,6 @@ class EtableTranspiler:
             self.init_code = []
         self.default = schedula.EMPTY
         self.args = set()
-        self.sync_cell = set()
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
@@ -421,6 +417,7 @@ class CodeElement:
     def __init__(self):
         self.code_chunk = collections.defaultdict(list)
         self.contion_vars = collections.defaultdict(list)
+        self.sync_cells = collections.defaultdict(set)
         self.all_vars = collections.defaultdict(list)
 
 class FunctionCode:
@@ -434,6 +431,7 @@ class FunctionCode:
         self.args = set()
         self.function_args = {}
         self.selected_cell = set()
+        self.sync_cell = set()
         self.output = []
         self.collapsed = False
         self.selectable = False
@@ -447,6 +445,7 @@ class FunctionCode:
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
         self.selected_cell.update(other.selected_cell)
+        self.sync_cell.update(other.sync_cell)
         self.output.extend(other.output)
         self.parent_name.update(other.parent_name)
         if other.selectable:
@@ -472,6 +471,7 @@ class FunctionCode:
         self.function_args.update(other.function_args)
         self.effect_vars.update(other.effect_vars)
         self.selected_cell.update(other.selected_cell)
+        self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
         if other.selectable:
             self.selectable = True
@@ -553,6 +553,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                         code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
+                        code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
                         code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
                         code[f'{self.init_code.name}_{ce}'].idx = idx
                         code[f'{self.init_code.name}_{ce}'].selectable = True
@@ -560,6 +561,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                     ce = list(code_chunk.code_chunk.keys())[0]
                     self.init_code.operators = code_chunk.code_chunk[ce]
                     self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
+                    self.init_code.sync_cell.update(code_chunk.sync_cells[ce])
                     self.init_code.args.update(code_chunk.all_vars[ce])
                     self.init_code.selectable = True
             else:
@@ -615,7 +617,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                 StringLikeVars(
                     f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
-            self.sync_cell.add(a_syncon)
+            code_element.sync_cells[f'branch{part}'].add(a_syncon)
             code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_value.variables)
