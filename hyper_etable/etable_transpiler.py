@@ -113,6 +113,9 @@ class StringLikeVariable:
         self.variables = set()
         self.variables.add(self)
 
+    def get_excel_format(self):
+        return f"'[{self.filename}]{self.sheet}'!{self.letter.upper()}{self.number}"
+
     def __str__(self):
         return self.var_str
     
@@ -440,7 +443,7 @@ class FunctionCode:
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
-        self.init.update(other.init)
+        self.init.extend(other.init)
         self.operators.extend(other.operators)
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
@@ -477,19 +480,22 @@ class FunctionCode:
             self.selectable = True
 
     def clean(self):
-        if len(self.init) == 0:
-            return
-        if len(self.operators) == 0:
-            return
         found = False
         while not found:
             found = False
             for init in self.init:
                 var = init.split('#')[0].split('=')[0].strip()
+                if len(var) == 0:
+                    continue
                 for op in self.operators:
                     if var in op:
                         found = True
                         break
+                for op in self.output:
+                    if var in op:
+                        found = True
+                        break
+
                 if not found:
                     self.init.remove(init)
                     break
@@ -570,10 +576,8 @@ class EtableTranspilerEasy(EtableTranspiler):
             for branch_name in code:
                 code[branch_name].operators = self.init_code.operators[0: idx] + code[branch_name].operators
                 code[branch_name].operators.extend(self.init_code.operators[idx:])
-                code[branch_name].clean()
         else:
             code[self.init_code.name] = self.init_code
-            code[self.init_code.name].clean()
         for c in code.values():
             c.output.extend(self.output_code)
             c.effect_vars.add(self.return_var)
