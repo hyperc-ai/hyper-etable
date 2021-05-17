@@ -113,9 +113,6 @@ class StringLikeVariable:
         self.variables = set()
         self.variables.add(self)
 
-    def get_excel_format(self):
-        return f"'[{self.filename}]{self.sheet}'!{self.letter.upper()}{self.number}"
-
     def __str__(self):
         return self.var_str
     
@@ -191,7 +188,7 @@ class EtableTranspiler:
         self.output = output
         self.init_code = init_code
         if self.init_code is None:
-            self.init_code = {}
+            self.init_code = []
         self.default = schedula.EMPTY
         self.args = set()
         try:
@@ -429,7 +426,7 @@ class FunctionCode:
         self.parent_name = set()
         if parent_name is not None:
             self.parent_name.add(parent_name)
-        self.init = {}
+        self.init = []
         self.operators = []
         self.args = set()
         self.function_args = {}
@@ -458,10 +455,10 @@ class FunctionCode:
         if self.collapsed:
             return
         collapsed_code = []
-        collapsed_code.extend(self.init.values())
+        collapsed_code.extend(self.init)
         collapsed_code.extend(self.operators)
         collapsed_code.extend(self.output)
-        self.init={}
+        self.init=[]
         self.operators = []
         self.output = collapsed_code
 
@@ -480,13 +477,22 @@ class FunctionCode:
             self.selectable = True
 
     def clean(self):
-        code = ''.join(self.operators) +''.join(self.output)
-        for init_var in list(self.init.keys()):
-            if '####comment####' == init_var:
-                continue
-            if str(init_var) not in code:
-                del self.init[init_var]
-
+        if len(self.init) == 0:
+            return
+        if len(self.operators) == 0:
+            return
+        found = False
+        while not found:
+            found = False
+            for init in self.init:
+                var = init.split('#')[0].split('=')[0].strip()
+                for op in self.operators:
+                    if var in op:
+                        found = True
+                        break
+                if not found:
+                    self.init.remove(init)
+                    break
 
     def gen_not_hasattr(self):
         not_hasattrs = []
@@ -518,7 +524,7 @@ class FunctionCode:
     {stack_code}
 '''
         else:
-            init = '\n    '.join(self.init.values())
+            init = '\n    '.join(self.init)
             operators = '\n    '.join(self.operators)
             output = '\n    '.join(self.output)
             return f'''def {self.name}({function_args}):{if_not_hasattr}
@@ -585,7 +591,7 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_map=self.var_mapper, cell_str=self.output,
             var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init[ret_var] = f'{ret_var} = {range}.{range.letter[0]}'
+        self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
         return ret_var
 
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
