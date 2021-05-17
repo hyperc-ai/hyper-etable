@@ -203,7 +203,7 @@ class ETable:
                 output = node_val['outputs'][0]
                 out_py = hyperc.xtj.str_to_py(output)
                 code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
-                code_init.init.append(f'#{node_key}')
+                code_init.init['####comment####'] = f'#{node_key}'
                 used_cell_set.add(output)
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
@@ -216,7 +216,7 @@ class ETable:
                         continue
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
                     var_name = f'var_tbl_{py_table_name}__hct_direct_ref__{recid}_{letter}'
-                    code_init.init.append(f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}')
+                    code_init.init[var_name] = f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}'
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
@@ -231,6 +231,13 @@ class ETable:
                 xl_mdl.cells[output].value = var
                 code.update(formula.code)
         
+        for func in code.values():
+            func.clean()
+            for var in func.sync_cell:
+                cell_name = var.get_excel_format()
+                if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
+                    used_cell_set.remove(cell_name)
+
         # look for mergable actions
         deleted_keys = set()
         for func_name_other in list(code.keys()):
