@@ -232,7 +232,7 @@ class ETable:
                 code.update(formula.code)
         
         for func in code.values():
-            func.clean()
+            # func.clean()
             for var in func.sync_cell:
                 cell_name = var.get_excel_format()
                 if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):

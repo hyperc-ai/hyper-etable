@@ -443,7 +443,7 @@ class FunctionCode:
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
-        self.init.extend(other.init)
+        self.init.update(other.init)
         self.operators.extend(other.operators)
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
@@ -484,7 +484,7 @@ class FunctionCode:
         for init_var in list(self.init.keys()):
             if '####comment####' == init_var:
                 continue
-            if init_var not in code:
+            if str(init_var) not in code:
                 del self.init[init_var]
 
 
