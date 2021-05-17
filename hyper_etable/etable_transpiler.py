@@ -435,6 +435,7 @@ class FunctionCode:
         self.output = []
         self.collapsed = False
         self.selectable = False
+        self.is_atwill = False  # For at-will functions like selectfromrange 
         self.effect_vars = set()
         self.is_goal = is_goal
 
@@ -507,13 +508,19 @@ class FunctionCode:
         stack_code = []
         if not self.is_goal:
             if self.selectable:
-                stack_code.append('stack_drop()')
-            else:
+                stack_code.append('_stack_drop()')
+            elif not self.is_atwill:
                 if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
                 for eff_var in self.effect_vars:
                     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                     stack_code.append(
-                    f'stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+                    f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+            else:
+                pass  # do nothing if at-will like selectfromrange
+                for eff_var in self.effect_vars:
+                    py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+                    stack_code.append(
+                    f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code = '\n    '.join(stack_code)
 
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
@@ -580,7 +587,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.code = code
 
     def f_selectfromrange(self, range):
-        assert self.paren_level == 1, "only parent_level 1 is support for selectfromrange"
+        assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
         range.var_str = f'{range.var_str}_{self.var_counter}'
         self.var_counter += 1
         # select_var = StringLikeVariable.new(

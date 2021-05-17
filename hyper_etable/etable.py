@@ -19,7 +19,7 @@ import os.path
 import pathlib
 
 
-def stack_code_gen(obj_name):
+def stack_code_gen_old(obj_name):
     declare = []
     add = []
     drop = []
@@ -68,6 +68,121 @@ def stack_drop():
     {drop}
 
 '''
+
+
+stack_code_gen = lambda cls_name: f"""
+
+NONE_ROW_0 = {cls_name}()
+NONE_ROW_1 = {cls_name}()
+NONE_ROW_2 = {cls_name}()
+NONE_ROW_3 = {cls_name}()
+NONE_ROW_4 = {cls_name}()
+
+class StaticStackSheet:
+    row0: {cls_name}
+    row0_letter: str
+    row0_not_hasattr: bool
+    row1: {cls_name}
+    row1_letter: str
+    row1_not_hasattr: bool
+    row2: {cls_name}
+    row2_letter: str
+    row2_not_hasattr: bool
+    row3: {cls_name}
+    row3_letter: str
+    row3_not_hasattr: bool
+    row4: {cls_name}
+    row4_letter: str
+    row4_not_hasattr: bool
+
+    def __init__(self):
+        self.row0_not_hasattr = True
+        self.row1_not_hasattr = True
+        self.row2_not_hasattr = True
+        self.row3_not_hasattr = True
+        self.row4_not_hasattr = True
+        self.row0_letter = ""
+        self.row1_letter = ""
+        self.row2_letter = ""
+        self.row3_letter = ""
+        self.row4_letter = ""
+        self.row0 = NONE_ROW_0
+        self.row1 = NONE_ROW_1
+        self.row2 = NONE_ROW_2
+        self.row3 = NONE_ROW_3
+        self.row4 = NONE_ROW_4
+        
+
+static_stack_sheet = StaticStackSheet()
+
+
+#@not_planned
+def _drop_letter(obj, letter):  # underscore functions don't get planned
+    if letter == "a":
+        obj.a_not_hasattr = True
+    elif letter == "b":
+        obj.b_not_hasattr = True
+    elif letter == "c":
+        obj.c_not_hasattr = True
+
+
+def _stack_add(obj: {cls_name}, letter: str):
+    if static_stack_sheet.row0_not_hasattr == True:
+        static_stack_sheet.row0 = obj
+        static_stack_sheet.row0_letter = letter
+        static_stack_sheet.row0_not_hasattr = False
+    elif static_stack_sheet.row1_not_hasattr == True:
+        static_stack_sheet.row1 = obj
+        static_stack_sheet.row1_letter = letter
+        static_stack_sheet.row1_not_hasattr = False
+#    elif static_stack_sheet.row2_not_hasattr == True:
+#        static_stack_sheet.row2 = obj
+#        static_stack_sheet.row2_letter = letter
+#        static_stack_sheet.row2_not_hasattr = False
+#    elif static_stack_sheet.row3_not_hasattr == True:
+#        static_stack_sheet.row3 = obj
+#        static_stack_sheet.row3_letter = letter
+#        static_stack_sheet.row3_not_hasattr = False
+#    elif static_stack_sheet.row4_not_hasattr == True:
+#        static_stack_sheet.row4 = obj
+#        static_stack_sheet.row4_letter = letter
+#        static_stack_sheet.row4_not_hasattr = False
+
+def _stack_drop():
+    static_stack_sheet.row0_not_hasattr = True
+    static_stack_sheet.row1_not_hasattr = True
+    static_stack_sheet.row2_not_hasattr = True
+    static_stack_sheet.row3_not_hasattr = True
+    static_stack_sheet.row4_not_hasattr = True
+    assert static_stack_sheet.row0 != static_stack_sheet.row1
+    #assert static_stack_sheet.row0 != static_stack_sheet.row2
+    #assert static_stack_sheet.row0 != static_stack_sheet.row3
+    #assert static_stack_sheet.row0 != static_stack_sheet.row4
+    #assert static_stack_sheet.row1 != static_stack_sheet.row2
+    #assert static_stack_sheet.row1 != static_stack_sheet.row3
+    #assert static_stack_sheet.row1 != static_stack_sheet.row4
+    #assert static_stack_sheet.row2 != static_stack_sheet.row3
+    #assert static_stack_sheet.row2 != static_stack_sheet.row4
+    #assert static_stack_sheet.row3 != static_stack_sheet.row4
+    if static_stack_sheet.row0_letter != "":
+        _drop_letter(static_stack_sheet.row0, static_stack_sheet.row0_letter)
+        static_stack_sheet.row0_letter = ""
+    if static_stack_sheet.row1_letter != "":
+        _drop_letter(static_stack_sheet.row1, static_stack_sheet.row1_letter)
+        static_stack_sheet.row1_letter = ""
+#    if static_stack_sheet.row2_letter != "":
+#        _drop_letter(static_stack_sheet.row2, static_stack_sheet.row2_letter)
+#        static_stack_sheet.row2_letter = ""
+#    if static_stack_sheet.row3_letter != "":
+#        _drop_letter(static_stack_sheet.row3, static_stack_sheet.row3_letter)
+#        static_stack_sheet.row3_letter = ""
+#    if static_stack_sheet.row4_letter != "":
+#        _drop_letter(static_stack_sheet.row4, static_stack_sheet.row4_letter)
+#        static_stack_sheet.row4_letter = ""
+
+"""
+
+
 
 class TableElementMeta(type):
     @hyperc.util.side_effect_decorator
@@ -439,6 +554,8 @@ class ETable:
                     clsv.__annotations__[par_name] = str
                 init_f_code.append(
                     f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                # init_f_code.append(
+                    # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
                 if not par_type in hyperc.xtj.DEFAULT_VALS:
                     raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
                 init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
