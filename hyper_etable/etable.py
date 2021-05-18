@@ -346,6 +346,13 @@ class ETable:
                 xl_mdl.cells[output].value = var
                 code.update(formula.code)
         
+        for func in code.values():
+            func.clean()
+            for var in func.sync_cell:
+                cell_name = var.get_excel_format()
+                if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
+                    used_cell_set.remove(cell_name)
+
         # look for mergable actions
         deleted_keys = set()
         for func_name_other in list(code.keys()):
