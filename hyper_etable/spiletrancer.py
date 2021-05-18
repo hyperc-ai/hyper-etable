@@ -35,6 +35,7 @@ class SpileTrancer:
         xl_model.finish()
         # self.xl_dict = xl_model.to_dict()
         self.xl_dict = to_dict(xl_model)
+        # self.wb = openpyxl.load_workbook(filename=filename, keep_vba=True)
         self.wb = openpyxl.load_workbook(filename=filename)
     
     def gen_xl_addr(self, filename, sheetname, letter, rownum):
@@ -78,7 +79,7 @@ class SpileTrancer:
                         # TAKRIF -> replace default value
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
                         orig_cell = self.xl_dict[xl_cell_ref]
-                        if type_ == str:
+                        if type(cellvalue) == str: # if type_ == str:  # bug with type detector workaround
                             cellvalue = f'"{cellvalue}"'
                         # TODO: tokenize, rewrite, re-render
                         fm_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
