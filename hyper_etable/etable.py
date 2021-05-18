@@ -180,9 +180,28 @@ def _stack_drop():
 #        _drop_letter(static_stack_sheet.row4, static_stack_sheet.row4_letter)
 #        static_stack_sheet.row4_letter = ""
 
+
+# def _stack_drop():
+    # pass
+
 """
 
-
+def stack_code_gen_all(objects):
+    l_all_hasattr_drop = []
+    for cname, rows in objects.items():
+        for idx, rowobj in rows.items():
+            colnames = type(rowobj).__annotations__.keys()
+            for col in colnames:
+                if col.startswith("_"): continue
+                if len(col) > 4: continue
+                # if not "not_hasattr" in col: continue
+                if not hasattr(rowobj, col): continue
+                l_all_hasattr_drop.append(f"HCT_STATIC_OBJECT.{cname}_{idx}.{col}_not_hasattr = True")
+    
+    drop_content = "\n    ".join(l_all_hasattr_drop)
+    scode = f"""def _stack_drop():
+    {drop_content}"""
+    return scode
 
 class TableElementMeta(type):
     @hyperc.util.side_effect_decorator
@@ -530,11 +549,13 @@ class ETable:
         #             line_object.__annotations__[letter] = int
         #             line_object.__class__.__annotations__[letter] = int
 
-        stack_code = ''
-        for cell in used_cell_set:
-            filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
-            stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
-            break
+        # stack_code = ''
+        # for cell in used_cell_set:
+        #     filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
+        #     stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
+        #     break
+        
+        stack_code = stack_code_gen_all(self.objects)
 
         fn = f"{self.tempdir}/hpy_stack_code.py"
         with open(fn, "w+") as f:
