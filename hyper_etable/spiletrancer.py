@@ -35,6 +35,7 @@ class SpileTrancer:
         xl_model.finish()
         # self.xl_dict = xl_model.to_dict()
         self.xl_dict = to_dict(xl_model)
+        # self.wb = openpyxl.load_workbook(filename=filename, keep_vba=True)
         self.wb = openpyxl.load_workbook(filename=filename)
     
     def gen_xl_addr(self, filename, sheetname, letter, rownum):
