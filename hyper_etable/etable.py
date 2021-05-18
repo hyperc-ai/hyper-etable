@@ -235,6 +235,7 @@ class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
         filename = pathlib.PosixPath(filename)
         self.filename = filename
+        self.out_filename = ""
         APPENDIX = hyperc.settings.APPENDIX
         hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(filename)) + "_" + project_name
         self.tempdir = hyperc.util.get_work_dir()
