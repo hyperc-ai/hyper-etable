@@ -418,6 +418,7 @@ class EtableTranspiler:
 class CodeElement:
 
     def __init__(self):
+        self.precondition_chunk = collections.defaultdict(list)
         self.code_chunk = collections.defaultdict(list)
         self.contion_vars = collections.defaultdict(list)
         self.sync_cells = collections.defaultdict(set)
@@ -430,12 +431,13 @@ class FunctionCode:
         if parent_name is not None:
             self.parent_name.add(parent_name)
         self.init = []
-        self.operators = []
+        self.precondition = collections.defaultdict(list)
+        self.operators = collections.defaultdict(list)
+        self.output = collections.defaultdict(list)
         self.args = set()
         self.function_args = {}
         self.selected_cell = set()
         self.sync_cell = set()
-        self.output = []
         self.collapsed = False
         self.selectable = False
         self.is_atwill = False  # For at-will functions like selectfromrange 
@@ -445,12 +447,13 @@ class FunctionCode:
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
-        self.operators.extend(other.operators)
+        self.precondition.update(other.precondition)
+        self.operators.update(other.operators)
+        self.output.update(other.output)
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
         self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
-        self.output.extend(other.output)
         self.parent_name.update(other.parent_name)
         if other.selectable:
             self.selectable = True
@@ -488,15 +491,27 @@ class FunctionCode:
                 var = init.split('#')[0].split('=')[0].strip()
                 if len(var) == 0:
                     continue
-                for op in self.operators:
-                    if var in op:
-                        found = True
+                for op in self.precondition.values():
+                    if found:
                         break
-                for op in self.output:
-                    if var in op:
-                        found = True
+                    for line in op:
+                        if var in line:
+                            found = True
+                            break
+                for op in self.operators.values():
+                    if found:
                         break
-
+                    for line in op:
+                        if var in line:
+                            found = True
+                            break
+                for op in self.output.values():
+                    if found:
+                        break
+                    for line in op:
+                        if var in line:
+                            found = True
+                            break
                 if not found:
                     self.init.remove(init)
                     break
@@ -539,13 +554,35 @@ class FunctionCode:
 '''
         else:
             init = '\n    '.join(self.init)
-            operators = '\n    '.join(self.operators)
-            output = '\n    '.join(self.output)
-            return f'''def {self.name}({function_args}):{if_not_hasattr}
+            code = ""
+            if len(self.precondition) > 0:
+                for branch_name in (self.precondition.keys() | self.operators.keys() | self.output.keys()):
+                    precondition = self.precondition.get(branch_name, "")
+                    if len(precondition) > 0:
+                        precondition = " and ".join(precondition)
+                        precondition = f'\n    if {precondition}:'
+                        operators = '\n        '.join(self.operators.get(branch_name, []))
+                        output = '\n        '.join(self.output.get(branch_name, []))
+                        code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
+                return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
-    {operators}
-    {output}
-    {stack_code}
+    assert_ok = False
+    {code}
+    assert assert_ok == True
+'''
+            else:
+                if len(self.operators) > 0:
+                    operators = '\n    '.join(list(self.operators.values())[0])
+                else:
+                   operators = ''
+                if len(self.output) > 0:
+                    output = '\n    '.join(list(self.output.values())[0])
+                else:
+                    output = ''
+                code = f'{code}\n    {operators}\n    {output}\n'
+                return f'''def {self.name}({function_args}):{if_not_hasattr}
+    {init}
+    {code}
 '''
 
 def divide_chunks(l, n):
@@ -565,7 +602,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].operators = code_chunk.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].precondition[c.name] = code_chunk.precondition_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].operators[c.name] = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
                         code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
                         code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
@@ -573,7 +611,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'].selectable = True
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
-                    self.init_code.operators = code_chunk.code_chunk[ce]
+                    self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
+                    self.init_code.operators[self.init_code.name] = code_chunk.code_chunk[ce]
                     self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
                     self.init_code.sync_cell.update(code_chunk.sync_cells[ce])
                     self.init_code.args.update(code_chunk.all_vars[ce])
@@ -587,7 +626,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         else:
             code[self.init_code.name] = self.init_code
         for c in code.values():
-            c.output.extend(self.output_code)
+            c.output[c.name].extend(self.output_code)
             c.effect_vars.add(self.return_var)
         self.code = code
 
@@ -624,7 +663,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.code.append(code_element)
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
-            code_element.code_chunk[f'branch{part}'].append(f"assert {a_condition} == True")
+            code_element.precondition_chunk[f'branch{part}'].append(f"{a_condition} == True") # WO asser now, "assert" or "if" insert if formatting
             code_element.code_chunk[f'branch{part}'].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
