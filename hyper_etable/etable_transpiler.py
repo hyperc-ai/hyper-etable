@@ -482,8 +482,8 @@ class FunctionCode:
     def clean(self):
         found = False
         while not found:
-            found = False
             for init in self.init:
+                found = False
                 var = init.split('#')[0].split('=')[0].strip()
                 if len(var) == 0:
                     continue

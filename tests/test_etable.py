@@ -3,9 +3,9 @@ import os
 
 def test_etable():
     mydir = os.path.dirname(__file__)
-    file = 'selectfromrange.xlsx'
+    file = 'xlsx/a_sfr_double.xlsx'
 
-    et = hyper_etable.etable.ETable(os.path.join(mydir, file), "selectfromrange")
+    et = hyper_etable.etable.ETable(os.path.join(mydir, file), "a_sfr_double")
     et.calculate()
 
 
