@@ -509,6 +509,7 @@ class FunctionCode:
         if not self.is_goal:
             if self.selectable:
                 stack_code.append('_stack_drop()')
+                pass
             elif not self.is_atwill:
                 if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
                 for eff_var in self.effect_vars:
@@ -517,10 +518,10 @@ class FunctionCode:
                     f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
             else:
                 pass  # do nothing if at-will like selectfromrange
-                for eff_var in self.effect_vars:
-                    py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
-                    stack_code.append(
-                    f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+                # for eff_var in self.effect_vars:
+                #     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+                #     stack_code.append(
+                #     f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code = '\n    '.join(stack_code)
 
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
@@ -597,6 +598,8 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
+        # self.init_code.selectable = True
+        self.init_code.is_atwill = True
         return ret_var
 
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
