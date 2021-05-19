@@ -614,8 +614,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].precondition[c.name] = code_chunk.precondition_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].operators[c.name] = code_chunk.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
                         code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
                         code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
@@ -633,8 +633,9 @@ class EtableTranspilerEasy(EtableTranspiler):
                 self.init_code.operators.append(code_chunk)
         if (len(code) > 0):
             for branch_name in code:
-                code[branch_name].operators = self.init_code.operators[0: idx] + code[branch_name].operators
-                code[branch_name].operators.extend(self.init_code.operators[idx:])
+                code[branch_name].operators[code[branch_name].name] = self.init_code.operators[self.init_code.name][
+                    0: idx] + code[branch_name].operators[code[branch_name].name]
+                code[branch_name].operators[code[branch_name].name].extend(list(self.init_code.operators.values())[0][idx:])
         else:
             code[self.init_code.name] = self.init_code
         for c in code.values():
@@ -656,6 +657,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
         self.init_code.hasattr_code.append(f'assert {range}.{range.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'assert {range}.recid >= {range.number[0]}')
+        self.init_code.init.append(f'assert {range}.recid <= {range.number[1]}')
+
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
         return ret_var
@@ -663,8 +667,11 @@ class EtableTranspilerEasy(EtableTranspiler):
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
     def f_takeif(self, *args):
         assert self.paren_level == 1, "Nested TAKEIF() is not supported"
+        assert len(args) >= 3, "TAKEIF() args should be 3 and more"
+        if len(args) == 3:
+            args = list(args)
+            args.append(None)
         assert ((len(args)-1) % 3) == 0, "Args in TAKEIF() should be multiple of three plus one"
-        assert len(args) > 3, "TAKEIF() args should be 4 and more"
         if self.paren_level == 1:
             self.default = args[0]
         ret_var = StringLikeVariable.new(
@@ -683,7 +690,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                 StringLikeVars(
                     f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
-            code_element.sync_cells[f'branch{part}'].add(a_syncon)
+            if a_syncon is not None:
+                code_element.sync_cells[f'branch{part}'].add(a_syncon)
             code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_value.variables)

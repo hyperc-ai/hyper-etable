@@ -199,6 +199,7 @@ def stack_code_gen_all(objects):
     
     drop_content = "\n    ".join(l_all_hasattr_drop)
     scode = f"""def _stack_drop():
+    pass
     {drop_content}"""
     return scode
 
@@ -307,8 +308,7 @@ class ETable:
         
     def get_new_table(self, table_name, sheet):
         ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
-        ThisTable.__annotations__ = {}
-        ThisTable.__annotations__['__table_name__'] = str
+        ThisTable.__annotations__ = {'__table_name__': str, 'recid': int}
         ThisTable.__touched_annotations__ = set()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[table_name] = ThisTable
@@ -370,6 +370,8 @@ class ETable:
         for func in code.values():
             func.clean()
             for var in func.sync_cell:
+                if not isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
+                    continue
                 cell_name = var.get_excel_format()
                 if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
                     used_cell_set.remove(cell_name)
@@ -483,7 +485,7 @@ class ETable:
                     # if 
                     rec_obj = ThisTable()
                     # rec_obj.__row_record__ = copy.copy(cell)
-                    # rec_obj.__recid__ = recid
+                    rec_obj.recid = recid
                     rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                     rec_obj.__touched_annotations__ = set()
                     # ThisTable.__annotations_type_set__ = defaultdict(set)
