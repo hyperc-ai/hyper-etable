@@ -199,6 +199,7 @@ def stack_code_gen_all(objects):
     
     drop_content = "\n    ".join(l_all_hasattr_drop)
     scode = f"""def _stack_drop():
+    pass
     {drop_content}"""
     return scode
 
