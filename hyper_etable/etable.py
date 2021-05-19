@@ -51,8 +51,6 @@ def stack_code_gen_old(obj_name):
     drop = '\n    '.join(drop)
 
     return f'''
-from hyperc import not_hasattr
-
 class StaticStackSheet:
     {declare}
 
@@ -196,6 +194,7 @@ def stack_code_gen_all(objects):
                 if len(col) > 4: continue
                 # if not "not_hasattr" in col: continue
                 if not hasattr(rowobj, col): continue
+                if getattr(rowobj, f"{col}_not_hasattr") == False: continue
                 l_all_hasattr_drop.append(f"HCT_STATIC_OBJECT.{cname}_{idx}.{col}_not_hasattr = True")
     
     drop_content = "\n    ".join(l_all_hasattr_drop)
@@ -290,7 +289,7 @@ class ETable:
         s_code = ''
         fn = f"{self.tempdir}/{filename}"
         with open(fn, "w+") as f:
-            f.write('from hyperc import not_hasattr')
+            # f.write('from hyperc import not_hasattr')
             f.write('\n')
             for func in code.values():
                 f.write(str(func))
@@ -351,7 +350,9 @@ class ETable:
                         continue
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
                     var_name = f'var_tbl_{py_table_name}__hct_direct_ref__{recid}_{letter}'
-                    code_init.init.append(f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}')
+                    # FIXME: this init code is being used+cleaned in some crazy while-true loop in def clean() in transpiler
+                    code_init.init.append(f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter} # TEST HERE')
+                    code_init.hasattr_code.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}_not_hasattr == False')
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
