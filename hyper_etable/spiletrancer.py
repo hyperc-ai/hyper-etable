@@ -91,6 +91,18 @@ class SpileTrancer:
                         opxl_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
                     elif (type(self.xl_dict[xl_cell_ref]) == str and 
+                            self.xl_dict[xl_cell_ref].upper().startswith("=SELECTFROMRANGE")):
+                        cellvalue = getattr(getattr(self.static_objects, cell), letter)
+                        if type(cellvalue) == str: # if type_ == str:  # bug with type detector workaround
+                            cellvalue = f'"{cellvalue}"'
+                        orig_opxl_cell = self.wb[opxl_sht][opxl_cell_ref]
+                        orig_cell = orig_opxl_cell.value
+                        if "," in orig_cell:
+                            opxl_cellvalue = f"{orig_cell.split(',', 1)[0]}, {cellvalue})"
+                        else:
+                            opxl_cellvalue = f"{orig_cell.split(')', 1)[0]}, {cellvalue})"
+                        self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
+                    elif (type(self.xl_dict[xl_cell_ref]) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=")):
                         pass
                     else:  # raw value? just write what we have
