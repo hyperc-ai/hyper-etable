@@ -608,8 +608,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].precondition[c.name] = code_chunk.precondition_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].operators[c.name] = code_chunk.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
                         code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
                         code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
@@ -627,8 +627,9 @@ class EtableTranspilerEasy(EtableTranspiler):
                 self.init_code.operators.append(code_chunk)
         if (len(code) > 0):
             for branch_name in code:
-                code[branch_name].operators = self.init_code.operators[0: idx] + code[branch_name].operators
-                code[branch_name].operators.extend(self.init_code.operators[idx:])
+                code[branch_name].operators[code[branch_name].name] = self.init_code.operators[self.init_code.name][
+                    0: idx] + code[branch_name].operators[code[branch_name].name]
+                code[branch_name].operators[code[branch_name].name].extend(list(self.init_code.operators.values())[0][idx:])
         else:
             code[self.init_code.name] = self.init_code
         for c in code.values():
