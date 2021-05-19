@@ -661,8 +661,11 @@ class EtableTranspilerEasy(EtableTranspiler):
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
     def f_takeif(self, *args):
         assert self.paren_level == 1, "Nested TAKEIF() is not supported"
+        assert len(args) >= 3, "TAKEIF() args should be 3 and more"
+        if len(args) == 3:
+            args = list(args)
+            args.append(None)
         assert ((len(args)-1) % 3) == 0, "Args in TAKEIF() should be multiple of three plus one"
-        assert len(args) > 3, "TAKEIF() args should be 4 and more"
         if self.paren_level == 1:
             self.default = args[0]
         ret_var = StringLikeVariable.new(
@@ -681,7 +684,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                 StringLikeVars(
                     f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
-            code_element.sync_cells[f'branch{part}'].add(a_syncon)
+            if a_syncon is not None:
+                code_element.sync_cells[f'branch{part}'].add(a_syncon)
             code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_value.variables)
