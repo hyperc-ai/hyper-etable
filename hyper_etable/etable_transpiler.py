@@ -650,6 +650,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
         self.init_code.hasattr_code.append(f'assert {range}.{range.letter[0]}_not_hasattr == False')
+        self.init_code.hasattr_code.append(f'assert {range}.recid >= {range.number[0]}')
+        self.init_code.hasattr_code.append(f'assert {range}.recid <= {range.number[1]}')
+
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
         return ret_var
