@@ -1,3 +1,4 @@
+import re
 import formulas
 import collections
 import hyperc.settings
@@ -182,6 +183,9 @@ class StringLikeVars:
     def __hash__(self):
         return hash(str(self.rendered_str))
 
+
+bogus_start_re = re.compile(r"^=(\[\d+\]!)")
+
 class EtableTranspiler:
 
     def __init__(self, formula, inputs, output, var_mapper, table_type_mapper, init_code=None):
@@ -189,6 +193,8 @@ class EtableTranspiler:
         self.table_type_mapper = table_type_mapper
         if formula.endswith("<0>"):
             formula = formula[:-3]
+        if formula.startswith("=["):
+            formula = bogus_start_re.sub("=", formula, 1)
         self.formula = formula
         self.inputs = inputs
         self.output = output
