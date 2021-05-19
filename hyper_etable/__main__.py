@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import hyper_etable.etable
 
 UPLOAD_FOLDER = '/tmp'
-ALLOWED_EXTENSIONS = {'xlsx'}
+ALLOWED_EXTENSIONS = {'xlsx', 'xlsm'}
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER

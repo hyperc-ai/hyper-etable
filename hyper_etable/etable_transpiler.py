@@ -146,6 +146,9 @@ class StringLikeVariable:
                 self.type_group = type_group
                 self.type_group_set.add(type_group)
             rnd_len += 1
+    
+    def __repr__(self):
+        return f"StringLikeVar<{self.var_str}>"
 
 def formulas_parser(formula_str):
     return formulas.Parser().ast("="+list(formulas.Parser().ast("=" + formula_str)
@@ -217,6 +220,7 @@ class EtableTranspiler:
         self.output_code = []
         self.output_code.append(f'{self.return_var} = {transpiled_formula_return}')
         self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
+        self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter}_not_hasattr = False')
         self.output_code.append(f'# side effect with {self.return_var} can be added here')
 
     def f_and(self, *args):
@@ -431,6 +435,7 @@ class FunctionCode:
         if parent_name is not None:
             self.parent_name.add(parent_name)
         self.init = []
+        self.hasattr_code = []
         self.precondition = collections.defaultdict(list)
         self.operators = collections.defaultdict(list)
         self.output = collections.defaultdict(list)
@@ -515,6 +520,7 @@ class FunctionCode:
                 if not found:
                     self.init.remove(init)
                     break
+        self.init.extend(self.hasattr_code)
 
     def gen_not_hasattr(self):
         not_hasattrs = []
@@ -643,6 +649,7 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
+        self.init_code.hasattr_code.append(f'assert {range}.{range.letter[0]}_not_hasattr == False')
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
         return ret_var
