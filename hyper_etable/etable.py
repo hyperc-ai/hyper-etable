@@ -370,6 +370,8 @@ class ETable:
         for func in code.values():
             func.clean()
             for var in func.sync_cell:
+                if not isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
+                    continue
                 cell_name = var.get_excel_format()
                 if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
                     used_cell_set.remove(cell_name)
