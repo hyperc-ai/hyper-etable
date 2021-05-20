@@ -119,7 +119,7 @@ class StringLikeVariable:
 
     def __str__(self):
         return self.var_str
-    
+
     def __hash__(self):
         self.hash = hash(str(self.var_str))
         return self.hash
@@ -147,7 +147,7 @@ class StringLikeVariable:
                 self.type_group = type_group
                 self.type_group_set.add(type_group)
             rnd_len += 1
-    
+
     def __repr__(self):
         return f"StringLikeVar<{self.var_str}>"
 
@@ -169,7 +169,7 @@ class StringLikeVars:
             else:
                 self.variables.add(arg)
         self.operator = operator
-    
+
     def extend(self, args):
         for arg in args:
             if isinstance(arg, str):
@@ -273,7 +273,7 @@ class EtableTranspiler:
 
     def f_ge(self, v1, v2):
         return self.save_return(StringLikeVars(f"({v1} >= {v2})", [v1, v2], ">="), bool)
-    
+
     def f_true(self):
         return self.save_return(StringLikeVars("True", [StringLikeConstant.new(var_map=self.var_mapper,var=True)], "" ), bool)
 
@@ -415,7 +415,7 @@ class EtableTranspiler:
                 for var2 in ret.variables:
                     var1.type_group_set.update(var2.type_group_set)
                     var2.type_group_set.update(var1.type_group_set)
-        
+
         # create type group mapper
         for var in ret.variables:
             if var.type_group not in self.table_type_mapper:
@@ -423,7 +423,7 @@ class EtableTranspiler:
                     group=var.type_group_set, name=var.type_group, types=var.types)
 
         return ret
-   
+
 
 class CodeElement:
 
@@ -451,7 +451,7 @@ class FunctionCode:
         self.sync_cell = set()
         self.collapsed = False
         self.selectable = False
-        self.is_atwill = False  # For at-will functions like selectfromrange 
+        self.is_atwill = False  # For at-will functions like selectfromrange
         self.effect_vars = set()
         self.is_goal = is_goal
 
@@ -599,7 +599,7 @@ class FunctionCode:
 
 def divide_chunks(l, n):
     # looping till length l
-    for i in range(0, len(l), n): 
+    for i in range(0, len(l), n):
         yield l[i:i + n]
 
 class EtableTranspilerEasy(EtableTranspiler):
@@ -698,5 +698,41 @@ class EtableTranspilerEasy(EtableTranspiler):
             part += 1
 
         return ret_expr
-    
+
     f_selectif = f_takeif
+
+    def f_watchif(self, *args):
+        assert self.paren_level == 1, "Nested WATCHIF() is not supported"
+        assert len(args) >= 2, "WATCHIF() args should be 2 and more: condition and cell""
+        if len(args) == 2:  # Means condition and value
+            args = list(args)
+            args.append(None)
+        assert ((len(args)-1) % 3) == 0, "Args in WATCHIF() should be multiple of three"
+        if self.paren_level == 1:
+            self.default = args[0]
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_TAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_expr = StringLikeVars(ret_var, args, "takeif")
+        self.var_counter += 1
+        code_element = CodeElement()
+        self.code.append(code_element)
+        part = 0
+        for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
+            code_element.precondition_chunk[f'branch{part}'].append(f"{a_condition} == True") # WO asser now, "assert" or "if" insert if formatting
+            code_element.code_chunk[f'branch{part}'].append(f"{ret_expr} = {a_value}")
+
+            self.save_return(
+                StringLikeVars(
+                    f"{ret_expr} = {a_value}", [ret_var, a_value],
+                    "="))
+            if a_syncon is not None:
+                code_element.sync_cells[f'branch{part}'].add(a_syncon)
+            code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
+            code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
+            code_element.all_vars[f'branch{part}'].extend(a_value.variables)
+            part += 1
+
+        return ret_expr
+
+

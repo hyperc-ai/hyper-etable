@@ -44,7 +44,7 @@ def stack_code_gen_old(obj_name):
 
         # def drop(self):
         drop.append(f'static_stack_sheet.row{i}_not_hasattr = True')
-    
+
     declare = "\n    ".join(declare)
     init = '\n        '.join(init)
     add = '\n    '.join(add)
@@ -56,7 +56,7 @@ class StaticStackSheet:
 
     def __init__(self):
         {init}
-        
+
 static_stack_sheet = StaticStackSheet()
 
 def stack_add(obj: {obj_name}, letter: str):
@@ -109,7 +109,7 @@ class StaticStackSheet:
         self.row2 = NONE_ROW_2
         self.row3 = NONE_ROW_3
         self.row4 = NONE_ROW_4
-        
+
 
 static_stack_sheet = StaticStackSheet()
 
@@ -196,7 +196,7 @@ def stack_code_gen_all(objects):
                 if not hasattr(rowobj, col): continue
                 if getattr(rowobj, f"{col}_not_hasattr") == False: continue
                 l_all_hasattr_drop.append(f"HCT_STATIC_OBJECT.{cname}_{idx}.{col}_not_hasattr = True")
-    
+
     drop_content = "\n    ".join(l_all_hasattr_drop)
     scode = f"""def _stack_drop():
     pass
@@ -248,6 +248,11 @@ FUNCTIONS["TAKEIF"] = STUB_TAKEIF
 def STUB_SELECTFROMRANGE(*args):
     return 0
 FUNCTIONS["SELECTFROMRANGE"] = STUB_SELECTFROMRANGE
+
+# Define WATCH formula
+def STUB_WATCH(*args):
+    return 0
+FUNCTIONS["WATCH"] = STUB_WATCH
 
 
 class ETable:
@@ -305,7 +310,7 @@ class ETable:
             self.methods_classes[func_code.name] = self.mod.__dict__[func_code.name]
             self.methods_classes[func_code.name].orig_source = str(func_code)
 
-        
+
     def get_new_table(self, table_name, sheet):
         ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str, 'recid': int}
@@ -322,7 +327,7 @@ class ETable:
         return self.objects[py_table_name][var.number]
 
     def calculate(self):
-        
+
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         var_mapper = {}
@@ -360,13 +365,13 @@ class ETable:
                     node_key, node_val['inputs'].keys(),
                     output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                 formula.transpile_start()
-                # set default value for takeif 
+                # set default value for takeif
                 var = formula.default
                 if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
                     var = formula.default.var
                 xl_mdl.cells[output].value = var
                 code.update(formula.code)
-        
+
         for func in code.values():
             func.clean()
             for var in func.sync_cell:
@@ -475,14 +480,14 @@ class ETable:
                 letter = letter[0]
             else:
                 recid_ret = [recid_ret]
-                
+
             for recid in recid_ret:
                 if recid not in self.objects[py_table_name]:
                     if py_table_name not in self.classes:
                         ThisTable = self.get_new_table(py_table_name, sheet)
                     else:
                         ThisTable = self.classes[py_table_name]
-                    # if 
+                    # if
                     rec_obj = ThisTable()
                     # rec_obj.__row_record__ = copy.copy(cell)
                     rec_obj.recid = recid
@@ -511,14 +516,14 @@ class ETable:
                     # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
                     # self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
                     self.objects[py_table_name][recid].__class__.__annotations__[letter] = str  # bug hyperc#453
-                    self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453 
+                    self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453
                     # <-- end FIXME
 
                 else:
                     # TODO this is stumb for novalue cell. We should use Novalue ????
                     setattr(self.objects[py_table_name][recid], letter, 0)
                     setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
-            
+
         # Type detector
         # Match all group neighbor each other
         # by Breadth-first search now
@@ -563,7 +568,7 @@ class ETable:
         #     filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
         #     stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
         #     break
-        
+
         stack_code = stack_code_gen_all(self.objects)
 
         fn = f"{self.tempdir}/hpy_stack_code.py"
@@ -610,7 +615,7 @@ class ETable:
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
             init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
         if init_f_code:
-            
+
             full_f_code = '\n    '.join(init_f_code)
             full_code = f"def hct_stf_init(self):\n    {full_f_code}"
             fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
@@ -623,7 +628,7 @@ class ETable:
 
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
-        
+
         # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
 
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
