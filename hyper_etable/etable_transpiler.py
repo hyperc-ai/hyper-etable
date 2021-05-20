@@ -643,7 +643,7 @@ class EtableTranspilerEasy(EtableTranspiler):
             c.effect_vars.add(self.return_var)
         self.code = code
 
-    def f_selectfromrange(self, range):
+    def f_selectfromrange(self, range, fix=None):
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
         range.var_str = f'{range.var_str}_{self.var_counter}'
         self.var_counter += 1
