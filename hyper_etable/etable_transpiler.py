@@ -703,7 +703,7 @@ class EtableTranspilerEasy(EtableTranspiler):
 
     def f_watchif(self, *args):
         assert self.paren_level == 1, "Nested WATCHIF() is not supported"
-        assert len(args) >= 2, "WATCHIF() args should be 2 and more: condition and cell""
+        assert len(args) >= 2, "WATCHIF() args should be 2 and more: condition and cell"
         if len(args) == 2:  # Means condition and value
             args = list(args)
             args.append(None)
@@ -734,5 +734,15 @@ class EtableTranspilerEasy(EtableTranspiler):
             part += 1
 
         return ret_expr
+    
+    def f_index(self, range, idx):
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f"{idx}")
+        ret_expr = StringLikeVars(ret_var, range, "index")
+        return self.save_return(
+                StringLikeVars(
+                    f"{ret_expr} = {idx}", [ret_var, idx],
+                    "="))
 
 
