@@ -2,6 +2,7 @@ import formulas
 import collections
 import hyperc.settings
 import hyperc.xtj
+import hyperc.util
 import schedula
 import copy
 import random
@@ -11,7 +12,8 @@ import hyper_etable.type_mapper
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
-                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
+                                          [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))
+    cell = cell[0][0].attr
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
         return (cell['excel'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
     else:
@@ -271,6 +273,9 @@ class EtableTranspiler:
     def f_true(self):
         return self.save_return(StringLikeVars("True", [StringLikeConstant.new(var_map=self.var_mapper,var=True)], "" ), bool)
 
+    def f_false(self):
+        return self.save_return(StringLikeVars("False", [StringLikeConstant.new(var_map=self.var_mapper,var=True)], "" ), bool)
+
     def transpile(self, nodes):
         if isinstance(nodes, list):
             ret = ""
@@ -496,6 +501,8 @@ class FunctionCode:
                 var = init.split('#')[0].split('=')[0].strip()
                 if len(var) == 0:
                     continue
+                if var == 'assert':
+                    continue
                 for op in self.precondition.values():
                     if found:
                         break
@@ -637,20 +644,51 @@ class EtableTranspilerEasy(EtableTranspiler):
             c.effect_vars.add(self.return_var)
         self.code = code
 
-    def f_selectfromrange(self, range):
+    def f_vlookup(self, *args):
+        if len(args) == 3:
+            args = list(args)
+            args.append('True == True')
+        assert len(args) == 4, "VLOOKUP should be 3 or 4 arguments"
+        cell, rng, column, range_lookup = args
+        p = hyperc.util.letter_index_next(letter=rng.letter[0])
+        for i in range(column.var-2):
+            p = hyperc.util.letter_index_next(letter = p)
+        p=p.lower()
+        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
+
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_VLOOKUP_{get_var_from_cell(self.output)}_{self.var_counter}')
+        self.var_counter += 1
+        self.init_code.init.append(f'assert {rng}.{p} == {cell}')
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'assert {rng}.recid >= {rng.number[0]}')
+        self.init_code.init.append(f'assert {rng}.recid <= {rng.number[1]}')
+
+        # self.init_code.selectable = True
+        self.init_code.is_atwill = True
+        return ret_var
+
+
+
+    def f_selectfromrange(self, rng):
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
-        range.var_str = f'{range.var_str}_{self.var_counter}'
+        rng.var_str = f'{rng.var_str}_{self.var_counter}'
         self.var_counter += 1
         # select_var = StringLikeVariable.new(
-        #     var_map=self.var_mapper, cell_str=range.attr['name'])
+        #     var_map=self.var_mapper, cell_str=rng.attr['name'])
         # select_var.var_str
-        self.init_code.function_args[range] = hyperc.xtj.str_to_py(f'[{range.filename}]{range.sheet}')
+        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, cell_str=self.output,
             var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {range}.{range.letter[0]}')
-        self.init_code.hasattr_code.append(f'assert {range}.{range.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'assert {rng}.recid >= {rng.number[0]}')
+        self.init_code.init.append(f'assert {rng}.recid <= {rng.number[1]}')
+
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
         return ret_var
@@ -658,8 +696,11 @@ class EtableTranspilerEasy(EtableTranspiler):
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
     def f_takeif(self, *args):
         assert self.paren_level == 1, "Nested TAKEIF() is not supported"
+        assert len(args) >= 3, "TAKEIF() args should be 3 and more"
+        if len(args) == 3:
+            args = list(args)
+            args.append(None)
         assert ((len(args)-1) % 3) == 0, "Args in TAKEIF() should be multiple of three plus one"
-        assert len(args) > 3, "TAKEIF() args should be 4 and more"
         if self.paren_level == 1:
             self.default = args[0]
         ret_var = StringLikeVariable.new(
@@ -678,7 +719,8 @@ class EtableTranspilerEasy(EtableTranspiler):
                 StringLikeVars(
                     f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
-            code_element.sync_cells[f'branch{part}'].add(a_syncon)
+            if a_syncon is not None:
+                code_element.sync_cells[f'branch{part}'].add(a_syncon)
             code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
             code_element.all_vars[f'branch{part}'].extend(a_value.variables)
