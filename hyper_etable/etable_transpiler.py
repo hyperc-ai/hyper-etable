@@ -631,7 +631,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                     self.init_code.args.update(code_chunk.all_vars[ce])
                     self.init_code.selectable = True
             else:
-                self.init_code.operators.append(code_chunk)
+                self.init_code.operators[self.init_code.name].append(code_chunk)
         if (len(code) > 0):
             for branch_name in code:
                 code[branch_name].operators[code[branch_name].name] = self.init_code.operators[self.init_code.name][
@@ -660,11 +660,13 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_map=self.var_mapper, cell_str=self.output,
             var_str=f'var_tbl_VLOOKUP_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'assert {rng}.{p} == {cell}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
         self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
+        self.code.append(f'assert {rng}.{p} == {cell}')
+
         self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
-        self.init_code.init.append(f'assert {rng}.recid >= {rng.number[0]}')
-        self.init_code.init.append(f'assert {rng}.recid <= {rng.number[1]}')
+        self.code.append(f'assert {rng}.recid >= {rng.number[0]}')
+        self.code.append(f'assert {rng}.recid <= {rng.number[1]}')
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
