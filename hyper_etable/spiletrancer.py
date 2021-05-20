@@ -90,6 +90,8 @@ class SpileTrancer:
                         orig_cell = orig_opxl_cell.value
                         opxl_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
+                        # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
+                        self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": 'n'}
                     elif (type(self.xl_dict[xl_cell_ref]) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=SELECTFROMRANGE")):
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
@@ -102,6 +104,8 @@ class SpileTrancer:
                         else:
                             opxl_cellvalue = f"{orig_cell.split(')', 1)[0]}, {cellvalue})"
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
+                        # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
+                        self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": "n"}
                     elif (type(self.xl_dict[xl_cell_ref]) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=")):
                         pass
