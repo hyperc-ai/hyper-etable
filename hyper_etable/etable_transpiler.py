@@ -507,39 +507,40 @@ class FunctionCode:
             self.selectable = True
 
     def clean(self):
-        found = False
-        while not found:
-            for init in self.init:
-                found = False
-                var = init.split('#')[0].split('=')[0].strip()
-                if len(var) == 0:
-                    continue
-                if var == 'assert':
-                    continue
-                for op in self.precondition.values():
-                    if found:
-                        break
-                    for line in op:
-                        if var in line:
-                            found = True
-                            break
-                for op in self.operators.values():
-                    if found:
-                        break
-                    for line in op:
-                        if var in line:
-                            found = True
-                            break
-                for op in self.output.values():
-                    if found:
-                        break
-                    for line in op:
-                        if var in line:
-                            found = True
-                            break
-                if not found:
-                    self.init.remove(init)
+        for_del = set()
+        for init in self.init:
+            found = False
+            var = init.split('#')[0].split('=')[0].strip()
+            if len(var) == 0:
+                continue
+            if 'assert' in var:
+                continue
+            for op in self.precondition.values():
+                if found:
                     break
+                for line in op:
+                    if var in line:
+                        found = True
+                        break
+            for op in self.operators.values():
+                if found:
+                    break
+                for line in op:
+                    if var in line:
+                        found = True
+                        break
+            for op in self.output.values():
+                if found:
+                    break
+                for line in op:
+                    if var in line:
+                        found = True
+                        break
+            if not found:
+                for_del.add(init)
+                break
+        for str in for_del:
+            self.init.remove(str)
         self.init.extend(self.hasattr_code)
 
     def gen_not_hasattr(self):
