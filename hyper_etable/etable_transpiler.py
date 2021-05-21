@@ -674,8 +674,9 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_str=f'var_tbl_VLOOKUP_{get_var_from_cell(self.output)}_{self.var_counter}')
         self.var_counter += 1
         self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
-        self.code.append(f'assert {rng}.{p} == {cell}')
+        self.init_code.init.append(f'{ret_var} = {rng}.{p}')
+        self.code.append(f'assert {rng}.{rng.letter[0]} == {cell}')
+
 
         self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
         self.code.append(f'assert {rng}.recid >= {rng.number[0]}')
