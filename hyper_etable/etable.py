@@ -372,6 +372,31 @@ class ETable:
                 xl_mdl.cells[output].value = var
                 code.update(formula.code)
 
+        # Find what is being watched, and inject watchtakeif sync cells
+        watched_takeifs = defaultdict(list)
+        for func in code.values():
+            if func.watchtakeif:
+                fn = func.watchtakeif.filename
+                sht = func.watchtakeif.sheet
+                col = func.watchtakeif.letter
+                row = func.watchtakeif.number
+                full_addr = (fn, sht, col, row)
+                watched_takeifs[full_addr].append(func)
+        
+        for func in code.values():
+            if func.selectable:
+                effect_var = list(func.effect_vars)[0]
+                fn = effect_var.filename
+                sht = effect_var.sheet
+                col = effect_var.letter
+                row = effect_var.number
+                full_addr = (fn, sht, col, row)
+                if full_addr in watched_takeifs:
+                    for wtf in watched_takeifs[full_addr]:
+                        wtf.sync_cell.update(func.sync_cell)
+                        pass
+
+
         for func in code.values():
             func.clean()
             for var in func.sync_cell:

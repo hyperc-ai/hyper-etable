@@ -187,6 +187,7 @@ class StringLikeVars:
 
 
 bogus_start_re = re.compile(r"^=(\[\d+\]!)")
+bogus_end_re = re.compile(r"\<\d+\>$")
 
 class EtableTranspiler:
 
@@ -197,6 +198,7 @@ class EtableTranspiler:
             formula = formula[:-3]
         if formula.startswith("=["):
             formula = bogus_start_re.sub("=", formula, 1)
+        formula = bogus_end_re.sub("", formula, 1)
         self.formula = formula
         self.inputs = inputs
         self.output = output
@@ -209,7 +211,7 @@ class EtableTranspiler:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
         except formulas.errors.FormulaError as e:
-            # print(f"Can't parse {formula}: {e}")
+            print(f"Can't parse {formula}: {e}")
             raise e
 
     def transpile_start(self):
@@ -224,6 +226,10 @@ class EtableTranspiler:
         self.return_var = StringLikeVariable.new(var_map = self.var_mapper, cell_str=self.output)
         transpiled_formula_return = self.transpile(self.nodes)
         filename, sheet, recid, letter = split_cell(self.output)
+        self.filename = filename
+        self.sheet = sheet
+        self.recid = recid
+        self.letter = letter
         sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
         self.output_code = []
         self.output_code.append(f'{self.return_var} = {transpiled_formula_return}')
@@ -456,6 +462,7 @@ class FunctionCode:
         self.sync_cell = set()
         self.collapsed = False
         self.selectable = False
+        self.watchtakeif = ""
         self.is_atwill = False  # For at-will functions like selectfromrange
         self.effect_vars = set()
         self.is_goal = is_goal
@@ -738,38 +745,20 @@ class EtableTranspilerEasy(EtableTranspiler):
 
     f_selectif = f_takeif
 
-    def f_watchif(self, *args):
-        assert self.paren_level == 1, "Nested WATCHIF() is not supported"
-        assert len(args) >= 2, "WATCHIF() args should be 2 and more: condition and cell"
-        if len(args) == 2:  # Means condition and value
-            args = list(args)
-            args.append(None)
-        assert ((len(args)-1) % 3) == 0, "Args in WATCHIF() should be multiple of three"
-        if self.paren_level == 1:
-            self.default = args[0]
+    def f_watchtakeif(self, takeif_cell_address):
+        assert self.paren_level == 1, "Nested WATCHTAKEIF() is not supported"
+        # TODO: check that takeif cell address is not a commpoud formula but a simple address of takeif cell
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_TAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
-        ret_expr = StringLikeVars(ret_var, args, "takeif")
-        self.var_counter += 1
+            var_str=f'var_tbl_WATCHTAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
         code_element = CodeElement()
         self.code.append(code_element)
-        part = 0
-        for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
-            code_element.precondition_chunk[f'branch{part}'].append(f"{a_condition} == True") # WO asser now, "assert" or "if" insert if formatting
-            code_element.code_chunk[f'branch{part}'].append(f"{ret_expr} = {a_value}")
-
-            self.save_return(
-                StringLikeVars(
-                    f"{ret_expr} = {a_value}", [ret_var, a_value],
-                    "="))
-            if a_syncon is not None:
-                code_element.sync_cells[f'branch{part}'].add(a_syncon)
-            code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
-            code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
-            code_element.all_vars[f'branch{part}'].extend(a_value.variables)
-            part += 1
-
+        code_element.code_chunk[f'branch0'].append(f"{ret_expr} = {takeif_cell_address}")
+        code_element.all_vars[f'branch0'].extend(takeif_cell_address.variables)
+        self.init_code.watchtakeif = takeif_cell_address
+        self.save_return(
+            StringLikeVars( f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))
         return ret_expr
     
     def f_index(self, range, idx):
