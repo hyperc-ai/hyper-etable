@@ -759,6 +759,8 @@ class EtableTranspilerEasy(EtableTranspiler):
         code_element = CodeElement()
         self.code.append(code_element)
         code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
+        code_element.code_chunk[f'watchtakeif'].append(f"assert {self.return_var.number} == WATCHTAKEIF_{self.return_var.letter}")
+        code_element.code_chunk[f'watchtakeif'].append(f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
         code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
