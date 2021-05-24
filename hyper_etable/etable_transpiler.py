@@ -775,10 +775,14 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_str=f'var_tbl_WATCHTAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
 
-        self.code.append(f"{ret_expr} = {takeif_cell_address}")
-        self.code.append(f"global WATCHTAKEIF_{self.return_var.letter}")
-        self.code.append(f"assert {self.return_var.number} == WATCHTAKEIF_{self.return_var.letter}")
-        self.code.append(f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
+        code_element = CodeElement()
+        self.code.append(code_element)
+        code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
+        code_element.contion_vars[f'watchtakeif'].append(
+            f"({self.return_var.number} == WATCHTAKEIF_{self.return_var.letter})")
+        code_element.code_chunk[f'watchtakeif'].append(
+            f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
+        code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
             StringLikeVars( f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))
