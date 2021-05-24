@@ -729,18 +729,20 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.code.append(code_element)
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
-            code_element.precondition_chunk[f'branch{part}'].append(f"{a_condition} == True") # WO asser now, "assert" or "if" insert if formatting
-            code_element.code_chunk[f'branch{part}'].append(f"{ret_expr} = {a_value}")
+            branch_name = f'takeif_branch{part}'
+            code_element.precondition_chunk[branch_name].append(
+                f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
+            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
                 StringLikeVars(
                     f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
             if a_syncon is not None:
-                code_element.sync_cells[f'branch{part}'].add(a_syncon)
-            code_element.contion_vars[f'branch{part}'].extend(a_condition.variables)
-            code_element.all_vars[f'branch{part}'].extend(a_condition.variables)
-            code_element.all_vars[f'branch{part}'].extend(a_value.variables)
+                code_element.sync_cells[branch_name].add(a_syncon)
+            code_element.contion_vars[branch_name].extend(a_condition.variables)
+            code_element.all_vars[branch_name].extend(a_condition.variables)
+            code_element.all_vars[branch_name].extend(a_value.variables)
             part += 1
 
         return ret_expr
@@ -756,8 +758,8 @@ class EtableTranspilerEasy(EtableTranspiler):
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
         code_element = CodeElement()
         self.code.append(code_element)
-        code_element.code_chunk[f'branch0'].append(f"{ret_expr} = {takeif_cell_address}")
-        code_element.all_vars[f'branch0'].extend(takeif_cell_address.variables)
+        code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
+        code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
             StringLikeVars( f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))

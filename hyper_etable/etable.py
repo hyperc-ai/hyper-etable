@@ -372,29 +372,29 @@ class ETable:
                 xl_mdl.cells[output].value = var
                 code.update(formula.code)
 
-        # Find what is being watched, and inject watchtakeif sync cells
-        watched_takeifs = defaultdict(list)
-        for func in code.values():
-            if func.watchtakeif:
-                fn = func.watchtakeif.filename
-                sht = func.watchtakeif.sheet
-                col = func.watchtakeif.letter
-                row = func.watchtakeif.number
-                full_addr = (fn, sht, col, row)
-                watched_takeifs[full_addr].append(func)
+        # # Find what is being watched, and inject watchtakeif sync cells
+        # watched_takeifs = defaultdict(list)
+        # for func in code.values():
+        #     if func.watchtakeif:
+        #         fn = func.watchtakeif.filename
+        #         sht = func.watchtakeif.sheet
+        #         col = func.watchtakeif.letter
+        #         row = func.watchtakeif.number
+        #         full_addr = (fn, sht, col, row)
+        #         watched_takeifs[full_addr].append(func)
         
-        for func in code.values():
-            if func.selectable:
-                effect_var = list(func.effect_vars)[0]
-                fn = effect_var.filename
-                sht = effect_var.sheet
-                col = effect_var.letter
-                row = effect_var.number
-                full_addr = (fn, sht, col, row)
-                if full_addr in watched_takeifs:
-                    for wtf in watched_takeifs[full_addr]:
-                        wtf.sync_cell.update(func.sync_cell)
-                        pass
+        # for func in code.values():
+        #     if func.selectable:
+        #         effect_var = list(func.effect_vars)[0]
+        #         fn = effect_var.filename
+        #         sht = effect_var.sheet
+        #         col = effect_var.letter
+        #         row = effect_var.number
+        #         full_addr = (fn, sht, col, row)
+        #         if full_addr in watched_takeifs:
+        #             for wtf in watched_takeifs[full_addr]:
+        #                 wtf.sync_cell.update(func.sync_cell)
+        #                 pass
 
 
         for func in code.values():
@@ -406,24 +406,23 @@ class ETable:
                 if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
                     used_cell_set.remove(cell_name)
 
-        # look for mergable actions
-        deleted_keys = set()
-        for func_name_other in list(code.keys()):
-            if func_name_other in deleted_keys:
-                continue
-            is_merged = False
-            for func_name in list(code.keys()):
-                #check that funtions is not parent and child
-                if func_name_other in deleted_keys:
-                    continue
-                if code[func_name] is code[func_name_other]:
-                    continue
-                if not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell):
-                    code[func_name].merge(code[func_name_other])
-                    is_merged = True
-                if is_merged:
-                    del code[func_name]
-                    deleted_keys.add(func_name)
+        # # look for mergable actions by sync
+        # deleted_keys = set()
+        # for func_name_other in list(code.keys()):
+        #     if func_name_other in deleted_keys:
+        #         continue
+        #     for func_name in list(code.keys()):
+        #         #check that funtions is not parent and child
+        #         if func_name_other in deleted_keys:
+        #             continue
+        #         if code[func_name] is code[func_name_other]:
+        #             continue
+        #         if ((not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell))
+        #         or code[func_name].watchtakeif == code[func_name_other].watchtakeif):
+        #             code[func_name_other].merge(code[func_name])
+        #             del code[func_name]
+        #             deleted_keys.add(func_name)
+                
         # update keys
         code = {v.name: v for k, v in code.items()}
 
