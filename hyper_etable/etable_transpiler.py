@@ -481,6 +481,23 @@ class FunctionCode:
         if other.selectable:
             self.selectable = True
 
+    def merge_prepend(self, other):
+        self.name = f'{self.name}_{other.name}'
+        self.init = other.init + self.init
+        self.precondition.update(other.precondition)
+        operators = {}
+        operators.update(other.operators)
+        operators.update(self.operators)
+        self.operators= operators
+        self.output.update(other.output)
+        self.args.update(other.args)
+        self.effect_vars.update(other.effect_vars)
+        self.selected_cell.update(other.selected_cell)
+        self.sync_cell.update(other.sync_cell)
+        self.parent_name.update(other.parent_name)
+        if other.selectable:
+            self.selectable = True
+
     def collapse(self):
         if self.collapsed:
             return
@@ -756,12 +773,10 @@ class EtableTranspilerEasy(EtableTranspiler):
             var_map=self.var_mapper, cell_str=self.output,
             var_str=f'var_tbl_WATCHTAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
-        code_element = CodeElement()
-        self.code.append(code_element)
-        code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
-        code_element.code_chunk[f'watchtakeif'].append(f"assert {self.return_var.number} == WATCHTAKEIF_{self.return_var.letter}")
-        code_element.code_chunk[f'watchtakeif'].append(f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
-        code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
+
+        self.code.append(f"{ret_expr} = {takeif_cell_address}")
+        self.code.append(f"assert {self.return_var.number} == WATCHTAKEIF_{self.return_var.letter}")
+        self.code.append(f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
             StringLikeVars( f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))
