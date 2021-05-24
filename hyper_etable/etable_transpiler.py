@@ -452,6 +452,7 @@ class FunctionCode:
         if parent_name is not None:
             self.parent_name.add(parent_name)
         self.init = []
+        self.keys = []
         self.hasattr_code = []
         self.precondition = collections.defaultdict(list)
         self.operators = collections.defaultdict(list)
@@ -467,9 +468,11 @@ class FunctionCode:
         self.effect_vars = set()
         self.is_goal = is_goal
 
+
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
+        self.keys.exend(other.keys)
         self.precondition.update(other.precondition)
         self.operators.update(other.operators)
         self.output.update(other.output)
@@ -483,12 +486,10 @@ class FunctionCode:
 
     def merge_prepend(self, other):
         self.name = f'{self.name}_{other.name}'
+        self.keys = other.keys + self.keys
         self.init = other.init + self.init
         self.precondition.update(other.precondition)
-        operators = {}
-        operators.update(other.operators)
-        operators.update(self.operators)
-        self.operators= operators
+        self.operators.update(other.operators)
         self.output.update(other.output)
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
@@ -600,7 +601,7 @@ class FunctionCode:
             init = '\n    '.join(self.init)
             code = ""
             if len(self.precondition) > 0:
-                for branch_name in (self.precondition.keys() | self.operators.keys() | self.output.keys()):
+                for branch_name in self.keys:
                     precondition = self.precondition.get(branch_name, "")
                     if len(precondition) > 0:
                         precondition = " and ".join(precondition)
@@ -775,6 +776,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
 
         self.code.append(f"{ret_expr} = {takeif_cell_address}")
+        self.code.append(f"global WATCHTAKEIF_{self.return_var.letter}")
         self.code.append(f"assert {self.return_var.number} == WATCHTAKEIF_{self.return_var.letter}")
         self.code.append(f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
         self.init_code.watchtakeif = takeif_cell_address
