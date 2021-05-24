@@ -462,7 +462,7 @@ class FunctionCode:
         self.sync_cell = set()
         self.collapsed = False
         self.selectable = False
-        self.watchtakeif = ""
+        self.watchtakeif = None
         self.is_atwill = False  # For at-will functions like selectfromrange
         self.effect_vars = set()
         self.is_goal = is_goal

@@ -420,8 +420,7 @@ class ETable:
                     continue
                 if code[func_name] is code[func_name_other]:
                     continue
-                if ((not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell))
-                or code[func_name].watchtakeif == code[func_name_other].watchtakeif):
+                if (not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell)):
                     code[func_name_other].merge(code[func_name])
                     del code[func_name]
                     deleted_keys.add(func_name)
@@ -429,8 +428,12 @@ class ETable:
         deleted_keys = set()
         for func_name in list(code.keys()):
             deleted = False
+            if code[func_name].watchtakeif is not None:
+                    continue
             for watchif_func_name in list(code.keys()):
-                if code[watchif_func_name].watchtakeif:
+                if code[watchif_func_name].watchtakeif is None:
+                    continue
+                if code[watchif_func_name].watchtakeif in code[func_name].effect_vars:
                     code[watchif_func_name].merge(code[func_name])
                     deleted = True
             if deleted:
