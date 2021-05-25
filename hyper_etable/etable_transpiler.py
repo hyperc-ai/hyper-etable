@@ -666,7 +666,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                     self.init_code.selectable = True
             else:
                 self.init_code.operators[self.init_code.name].append(code_chunk)
-        if (len(code) > 0):
+        if (len(code) > 1):
             for branch_name in code:
                 code[branch_name].operators[code[branch_name].name] = self.init_code.operators[self.init_code.name][
                     0: idx] + code[branch_name].operators[code[branch_name].name]
@@ -781,9 +781,10 @@ class EtableTranspilerEasy(EtableTranspiler):
 
         code_element = CodeElement()
         self.code.append(code_element)
+        self.init_code.init.append(f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}")
         code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
-        code_element.contion_vars[f'watchtakeif'].append(
-            f"({self.return_var.number} == WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter})")
+        code_element.precondition_chunk[f'watchtakeif'].append(
+            f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
         code_element.code_chunk[f'watchtakeif'].append(
             f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
         code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)

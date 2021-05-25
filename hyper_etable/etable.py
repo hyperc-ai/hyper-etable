@@ -426,6 +426,23 @@ class ETable:
                     del code[func_name]
                     deleted_keys.add(func_name)
         
+        # merge watchtakeif's
+        deleted_keys = set()
+        for watchif_func_name in list(code.keys()):
+            if watchif_func_name in deleted_keys:
+                continue
+            if code[watchif_func_name].watchtakeif is None:
+                continue
+            for watchif_func_name_other in list(code.keys()):
+                if code[watchif_func_name_other].watchtakeif is None:
+                    continue
+                if watchif_func_name_other == watchif_func_name:
+                    continue
+                if code[watchif_func_name_other].watchtakeif == code[watchif_func_name].watchtakeif:
+                    code[watchif_func_name].merge(code[watchif_func_name_other])
+                    del code[watchif_func_name_other]
+                    deleted_keys.add(watchif_func_name_other)
+
         deleted_keys = set()
         for func_name in list(code.keys()):
             deleted = False
