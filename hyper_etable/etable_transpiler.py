@@ -789,7 +789,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         code_element.precondition_chunk[f'watchtakeif'].append(
             f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
         code_element.code_chunk[f'watchtakeif'].append(
-            f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
+            f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} + 1")
         code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
