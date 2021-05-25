@@ -468,11 +468,13 @@ class FunctionCode:
         self.effect_vars = set()
         self.is_goal = is_goal
 
+    def init_keys(self):
+        self.keys = [self.name]
 
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
-        self.keys.exend(other.keys)
+        self.keys.extend(other.keys)
         self.precondition.update(other.precondition)
         self.operators.update(other.operators)
         self.output.update(other.output)
@@ -675,6 +677,8 @@ class EtableTranspilerEasy(EtableTranspiler):
             c.output[c.name].extend(self.output_code)
             c.effect_vars.add(self.return_var)
         self.code = code
+        for c in self.code.values():
+            c.init_keys()
 
     def f_vlookup(self, *args):
         if len(args) == 3:
@@ -779,9 +783,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.code.append(code_element)
         code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
         code_element.contion_vars[f'watchtakeif'].append(
-            f"({self.return_var.number} == WATCHTAKEIF_{self.return_var.letter})")
+            f"({self.return_var.number} == WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter})")
         code_element.code_chunk[f'watchtakeif'].append(
-            f"WATCHTAKEIF_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
+            f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{self.return_var.letter} + 1")
         code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(

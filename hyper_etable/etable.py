@@ -379,20 +379,21 @@ class ETable:
                 watched_takeifs[func.watchtakeif].append(func)
         min_recid = {}
         max_recid = {}
-        for watched_takeif_Cell, watched_actions in  watched_takeifs.items():
+        for watched_takeif_cell, watched_actions in  watched_takeifs.items():
             for w_a in watched_actions:
                 cell = list(w_a.effect_vars)[0]
-                if cell.letter not in min_recid :
-                    min_recid[cell.letter] = cell
-                    max_recid[cell.letter] = cell
-                if cell.number > max_recid[cell.letter].number:
-                    max_recid[cell.letter] = cell
-                if cell.number < max_recid[cell.letter].number:
-                    min_recid[cell.letter] = cell
+                watch_for = f'{watched_takeif_cell}_{cell.letter}'
+                if watch_for not in min_recid:
+                    min_recid[watch_for] = cell
+                    max_recid[watch_for] = cell
+                if cell.number > max_recid[watch_for].number:
+                    max_recid[watch_for] = cell
+                if cell.number < max_recid[watch_for].number:
+                    min_recid[watch_for] = cell
 
         watch_code = []
-        for letter, recid in min_recid.items():
-            watch_code.append(f"WATCHTAKEIF_{letter} = {recid.number}")
+        for watch_for, recid in min_recid.items():
+            watch_code.append(f"WATCHTAKEIF_{watch_for} = {recid.number}")
         watch_code = "\n".join(watch_code)
         fn=f"{self.tempdir}/hpy_watch_code.py"
         with open(fn, "w+") as f:
@@ -434,7 +435,7 @@ class ETable:
                 if code[watchif_func_name].watchtakeif is None:
                     continue
                 if code[watchif_func_name].watchtakeif in code[func_name].effect_vars:
-                    code[watchif_func_name].merge(code[func_name])
+                    code[watchif_func_name].merge_prepend(code[func_name])
                     deleted = True
             if deleted:
                 del code[func_name]
