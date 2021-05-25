@@ -444,18 +444,18 @@ class ETable:
                     deleted_keys.add(watchif_func_name_other)
 
         deleted_keys = set()
-        for func_name in list(code.keys()):
+        for watchif_func_name in list(code.keys()):
             deleted = False
-            if code[func_name].watchtakeif is not None:
+            for func_name in list(code.keys()):
+                if code[func_name].watchtakeif is not None:
                     continue
-            for watchif_func_name in list(code.keys()):
                 if code[watchif_func_name].watchtakeif is None:
                     continue
                 if code[watchif_func_name].watchtakeif in code[func_name].effect_vars:
-                    code[watchif_func_name].merge_prepend(code[func_name])
+                    code[func_name].merge(code[watchif_func_name])
                     deleted = True
             if deleted:
-                del code[func_name]
+                del code[watchif_func_name]
 
         # update keys
         code = {v.name: v for k, v in code.items()}
