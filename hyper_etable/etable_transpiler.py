@@ -15,6 +15,8 @@ def split_cell(cell_str):
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))
     cell = cell[0][0].attr
+    if 'r1' not in cell:
+        raise Exception("Defined ranges is not supported")
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
         return (cell['excel'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
     else:
