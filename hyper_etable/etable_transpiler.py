@@ -782,9 +782,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         code_element = CodeElement()
         self.code.append(code_element)
         code_element.code_chunk[f'watchtakeif'].extend(self.init_code.hasattr_code)
-        self.init_code.hasattr_code = []
+        self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}"]
         code_element.code_chunk[f'watchtakeif'].extend(self.init_code.init)
-        self.init_code.init=[f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}"]
+        self.init_code.init=[]
         code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
         code_element.precondition_chunk[f'watchtakeif'].append(
             f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
