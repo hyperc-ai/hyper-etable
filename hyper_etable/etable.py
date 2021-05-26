@@ -44,7 +44,7 @@ def stack_code_gen_old(obj_name):
 
         # def drop(self):
         drop.append(f'static_stack_sheet.row{i}_not_hasattr = True')
-    
+
     declare = "\n    ".join(declare)
     init = '\n        '.join(init)
     add = '\n    '.join(add)
@@ -56,7 +56,7 @@ class StaticStackSheet:
 
     def __init__(self):
         {init}
-        
+
 static_stack_sheet = StaticStackSheet()
 
 def stack_add(obj: {obj_name}, letter: str):
@@ -109,7 +109,7 @@ class StaticStackSheet:
         self.row2 = NONE_ROW_2
         self.row3 = NONE_ROW_3
         self.row4 = NONE_ROW_4
-        
+
 
 static_stack_sheet = StaticStackSheet()
 
@@ -196,7 +196,7 @@ def stack_code_gen_all(objects):
                 if not hasattr(rowobj, col): continue
                 if getattr(rowobj, f"{col}_not_hasattr") == False: continue
                 l_all_hasattr_drop.append(f"HCT_STATIC_OBJECT.{cname}_{idx}.{col}_not_hasattr = True")
-    
+
     drop_content = "\n    ".join(l_all_hasattr_drop)
     scode = f"""def _stack_drop():
     pass
@@ -248,6 +248,11 @@ FUNCTIONS["TAKEIF"] = STUB_TAKEIF
 def STUB_SELECTFROMRANGE(*args):
     return 0
 FUNCTIONS["SELECTFROMRANGE"] = STUB_SELECTFROMRANGE
+
+# Define WATCH formula
+def STUB_WATCH(*args):
+    return 0
+FUNCTIONS["WATCH"] = STUB_WATCH
 
 
 class ETable:
@@ -305,7 +310,7 @@ class ETable:
             self.methods_classes[func_code.name] = self.mod.__dict__[func_code.name]
             self.methods_classes[func_code.name].orig_source = str(func_code)
 
-        
+
     def get_new_table(self, table_name, sheet):
         ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str, 'recid': int}
@@ -322,7 +327,7 @@ class ETable:
         return self.objects[py_table_name][var.number]
 
     def calculate(self):
-        
+
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         var_mapper = {}
@@ -360,13 +365,42 @@ class ETable:
                     node_key, node_val['inputs'].keys(),
                     output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                 formula.transpile_start()
-                # set default value for takeif 
+                # set default value for takeif
                 var = formula.default
                 if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
                     var = formula.default.var
                 xl_mdl.cells[output].value = var
                 code.update(formula.code)
-        
+
+        # Find what is being watched, and inject watchtakeif sync cells
+        watched_takeifs = defaultdict(list)
+        for func in code.values():
+            if func.watchtakeif:
+                watched_takeifs[func.watchtakeif].append(func)
+        min_recid = {}
+        max_recid = {}
+        for watched_takeif_cell, watched_actions in  watched_takeifs.items():
+            for w_a in watched_actions:
+                cell = list(w_a.effect_vars)[0]
+                watch_for = f'{watched_takeif_cell}_{cell.letter}'
+                if watch_for not in min_recid:
+                    min_recid[watch_for] = cell
+                    max_recid[watch_for] = cell
+                if cell.number > max_recid[watch_for].number:
+                    max_recid[watch_for] = cell
+                if cell.number < max_recid[watch_for].number:
+                    min_recid[watch_for] = cell
+
+        watch_code = []
+        for watch_for, recid in min_recid.items():
+            watch_code.append(f"WATCHTAKEIF_{watch_for} = {recid.number}")
+        watch_code = "\n".join(watch_code)
+        fn=f"{self.tempdir}/hpy_watch_code.py"
+        with open(fn, "w+") as f:
+            f.write(watch_code)
+        f_code=compile(watch_code, fn, 'exec')
+        exec(f_code, self.mod.__dict__)
+
         for func in code.values():
             func.clean()
             for var in func.sync_cell:
@@ -376,24 +410,53 @@ class ETable:
                 if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
                     used_cell_set.remove(cell_name)
 
-        # look for mergable actions
+        # # look for mergable actions by sync
         deleted_keys = set()
         for func_name_other in list(code.keys()):
             if func_name_other in deleted_keys:
                 continue
-            is_merged = False
             for func_name in list(code.keys()):
                 #check that funtions is not parent and child
                 if func_name_other in deleted_keys:
                     continue
                 if code[func_name] is code[func_name_other]:
                     continue
-                if not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell):
-                    code[func_name].merge(code[func_name_other])
-                    is_merged = True
-            if is_merged:
-                del code[func_name_other]
-                deleted_keys.add(func_name_other)
+                if (not code[func_name].sync_cell.isdisjoint(code[func_name_other].sync_cell)):
+                    code[func_name_other].merge(code[func_name])
+                    del code[func_name]
+                    deleted_keys.add(func_name)
+        
+        # merge watchtakeif's
+        deleted_keys = set()
+        for watchif_func_name in list(code.keys()):
+            if watchif_func_name in deleted_keys:
+                continue
+            if code[watchif_func_name].watchtakeif is None:
+                continue
+            for watchif_func_name_other in list(code.keys()):
+                if code[watchif_func_name_other].watchtakeif is None:
+                    continue
+                if watchif_func_name_other == watchif_func_name:
+                    continue
+                if code[watchif_func_name_other].watchtakeif == code[watchif_func_name].watchtakeif:
+                    code[watchif_func_name].merge(code[watchif_func_name_other])
+                    del code[watchif_func_name_other]
+                    deleted_keys.add(watchif_func_name_other)
+
+        deleted_keys = set()
+        for watchif_func_name in list(code.keys()):
+            deleted = False
+            for func_name in list(code.keys()):
+                if code[func_name].watchtakeif is not None:
+                    continue
+                if code[watchif_func_name].watchtakeif is None:
+                    continue
+                if code[watchif_func_name].watchtakeif in code[func_name].effect_vars:
+                    code[func_name].merge(code[watchif_func_name])
+                    deleted = True
+            if deleted:
+                del code[watchif_func_name]
+
         # update keys
         code = {v.name: v for k, v in code.items()}
 
@@ -468,56 +531,65 @@ class ETable:
 
         for cell in used_cell_set:
 
-            filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
+            filename, sheet, recid_ret, letter_ret = hyper_etable.etable_transpiler.split_cell(cell)
             py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             if isinstance(recid_ret, list):
                 recid_ret = range(recid_ret[0], recid_ret[1] + 1)
-                letter = letter[0]
             else:
                 recid_ret = [recid_ret]
-                
-            for recid in recid_ret:
-                if recid not in self.objects[py_table_name]:
-                    if py_table_name not in self.classes:
-                        ThisTable = self.get_new_table(py_table_name, sheet)
-                    else:
-                        ThisTable = self.classes[py_table_name]
-                    # if 
-                    rec_obj = ThisTable()
-                    # rec_obj.__row_record__ = copy.copy(cell)
-                    rec_obj.recid = recid
-                    rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                    rec_obj.__touched_annotations__ = set()
-                    # ThisTable.__annotations_type_set__ = defaultdict(set)
-                    self.objects[py_table_name][recid] = rec_obj
-                    self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-                self.objects[py_table_name][recid].__touched_annotations__.add(letter)
-                self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
-                #TODO add type detector
-                # self.classes[py_table_name].__annotations__[letter] = int
-                # rec_obj.__annotations__.add(letter)
-                sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
-                if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
-                    setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
-                    self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
-                if not cell in xl_mdl.cells:
-                    raise ReferenceError(f"Referencing empty cell {cell}")
-                if xl_mdl.cells[cell].value is not schedula.EMPTY:
-                    cell_value = xl_mdl.cells[cell].value
-                    setattr(self.objects[py_table_name][recid], letter, cell_value)
-                    setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
-                    # FIXME: needs type detector, then these lines can be removed -->
-                    # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
-                    # self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
-                    self.objects[py_table_name][recid].__class__.__annotations__[letter] = str  # bug hyperc#453
-                    self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453 
-                    # <-- end FIXME
 
-                else:
-                    # TODO this is stumb for novalue cell. We should use Novalue ????
-                    setattr(self.objects[py_table_name][recid], letter, 0)
-                    setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
+            if isinstance(letter_ret, list):
+                letter_stop = letter_ret[1]
+                letter_next = letter_ret[0]
+                letter_ret = [letter_next]
+                while letter_next != letter_stop:
+                    letter_next = hyperc.util.letter_index_next(letter = letter_next).lower()
+                    letter_ret.append(letter_next)
+            else:
+                letter_ret = [letter_ret]
+            for letter in letter_ret:
+                for recid in recid_ret:
+                    if recid not in self.objects[py_table_name]:
+                        if py_table_name not in self.classes:
+                            ThisTable = self.get_new_table(py_table_name, sheet)
+                        else:
+                            ThisTable = self.classes[py_table_name]
+                        # if 
+                        rec_obj = ThisTable()
+                        # rec_obj.__row_record__ = copy.copy(cell)
+                        rec_obj.recid = recid
+                        rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
+                        rec_obj.__touched_annotations__ = set()
+                        # ThisTable.__annotations_type_set__ = defaultdict(set)
+                        self.objects[py_table_name][recid] = rec_obj
+                        self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+                    self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+                    self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
+                    #TODO add type detector
+                    # self.classes[py_table_name].__annotations__[letter] = int
+                    # rec_obj.__annotations__.add(letter)
+                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                    if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
+                        setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
+                        self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+                    cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
+                    if not cell in xl_mdl.cells:
+                        raise ReferenceError(f"Referencing empty cell {cell}")
+                    if xl_mdl.cells[cell].value is not schedula.EMPTY:
+                        cell_value = xl_mdl.cells[cell].value
+                        setattr(self.objects[py_table_name][recid], letter, cell_value)
+                        setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
+                        # FIXME: needs type detector, then these lines can be removed -->
+                        # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
+                        # self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
+                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str  # bug hyperc#453
+                        self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453 
+                        # <-- end FIXME
+
+                    else:
+                        # TODO this is stumb for novalue cell. We should use Novalue ????
+                        setattr(self.objects[py_table_name][recid], letter, 0)
+                        setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
             
         # Type detector
         # Match all group neighbor each other
@@ -563,7 +635,7 @@ class ETable:
         #     filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
         #     stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
         #     break
-        
+
         stack_code = stack_code_gen_all(self.objects)
 
         fn = f"{self.tempdir}/hpy_stack_code.py"
@@ -610,7 +682,7 @@ class ETable:
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
             init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
         if init_f_code:
-            
+
             full_f_code = '\n    '.join(init_f_code)
             full_code = f"def hct_stf_init(self):\n    {full_f_code}"
             fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
@@ -623,7 +695,7 @@ class ETable:
 
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
-        
+
         # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
 
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
