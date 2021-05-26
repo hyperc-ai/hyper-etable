@@ -17,6 +17,7 @@ import collections
 import copy
 import os.path
 import pathlib
+import openpyxl
 
 
 def stack_code_gen_old(obj_name):
@@ -282,6 +283,7 @@ class ETable:
         self.mod.HCT_OBJECTS = {}
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
+        self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
 
 
     def solver_call(self,goal, extra_instantiations):
@@ -330,6 +332,7 @@ class ETable:
 
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
+        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT)
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
@@ -588,7 +591,14 @@ class ETable:
 
                     else:
                         # TODO this is stumb for novalue cell. We should use Novalue ????
-                        setattr(self.objects[py_table_name][recid], letter, 0)
+                        ox_sht, ox_cell_ref = stl.gen_opxl_addr(self.filename, 
+                                                        self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
+                                                        letter, recid)
+                        xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
+                        if type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str:
+                            setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
+                        else:
+                            setattr(self.objects[py_table_name][recid], letter, 0)
                         setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
             
         # Type detector
@@ -702,7 +712,6 @@ class ETable:
                                               extra_instantiations=just_classes)
         print("finish")
 
-        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, HCT_STATIC_OBJECT)
         stl.calculate_excel()
         dirn = os.path.dirname(self.filename)
         new_dirname = os.path.join(dirn, f"{self.filename.name}_out")

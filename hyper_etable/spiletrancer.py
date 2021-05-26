@@ -32,9 +32,7 @@ class SpileTrancer:
         self.static_objects = static_objects
         self.filename = filename
         self.xl_model = xl_model
-        xl_model.finish()
         # self.xl_dict = xl_model.to_dict()
-        self.xl_dict = to_dict(xl_model)
         self.wb = openpyxl.load_workbook(filename=filename, keep_vba=True)
         # self.wb = openpyxl.load_workbook(filename=filename)
     
@@ -51,6 +49,8 @@ class SpileTrancer:
     
     def calculate_excel(self):
         "Return full xlsx"
+        self.xl_model.finish()
+        self.xl_dict = to_dict(self.xl_model)
         # First, collect types of annotations
 
         attr_names_by_class = defaultdict(list)
