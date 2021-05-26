@@ -4,7 +4,7 @@ import os
 
 def test_etable():
     mydir = os.path.dirname(__file__)
-    file = 'xlsx/HyperC_tests_simpleinc_log_2.xlsm'
+    file = 'HyperC_test_1-2.divide.tables.1-.reference.in.goal.-.doesnt.work.-.Copy.xlsm'
 
     et = hyper_etable.etable.ETable(os.path.join(mydir, file), "watchtakeif")
     et.calculate()

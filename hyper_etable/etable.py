@@ -490,6 +490,7 @@ class ETable:
                                 filename_value = filename
                             if sheet_value == '':
                                 sheet_value = sheet
+                            used_cell_set.add(f"'[{filename_value}]{sheet_value}'!{letter_value.upper()}{recid_value}")
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
                             goal_code[cell].append(
