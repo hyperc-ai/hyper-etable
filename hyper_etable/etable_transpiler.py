@@ -36,8 +36,9 @@ class StringLikeConstant(object):
 
     @staticmethod
     def new(var_map, var):
-        if var in var_map:
-            return var_map[var]
+        var_type = (var, type(var))
+        if var_type  in var_map:
+            return var_map[var_type]
         else:
             return StringLikeConstant(var_map, var)
 
@@ -48,7 +49,7 @@ class StringLikeConstant(object):
         self.type_group_set = set()
         self.var_map = var_map
         self.new_type_group(var_map)
-        self.var_map[self.var] = self
+        self.var_map[(self.var, type(self.var))] = self
         self.variables = set()
         self.variables.add(self)
 
@@ -83,12 +84,14 @@ class StringLikeVariable:
 
     @staticmethod
     def new(var_map, cell_str=None, filename=None, sheet=None, letter=None, number=None, var_str=None):
-        if var_str in var_map:
-            return var_map[var_str]
+        new_str_var = StringLikeVariable(
+            var_map=var_map, cell_str=cell_str, filename=filename, sheet=sheet, letter=letter, number=number,
+            var_str=var_str)
+        new_str_var_type = (new_str_var, type(new_str_var))
+        if new_str_var_type in var_map:
+            return var_map[new_str_var_type]
         else:
-            return StringLikeVariable(
-                var_map=var_map, cell_str=cell_str, filename=filename, sheet=sheet, letter=letter, number=number,
-                var_str=var_str)
+            return new_str_var
 
     def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
         if cell_str is None:
