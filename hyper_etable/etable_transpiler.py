@@ -94,6 +94,7 @@ class StringLikeVariable:
             return new_str_var
 
     def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
+        self.cell_str = cell_str
         if cell_str is None:
             self.filename = filename
             self.sheet = sheet
@@ -472,6 +473,7 @@ class FunctionCode:
         self.is_atwill = False  # For at-will functions like selectfromrange
         self.effect_vars = set()
         self.is_goal = is_goal
+        self.formula_type = "CALCULATE CELL"
 
     def init_keys(self):
         self.keys = [self.name]
@@ -735,6 +737,7 @@ class EtableTranspilerEasy(EtableTranspiler):
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
+        self.init_code.formula_type = "SELECTFROMRANGE"
         return ret_var
 
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
@@ -754,6 +757,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.var_counter += 1
         code_element = CodeElement()
         self.code.append(code_element)
+        self.init_code.formula_type = "TAKEIF"
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
             branch_name = f'takeif_branch{part}'
@@ -790,6 +794,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}"]
         code_element.code_chunk[f'watchtakeif'].extend(self.init_code.init)
         self.init_code.init=[]
+        self.init_code.formula_type = "WATCHTAKEIF"
         code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
         code_element.precondition_chunk[f'watchtakeif'].append(
             f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")

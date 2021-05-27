@@ -2,6 +2,7 @@
 Convert the HyperC objects back to Excel spreadsheet
 """
 
+import hyper_etable.etable
 import hyperc.xtj
 from collections import defaultdict
 import schedula as sh
@@ -28,8 +29,9 @@ def to_dict(self):
 
 
 class SpileTrancer:
-    def __init__(self, filename, xl_model, static_objects, table_records=None):
+    def __init__(self, filename, xl_model, static_objects, plan_log, table_records=None):
         self.static_objects = static_objects
+        self.plan_log = plan_log
         self.filename = filename
         self.xl_model = xl_model
         # self.xl_dict = xl_model.to_dict()
@@ -114,6 +116,23 @@ class SpileTrancer:
                         all_inputs[xl_cell_ref] = cellvalue
                         self.wb[opxl_sht][opxl_cell_ref] = cellvalue
 
+        plan_columns = ["Step N", "Event Type", "Event Name", "Column Name", "Row", "Cell Value"]
+        lettrs = "ABCDEFGHIJKLMNOP"
+
+        if "_RunAudit" in self.wb:
+            plan_ws = self.wb["_RunAudit"]
+            for r in list(plan_ws.rows)[1:]:
+                for i in range(len(plan_columns)):
+                    r[i].value = None
+        else:
+            plan_ws = self.wb.create_sheet("_RunAudit")
+        for letter, col_n in zip(lettrs, plan_columns):
+            plan_ws[f"{letter.upper()}1"] = col_n
+        for i, step in enumerate(self.plan_log):
+            for letter, reccol in zip(lettrs, step):
+                if isinstance(reccol, hyper_etable.etable.EventNameHolder): 
+                    reccol = str(reccol)
+                plan_ws[f"{letter.upper()}{i+2}"] = reccol
 
         self.xl_model.calculate(inputs=all_inputs)
 

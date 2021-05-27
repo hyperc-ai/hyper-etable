@@ -259,6 +259,15 @@ def STUB_WATCH(*args):
     return 0
 FUNCTIONS["WATCH"] = STUB_WATCH
 
+class EventNameHolder:
+    ename: str
+    def __init__(self) -> None:
+        self.ename = ""
+    def __str__(self):
+        v = str(self.ename)
+        if v.startswith('"') and v.endswith('"'):
+            v = v[1:-1]
+        return v
 
 class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
@@ -288,13 +297,43 @@ class ETable:
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
         self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
+        self.metadata = {"plan_steps": [], "plan_exec": []}
+        self.plan_log = []
 
+    def get_cellvalue_by_cellname(self, cellname):
+        filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
+        py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+        attrname = f"{py_table_name}_{row}"
+        return getattr(getattr(self.mod.HCT_STATIC_OBJECT, attrname), column.lower())
 
     def solver_call(self,goal, extra_instantiations):
         mod=self.mod
         HCT_STATIC_OBJECT = mod.HCT_STATIC_OBJECT
         globals_ = self.methods_classes
-        return hyperc.solve(goal, globals_=globals_, extra_instantiations=extra_instantiations, work_dir=self.tempdir, addition_modules=[mod])
+        ret = hyperc.solve(goal, globals_=globals_, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
+                            addition_modules=[mod], metadata=self.metadata)
+        step_counter = 1
+        ename = EventNameHolder()
+        for step in self.metadata["plan_exec"]:
+            step[0](**step[1])
+            for cellvar in step[0].orig_funcobject.effect_vars:  
+                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
+                ftype = step[0].orig_funcobject.formula_type
+                log_entry = [step_counter, ftype, ename,
+                             f"'{sheet.upper()}'!{column.upper()}", row, self.get_cellvalue_by_cellname(cellvar.cell_str)]
+                if ftype == "TAKEIF":
+                    ename_l = list(step[0].orig_funcobject.sync_cell)
+                    if ename_l:
+                        ename_str = ename_l[0]
+                        if isinstance(ename_str, hyper_etable.etable_transpiler.StringLikeVariable):
+                            ename_str = ename_str.cell_str
+                        if not ename_str.endswith('"') and not ename_str.startswith('"') and "!" in ename_str:
+                            ename_str = self.get_cellvalue_by_cellname(ename_str)
+                        ename.ename = ename_str
+                    ename = EventNameHolder()
+                self.plan_log.append(log_entry)
+            step_counter += 1
+
 
 
     def dump_functions(self, code, filename):
@@ -315,6 +354,7 @@ class ETable:
         for func_code in code.values():
             self.methods_classes[func_code.name] = self.mod.__dict__[func_code.name]
             self.methods_classes[func_code.name].orig_source = str(func_code)
+            self.methods_classes[func_code.name].orig_funcobject = func_code
 
 
     def get_new_table(self, table_name, sheet):
@@ -336,7 +376,7 @@ class ETable:
 
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
-        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT)
+        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
