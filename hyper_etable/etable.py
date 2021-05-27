@@ -398,6 +398,8 @@ class ETable:
                 code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                 code_init.init.append(f'#{node_key}')
                 used_cell_set.add(output)
+                if type(node_val['inputs']) == list:
+                    print("ff")
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
@@ -649,10 +651,10 @@ class ETable:
                         xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
                         if type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str:
                             setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
-                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(xl_orig_calculated_value)
+                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
                         else:
                             setattr(self.objects[py_table_name][recid], letter, 0)
-                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = int
+                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
                         setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
             
         # Type detector
