@@ -449,7 +449,7 @@ class EtableTranspiler:
 class CodeElement:
 
     def __init__(self):
-        self.precondition_chunk = collections.defaultdict(list)
+        self.precondition_chunk = {}
         self.code_chunk = collections.defaultdict(list)
         self.contion_vars = collections.defaultdict(list)
         self.sync_cells = collections.defaultdict(set)
@@ -618,14 +618,21 @@ class FunctionCode:
             init = '\n    '.join(self.init)
             code = ""
             if len(self.precondition) > 0:
+                prev_if_type = 'if'
                 for branch_name in self.keys:
                     precondition = self.precondition.get(branch_name, "")
-                    if len(precondition) > 0:
-                        precondition = " and ".join(precondition)
-                        precondition = f'\n    if {precondition}:'
+                    if_type = precondition[1]
+                    if len(precondition[0]) > 0:
+                        precondition = " and ".join(precondition[0])
+                        precondition = f'\n    {if_type} {precondition}:'
                         operators = '\n        '.join(self.operators.get(branch_name, []))
                         output = '\n        '.join(self.output.get(branch_name, []))
-                        code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
+                        if prev_if_type == 'if' and if_type == 'elif':
+                            code = f'{code}    if False:\n        pass{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
+                        else:
+                            code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
+
+                    prev_if_type = if_type
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
     assert_ok = False
@@ -769,7 +776,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
             branch_name = f'takeif_branch{part}'
-            code_element.precondition_chunk[branch_name].append(
+            if branch_name not in code_element.precondition_chunk:
+                code_element.precondition_chunk[branch_name] = [[],'if']
+            code_element.precondition_chunk[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
             code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
@@ -804,7 +813,9 @@ class EtableTranspilerEasy(EtableTranspiler):
         self.init_code.init=[]
         self.init_code.formula_type = "WATCHTAKEIF"
         code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
-        code_element.precondition_chunk[f'watchtakeif'].append(
+        if f'watchtakeif' not in code_element.precondition_chunk:
+            code_element.precondition_chunk[f'watchtakeif'] = [[], 'elif']
+        code_element.precondition_chunk[f'watchtakeif'][0].append(
             f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
         code_element.code_chunk[f'watchtakeif'].append(
             f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} + 1")
