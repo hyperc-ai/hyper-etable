@@ -323,10 +323,10 @@ class ETable:
             step[0](**step[1])
             for cellvar in step[0].orig_funcobject.effect_vars:  
                 new_value = self.get_cellvalue_by_cellname(cellvar.cell_str)
-                if new_value == orig_vars[str(cellvar.cell_str)] and substep_counter > 0:
+                ftype = step[0].orig_funcobject.formula_type
+                if new_value == orig_vars[str(cellvar.cell_str)] and ftype == "TAKEIF":
                     continue
                 filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
-                ftype = step[0].orig_funcobject.formula_type
                 log_entry = [step_counter, ftype, ename,
                              f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cellvar.cell_str)], 
                              new_value,
