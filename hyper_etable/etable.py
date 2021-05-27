@@ -392,14 +392,14 @@ class ETable:
 
         for node_key, node_val in xl_mdl.dsp.dmap.nodes.items():
             if ('inputs' in node_val) and ('outputs' in node_val):
+                if isinstance(node_val['inputs'], list): # TODO for spill skip may be wrong
+                    continue
                 assert len(node_val['outputs']) == 1, f'Currently support only one cell as output'
                 output = node_val['outputs'][0]
                 out_py = hyperc.xtj.str_to_py(output)
                 code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                 code_init.init.append(f'#{node_key}')
                 used_cell_set.add(output)
-                if type(node_val['inputs']) == list:
-                    print("ff")
                 for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
