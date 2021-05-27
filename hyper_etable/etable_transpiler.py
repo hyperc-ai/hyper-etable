@@ -589,6 +589,7 @@ class FunctionCode:
     def __str__(self):
         if_not_hasattr = ""
         stack_code = []
+        stack_code_str = ""
         if not self.is_goal:
             if self.selectable:
                 stack_code.append('_stack_drop()')
@@ -597,22 +598,22 @@ class FunctionCode:
                 if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
                 for eff_var in self.effect_vars:
                     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
-                    stack_code.append(
-                    f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+                    # stack_code.append(
+                    # f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
             else:
                 pass  # do nothing if at-will like selectfromrange
                 # for eff_var in self.effect_vars:
                 #     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                 #     stack_code.append(
                 #     f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
-        stack_code = '\n    '.join(stack_code)
+        stack_code_str = '\n    '.join(stack_code)
 
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
             operators = '\n    '.join(self.operators)
             return f'''def {self.name}({function_args}):{if_not_hasattr}
     {operators}
-    {stack_code}
+    {stack_code_str}
 '''
         else:
             init = '\n    '.join(self.init)
@@ -637,6 +638,7 @@ class FunctionCode:
     {init}
     assert_ok = False
     {code}
+    {stack_code_str}
     assert assert_ok == True
 '''
             else:
@@ -652,6 +654,7 @@ class FunctionCode:
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
     {code}
+    {stack_code_str}
 '''
 
 def divide_chunks(l, n):
