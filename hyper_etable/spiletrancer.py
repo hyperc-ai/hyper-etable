@@ -119,13 +119,15 @@ class SpileTrancer:
         plan_columns = ["Step N", "Event Type", "Event Name", "Column", "Row", "(Prev. Value)", "Cell Value", "Formula"]
         lettrs = "ABCDEFGHIJKLMNOP"
 
-        if "_RunAudit" in self.wb:
-            plan_ws = self.wb["_RunAudit"]
+        AUDIT_TABLE_NAME = "Calculation Report"
+
+        if AUDIT_TABLE_NAME in self.wb:
+            plan_ws = self.wb[AUDIT_TABLE_NAME]
             for r in list(plan_ws.rows)[1:]:
                 for i in range(len(plan_columns)):
                     r[i].value = None
         else:
-            plan_ws = self.wb.create_sheet("_RunAudit")
+            plan_ws = self.wb.create_sheet(AUDIT_TABLE_NAME)
         for letter, col_n in zip(lettrs, plan_columns):
             plan_ws[f"{letter.upper()}1"] = col_n
         for i, step in enumerate(self.plan_log):
