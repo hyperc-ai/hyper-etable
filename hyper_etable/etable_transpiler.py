@@ -208,6 +208,7 @@ class EtableTranspiler:
         self.formula = formula
         self.inputs = inputs
         self.output = output
+        init_code.formula_str.add(formula)
         self.init_code = init_code
         if self.init_code is None:
             self.init_code = []
@@ -474,6 +475,7 @@ class FunctionCode:
         self.effect_vars = set()
         self.is_goal = is_goal
         self.formula_type = "CALCULATE CELL"
+        self.formula_str = set()
 
     def init_keys(self):
         self.keys = [self.name]
@@ -490,6 +492,7 @@ class FunctionCode:
         self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
+        self.formula_str.update(other.formula_str)
         if other.selectable:
             self.selectable = True
 
@@ -505,6 +508,7 @@ class FunctionCode:
         self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
+        self.formula_str.update(other.formula_str)
         if other.selectable:
             self.selectable = True
 
@@ -530,6 +534,7 @@ class FunctionCode:
         self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
+        self.formula_str.update(other.formula_str)
         if other.selectable:
             self.selectable = True
 

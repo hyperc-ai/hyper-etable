@@ -315,18 +315,25 @@ class ETable:
         step_counter = 1
         ename = EventNameHolder()
         for step in self.metadata["plan_exec"]:
+            orig_vars = {}
+            for cellvar in step[0].orig_funcobject.effect_vars:  
+                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
+                orig_vars[str(cellvar.cell_str)] = self.get_cellvalue_by_cellname(cellvar.cell_str)
             step[0](**step[1])
             for cellvar in step[0].orig_funcobject.effect_vars:  
                 filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
                 ftype = step[0].orig_funcobject.formula_type
                 log_entry = [step_counter, ftype, ename,
-                             f"'{sheet.upper()}'!{column.upper()}", row, self.get_cellvalue_by_cellname(cellvar.cell_str)]
+                             f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cellvar.cell_str)], 
+                             self.get_cellvalue_by_cellname(cellvar.cell_str),
+                             "'"+",".join(step[0].orig_funcobject.formula_str).replace(f"[{filename.upper()}]", "")]
                 if ftype == "TAKEIF":
                     ename_l = list(step[0].orig_funcobject.sync_cell)
                     if ename_l:
                         ename_str = ename_l[0]
                         if isinstance(ename_str, hyper_etable.etable_transpiler.StringLikeVariable):
                             ename_str = ename_str.cell_str
+                        ename_str = str(ename_str)
                         if not ename_str.endswith('"') and not ename_str.startswith('"') and "!" in ename_str:
                             ename_str = self.get_cellvalue_by_cellname(ename_str)
                         ename.ename = ename_str
