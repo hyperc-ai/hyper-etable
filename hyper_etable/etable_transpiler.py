@@ -248,7 +248,7 @@ class EtableTranspiler:
         if len(args) == 2 and self.paren_level > 1:
             v1 = args[0]
             v2 = args[1]
-            return self.save_return(StringLikeVars(f"({v1} and {v2})", [v1, v2]), bool)
+            return self.save_return(StringLikeVars(f"({v1} and {v2})", [v1, v2], 'and'), bool)
         elif self.paren_level == 1:
             for what in args:
                 if what.startswith("(") and what.endswith(")"):
@@ -258,6 +258,9 @@ class EtableTranspiler:
             return "True"
         else:
             raise TypeError("AND() only supports 2 arguments if used in complex formula")
+
+    def f_or(self, v1, v2):
+        return self.save_return(StringLikeVars(f"({v1} or {v2})", [v1, v2], "or"), bool)
 
     def f_eq(self, v1, v2):
         return self.save_return(StringLikeVars(f"({v1} == {v2})", [v1, v2], "=="), bool)
