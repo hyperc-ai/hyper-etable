@@ -649,8 +649,10 @@ class ETable:
                         xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
                         if type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str:
                             setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
+                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(xl_orig_calculated_value)
                         else:
                             setattr(self.objects[py_table_name][recid], letter, 0)
+                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = int
                         setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
             
         # Type detector
