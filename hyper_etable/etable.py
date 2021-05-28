@@ -546,8 +546,15 @@ class ETable:
                             goal_code[cell].append(
                                 f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
                         elif isinstance(value, formulas.tokens.operand.Number):
-                            goal_code[cell].append(
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                            if str(value.attr["name"]) == "TRUE":
+                                goal_code[cell].append(
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True')
+                            elif str(value.attr["name"]) == "FALSE":
+                                goal_code[cell].append(
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False')
+                            else:
+                                goal_code[cell].append(
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
                         elif isinstance(value, formulas.tokens.operand.String):
                             goal_code[cell].append(
                                 f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
