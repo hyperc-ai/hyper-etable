@@ -474,6 +474,7 @@ class FunctionCode:
         self.collapsed = False
         self.selectable = False
         self.watchtakeif = None
+        self.watchtakeif_max = False
         self.is_atwill = False  # For at-will functions like selectfromrange
         self.effect_vars = set()
         self.is_goal = is_goal
