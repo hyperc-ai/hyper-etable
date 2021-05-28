@@ -38,13 +38,13 @@
             "justMyCode": false
         },
         {
-            "name": " PyTest test_selectif_double",
+            "name": " PyTest anothe test",
             "type": "python",
             "request": "launch",
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_etable.py::test_selectif_double"
+                "tests/test_static_xlsx.py::test_simpleinc_and_3_watch"
             ],
             "console": "integratedTerminal",
             "env": {
@@ -55,6 +55,7 @@
                 "HYPERC_MAX_PROC": "1",
                 "HYPERC_USE_CACHE": "0",
                 "HYPERC_TEMPDIR": "./tmp",
+                "HYPERC_DONT_REMOVE_ACTIONS": "1"
                 // "HYPERC_LOGLEVEL": "DEBUG"
             },
             "justMyCode": false
