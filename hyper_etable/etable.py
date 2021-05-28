@@ -450,6 +450,7 @@ class ETable:
         watch_code = []
         for watch_for, recid in min_recid.items():
             watch_code.append(f"WATCHTAKEIF_{watch_for} = {recid.number}")
+            watch_code.append(f"WATCHTAKEIF_MAX_{watch_for} = {max_recid[watch_for].number+1}")
         watch_code = "\n".join(watch_code)
         fn=f"{self.tempdir}/hpy_watch_code.py"
         with open(fn, "w+") as f:
