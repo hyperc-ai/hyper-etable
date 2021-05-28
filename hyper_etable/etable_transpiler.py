@@ -249,6 +249,17 @@ class EtableTranspiler:
             v1 = args[0]
             v2 = args[1]
             return self.save_return(StringLikeVars(f"({v1} and {v2})", [v1, v2], 'and'), bool)
+        elif len(args) == 3 and self.paren_level > 1:
+            v1 = args[0]
+            v2 = args[1]
+            v3 = args[2]
+            return self.save_return(StringLikeVars(f"({v1} and {v2} and {v3})", [v1, v2, v3], 'and'), bool)
+        elif len(args) == 4 and self.paren_level > 1:
+            v1 = args[0]
+            v2 = args[1]
+            v3 = args[2]
+            v4 = args[3]
+            return self.save_return(StringLikeVars(f"({v1} and {v2} and {v3} and {v4})", [v1, v2, v3, v4], 'and'), bool)
         elif self.paren_level == 1:
             for what in args:
                 if str(what).startswith("(") and str(what).endswith(")"):
@@ -257,7 +268,7 @@ class EtableTranspiler:
                                   f"# {self.s_formula} from {self.cur_tbl} (action {self.action['name']})"])
             return "True"
         else:
-            raise TypeError("AND() only supports 2 arguments if used in complex formula")
+            raise TypeError("AND() only supports up to 4 arguments")
 
     def f_or(self, v1, v2):
         return self.save_return(StringLikeVars(f"({v1} or {v2})", [v1, v2], "or"), bool)
