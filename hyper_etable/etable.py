@@ -348,27 +348,31 @@ class ETable:
 
 
 
-    def dump_functions(self, code, filename):
-        s_code = {}
+    def dump_functions(self, functions, filename):
+        full_s_code = {}
         fn = f"{self.tempdir}/{filename}"
-        for func in code.values():
-            code = func.format()
-            if isinstance(code, dict):
-                s_code.update(code)
+        functions_update = {}
+        for func in functions.values():
+            s_code = func.format()
+            if isinstance(s_code, dict):
+                full_s_code.update(s_code)
+                for c in s_code.keys():
+                    functions_update[c] = func
             else:
-                s_code[func.name] = code
+                full_s_code[func.name] = s_code
+        functions.update(functions_update)
         with open(fn, "w+") as f:
             all_code = ''
-            for c in s_code.values():
+            for c in full_s_code.values():
                 all_code += c
             f.write(all_code)
         f_code = compile(all_code, fn, 'exec')
 
         exec(f_code, self.mod.__dict__)
-        for func_code_name, func_code in s_code.items():
+        for func_code_name, func_code in full_s_code.items():
             self.methods_classes[func_code_name] = self.mod.__dict__[func_code_name]
             self.methods_classes[func_code_name].orig_source = func_code
-            # self.methods_classes[func_code.name].orig_funcobject = func_code
+            self.methods_classes[func_code_name].orig_funcobject = functions[func_code_name]
 
 
     def get_new_table(self, table_name, sheet):
@@ -588,7 +592,7 @@ class ETable:
         main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
-        self.dump_functions(goal_code_source, 'hpy_goals.py')
+        self.dump_functions({v.name: v for v in goal_code_source.values()}, 'hpy_goals.py')
 
         code.update(goal_code_source)
 

@@ -628,8 +628,8 @@ class FunctionCode:
 
                         if if_type == 'elif':
                             precondition = " and ".join(precondition[0])
-                            precondition = f'\n    assert {precondition}'
                             full_elif_precondition.append(precondition)
+                            precondition = f'\n    assert {precondition}'
                             operators = '\n    '.join(self.operators.get(branch_name, []))
                             output = '\n    '.join(self.output.get(branch_name, []))
                             code_chunk.append(f'{code}{precondition}\n    {operators}\n    {output}\n')
@@ -639,12 +639,19 @@ class FunctionCode:
                             operators = '\n        '.join(self.operators.get(branch_name, []))
                             output = '\n        '.join(self.output.get(branch_name, []))
                             code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
-
-                
                 function_code ={}
-                i = 0
-                for chunk in code_chunk:
-                    function_code[f'{self.name}_{i}'] = f'''def {self.name}_{i}({function_args}):{if_not_hasattr}
+                if len(full_elif_precondition) > 0:
+                    precondition = " or ".join(full_elif_precondition)
+                    precondition = f'\n    assert not({precondition})'
+                    code_chunk.append(f'{code}{precondition}\n')
+                
+                for i, chunk in enumerate(code_chunk):
+                    if i == len(code_chunk)-1:
+                        f_name = f'{self.name}_final'
+                    else:
+                        f_name = f'{self.name}_{i}'
+                    
+                    function_code[f_name] = f'''def {f_name}({function_args}):{if_not_hasattr}
     {init}
     assert_ok = False
     {chunk}
