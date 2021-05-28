@@ -352,14 +352,9 @@ class ETable:
         s_code = ''
         fn = f"{self.tempdir}/{filename}"
         with open(fn, "w+") as f:
-            # f.write('from hyperc import not_hasattr')
-            f.write('\n')
             for func in code.values():
-                f.write(str(func))
-                f.write('\n')
                 s_code += str(func)
-                s_code += '\n'
-
+            f.write(s_code)
         f_code = compile(s_code, fn, 'exec')
 
         exec(f_code, self.mod.__dict__)
