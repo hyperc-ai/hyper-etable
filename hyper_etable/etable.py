@@ -349,19 +349,26 @@ class ETable:
 
 
     def dump_functions(self, code, filename):
-        s_code = ''
+        s_code = {}
         fn = f"{self.tempdir}/{filename}"
+        for func in code.values():
+            code = func.format()
+            if isinstance(code, dict):
+                s_code.update(code)
+            else:
+                s_code[func.name] = code
         with open(fn, "w+") as f:
-            for func in code.values():
-                s_code += str(func)
-            f.write(s_code)
-        f_code = compile(s_code, fn, 'exec')
+            all_code = ''
+            for c in s_code.values():
+                all_code += c
+            f.write(all_code)
+        f_code = compile(all_code, fn, 'exec')
 
         exec(f_code, self.mod.__dict__)
-        for func_code in code.values():
-            self.methods_classes[func_code.name] = self.mod.__dict__[func_code.name]
-            self.methods_classes[func_code.name].orig_source = str(func_code)
-            self.methods_classes[func_code.name].orig_funcobject = func_code
+        for func_code_name, func_code in s_code.items():
+            self.methods_classes[func_code_name] = self.mod.__dict__[func_code_name]
+            self.methods_classes[func_code_name].orig_source = func_code
+            # self.methods_classes[func_code.name].orig_funcobject = func_code
 
 
     def get_new_table(self, table_name, sheet):

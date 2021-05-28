@@ -586,7 +586,7 @@ class FunctionCode:
                 f'assert HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr == True')
         return "\n    ".join(not_hasattrs)
 
-    def __str__(self):
+    def format(self):
         if_not_hasattr = ""
         stack_code = []
         stack_code_str = ""
@@ -619,28 +619,40 @@ class FunctionCode:
             init = '\n    '.join(self.init)
             code = ""
             if len(self.precondition) > 0:
-                prev_if_type = 'if'
+                code_chunk = []
+                full_elif_precondition = []
                 for branch_name in self.keys:
                     precondition = self.precondition.get(branch_name, "")
                     if_type = precondition[1]
                     if len(precondition[0]) > 0:
-                        precondition = " and ".join(precondition[0])
-                        precondition = f'\n    {if_type} {precondition}:'
-                        operators = '\n        '.join(self.operators.get(branch_name, []))
-                        output = '\n        '.join(self.output.get(branch_name, []))
-                        if prev_if_type == 'if' and if_type == 'elif':
-                            code = f'{code}    if False:\n        pass{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
+
+                        if if_type == 'elif':
+                            precondition = " and ".join(precondition[0])
+                            precondition = f'\n    assert {precondition}'
+                            full_elif_precondition.append(precondition)
+                            operators = '\n    '.join(self.operators.get(branch_name, []))
+                            output = '\n    '.join(self.output.get(branch_name, []))
+                            code_chunk.append(f'{code}{precondition}\n    {operators}\n    {output}\n')
                         else:
+                            precondition = " and ".join(precondition[0])
+                            precondition = f'\n    if {precondition}:'
+                            operators = '\n        '.join(self.operators.get(branch_name, []))
+                            output = '\n        '.join(self.output.get(branch_name, []))
                             code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
 
-                    prev_if_type = if_type
-                return f'''def {self.name}({function_args}):{if_not_hasattr}
+                
+                function_code ={}
+                i = 0
+                for chunk in code_chunk:
+                    function_code[f'{self.name}_{i}'] = f'''def {self.name}_{i}({function_args}):{if_not_hasattr}
     {init}
     assert_ok = False
-    {code}
+    {chunk}
     {stack_code_str}
     assert assert_ok == True
 '''
+                    i = i+1
+                return function_code
             else:
                 if len(self.operators) > 0:
                     operators = '\n    '.join(list(self.operators.values())[0])
