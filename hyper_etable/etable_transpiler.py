@@ -251,7 +251,7 @@ class EtableTranspiler:
             return self.save_return(StringLikeVars(f"({v1} and {v2})", [v1, v2], 'and'), bool)
         elif self.paren_level == 1:
             for what in args:
-                if what.startswith("(") and what.endswith(")"):
+                if str(what).startswith("(") and str(what).endswith(")"):
                     what = what[1:-1]
                 self.code.append(["assert", what,
                                   f"# {self.s_formula} from {self.cur_tbl} (action {self.action['name']})"])
