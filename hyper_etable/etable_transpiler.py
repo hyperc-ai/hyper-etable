@@ -554,7 +554,7 @@ class FunctionCode:
             for op in self.precondition.values():
                 if found:
                     break
-                for line in op:
+                for line in op[0]:
                     if var in line:
                         found = True
                         break
