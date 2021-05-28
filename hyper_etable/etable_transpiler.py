@@ -801,7 +801,7 @@ class EtableTranspilerEasy(EtableTranspiler):
 
     f_selectif = f_takeif
 
-    def f_watchtakeif(self, takeif_cell_address):
+    def f_watchtakeif(self, takeif_cell_address, fix=None):
         assert self.paren_level == 1, "Nested WATCHTAKEIF() is not supported"
         # TODO: check that takeif cell address is not a commpoud formula but a simple address of takeif cell
         ret_var = StringLikeVariable.new(

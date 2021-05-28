@@ -95,10 +95,13 @@ class SpileTrancer:
                         # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
                         self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": 'n'}
                     elif (type(self.xl_dict[xl_cell_ref]) == str and 
-                            self.xl_dict[xl_cell_ref].upper().startswith("=SELECTFROMRANGE")):
+                            (self.xl_dict[xl_cell_ref].upper().startswith("=SELECTFROMRANGE")
+                            or self.xl_dict[xl_cell_ref].upper().startswith("=WATCHTAKEIF"))):
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
                         if type(cellvalue) == str: # if type_ == str:  # bug with type detector workaround
                             cellvalue = f'"{cellvalue}"'
+                        if self.xl_dict[xl_cell_ref].upper().startswith("=WATCHTAKEIF") and cellvalue == 0:
+                            continue
                         orig_opxl_cell = self.wb[opxl_sht][opxl_cell_ref]
                         orig_cell = orig_opxl_cell.value
                         if "," in orig_cell:
