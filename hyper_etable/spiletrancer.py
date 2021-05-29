@@ -119,7 +119,8 @@ class SpileTrancer:
                         all_inputs[xl_cell_ref] = cellvalue
                         self.wb[opxl_sht][opxl_cell_ref] = cellvalue
 
-        plan_columns = ["Step N", "Event Type", "Event Name", "Column", "Row", "(Prev. Value)", "Cell Value", "Formula"]
+        plan_columns = ["Step N", "Automatic Decision", "Event Name", "Leftmost Value", 
+                        "Topmost Value", "Column", "Row", "(Prev. Value)", "Cell Value", "Formula"]
         lettrs = "ABCDEFGHIJKLMNOP"
 
         AUDIT_TABLE_NAME = "Calculation Report"

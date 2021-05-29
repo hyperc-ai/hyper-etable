@@ -1,5 +1,6 @@
 from collections import defaultdict
 from os import mkdir
+import string
 import schedula
 import formulas.excel
 import formulas
@@ -145,6 +146,12 @@ class ETable:
         attrname = f"{py_table_name}_{row}"
         return getattr(getattr(self.mod.HCT_STATIC_OBJECT, attrname), column.lower())
 
+    def get_row_by_cellname(self, cellname):
+        filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
+        py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+        attrname = f"{py_table_name}_{row}"
+        return getattr(self.mod.HCT_STATIC_OBJECT, attrname)
+
     def solver_call(self,goal, extra_instantiations):
         mod=self.mod
         HCT_STATIC_OBJECT = mod.HCT_STATIC_OBJECT
@@ -152,6 +159,7 @@ class ETable:
         ret = hyperc.solve(goal, globals_=globals_, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
                             addition_modules=[mod], metadata=self.metadata)
         step_counter = 1
+        sheetmap = {s.upper():s for s in self.wb_values_only.sheetnames}
         ename = EventNameHolder()
         for step in self.metadata["plan_exec"]:
             substep_counter = 0
@@ -163,10 +171,37 @@ class ETable:
             for cellvar in step[0].orig_funcobject.effect_vars:  
                 new_value = self.get_cellvalue_by_cellname(cellvar.cell_str)
                 ftype = step[0].orig_funcobject.formula_type
+                if ftype == "TAKEIF":
+                    explain_type = "Decide whether to update value"
+                elif ftype == "SELECTFROMRANGE":
+                    explain_type = "Decide one value from a list"
+                else:
+                    explain_type = "(formula recalculation)"
+
                 if new_value == orig_vars[str(cellvar.cell_str)] and ftype == "TAKEIF":
                     continue
                 filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
-                log_entry = [step_counter, ftype, ename,
+                leftmost = ""
+                for ltr in string.ascii_uppercase:
+                    colval = self.wb_values_only[sheetmap[sheet]][f"{ltr}{row}"].value
+                    if type(colval) == str and len(colval) > 0:
+                        leftmost = colval
+                        break
+                topmost = ""
+                i = 0
+                for r in self.wb_values_only[sheetmap[sheet]].rows:
+                    colval = r[string.ascii_uppercase.index(column.upper())].value
+                    if type(colval) == str and len(colval) > 0:
+                        if prev_empty == True:
+                            topmost = colval
+                        prev_empty = False
+                    elif colval == None or colval == "":
+                        prev_empty = True
+                    else:
+                        prev_empty = False
+                    i += 1
+                    if i >= row: break
+                log_entry = [step_counter, explain_type, ename, leftmost, topmost,
                              f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cellvar.cell_str)], 
                              new_value,
                              "'"+",".join(step[0].orig_funcobject.formula_str).replace(f"[{filename.upper()}]", "")]
