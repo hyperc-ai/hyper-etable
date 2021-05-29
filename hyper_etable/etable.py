@@ -19,6 +19,8 @@ import os.path
 import pathlib
 import openpyxl
 
+hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
+
 
 def stack_code_gen_old(obj_name):
     declare = []
@@ -199,8 +201,10 @@ def stack_code_gen_all(objects):
                 l_all_hasattr_drop.append(f"HCT_STATIC_OBJECT.{cname}_{idx}.{col}_not_hasattr = True")
 
     drop_content = "\n    ".join(l_all_hasattr_drop)
+    warrants = '\n    '.join(hyper_etable.etable_transpiler.generate_ne_warrants(drop_content))
     scode = f"""def _stack_drop():
     pass
+    {warrants}
     {drop_content}"""
     return scode
 

@@ -1,6 +1,7 @@
 import re
 import formulas
 import collections
+import itertools
 import hyperc.settings
 import hyperc.xtj
 import hyperc.util
@@ -9,6 +10,8 @@ import copy
 import random
 import string
 import hyper_etable.type_mapper
+
+VAR_RE = re.compile(r"\.(.+_\d+)\.")
 
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
@@ -31,6 +34,20 @@ def get_var_from_cell(cell_str):
     sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
     return var_name
+
+
+def generate_ne_warrants(all_init):
+    "Generate not-equal for objects that are guaranteed not to be equal"
+    warrants = []
+    all_vars = VAR_RE.findall(all_init)
+    if not all_vars: return []
+    all_vars = set(all_vars)
+    for a, b in itertools.combinations(all_vars, r=2):
+        # code += f"    assert {a} != {b}\n"
+        a_b = sorted([f'{a}',f'{b}'])
+        warrants.append(f"ensure_ne(HCT_STATIC_OBJECT.{a_b[0]}, HCT_STATIC_OBJECT.{a_b[1]})")
+    return warrants
+
 
 class StringLikeConstant(object):
 
@@ -597,7 +614,7 @@ class FunctionCode:
             not_hasattrs.append(
                 f'assert HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr == True')
         return "\n    ".join(not_hasattrs)
-
+    
     def __str__(self):
         if_not_hasattr = ""
         stack_code = []
@@ -623,7 +640,10 @@ class FunctionCode:
         function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
             operators = '\n    '.join(self.operators)
+            all_code = f"{if_not_hasattr} {operators}"
+            warrants = '\n    '.join(generate_ne_warrants(all_code))
             return f'''def {self.name}({function_args}):{if_not_hasattr}
+    {warrants}
     {operators}
     {stack_code_str}
 '''
@@ -646,8 +666,11 @@ class FunctionCode:
                             code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
 
                     prev_if_type = if_type
+                all_code = f"{if_not_hasattr} {init} {code}"
+                warrants = '\n    '.join(generate_ne_warrants(all_code))
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
+    {warrants}
     assert_ok = False
     {code}
     {stack_code_str}
@@ -663,8 +686,11 @@ class FunctionCode:
                 else:
                     output = ''
                 code = f'{code}\n    {operators}\n    {output}\n'
+                all_code = f"{if_not_hasattr} {init} {code}"
+                warrants = '\n    '.join(generate_ne_warrants(all_code))
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
+    {warrants}
     {code}
     {stack_code_str}
 '''
