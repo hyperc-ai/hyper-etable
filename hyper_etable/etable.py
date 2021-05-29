@@ -174,7 +174,7 @@ class ETable:
                 if ftype == "TAKEIF":
                     explain_type = "Decide whether to update value"
                 elif ftype == "SELECTFROMRANGE":
-                    explain_type = "Decide one value from a list"
+                    explain_type = "Choose one value from a list"
                 else:
                     explain_type = "(formula recalculation)"
 
