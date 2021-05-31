@@ -283,11 +283,8 @@ class ETable:
                         self.get_new_table(py_table_name, sheet)
                     if isinstance(recid, list):
                         continue
-                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
-                    var_name = f'var_tbl_{py_table_name}__hct_direct_ref__{recid}_{letter}'
-                    # FIXME: this init code is being used+cleaned in some crazy while-true loop in def clean() in transpiler
-                    code_init.init.append(f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter} # TEST HERE')
-                    code_init.hasattr_code.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}_not_hasattr == False')
+                    code_init.input_variables.append(hyper_etable.etable_transpiler.StringLikeVariable.new(
+                        var_map=global_table_type_mapper, cell_str=input))
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
@@ -334,6 +331,7 @@ class ETable:
 
         for func in code.values():
             func.clean()
+            func.gen_init()
             for var in func.sync_cell:
                 if not isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
                     continue

@@ -489,6 +489,7 @@ class FunctionCode:
         self.parent_name = set()
         if parent_name is not None:
             self.parent_name.add(parent_name)
+        self.input_variables = [] # generate self.init from this list
         self.init = []
         self.keys = []
         self.hasattr_code = []
@@ -572,40 +573,42 @@ class FunctionCode:
 
     def clean(self):
         for_del = set()
-        for init in self.init:
+        for var in self.input_variables:
             found = False
-            var = init.split('#')[0].split('=')[0].strip()
-            if len(var) == 0:
-                continue
-            if 'assert' in var:
-                continue
             for op in self.precondition.values():
                 if found:
                     break
+                var_str = str(var)
                 for line in op[0]:
-                    if var in line:
+                    if var_str in line:
                         found = True
                         break
             for op in self.operators.values():
                 if found:
                     break
                 for line in op:
-                    if var in line:
+                    if var_str in line:
                         found = True
                         break
             for op in self.output.values():
                 if found:
                     break
                 for line in op:
-                    if var in line:
+                    if var_str in line:
                         found = True
                         break
             if not found:
-                for_del.add(init)
+                for_del.add(var)
                 break
-        for str in for_del:
-            self.init.remove(str)
-        self.init.extend(self.hasattr_code)
+        for s in for_del:
+            self.input_variables.remove(s)
+    
+    def gen_init(self):
+        for var in self.input_variables:
+            py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+            self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
+            self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
+        self.init.extend(self.hasattr_code) #should gen init and hasattr
 
     def gen_not_hasattr(self):
         not_hasattrs = []
@@ -711,6 +714,7 @@ class EtableTranspilerEasy(EtableTranspiler):
                     for ce in code_chunk.code_chunk:
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
+                        code[f'{self.init_code.name}_{ce}'].input_variables = copy.copy(self.init_code.input_variables)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                         code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
