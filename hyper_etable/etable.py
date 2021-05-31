@@ -189,6 +189,7 @@ class ETable:
                         break
                 topmost = ""
                 i = 0
+                prev_empty = False
                 for r in self.wb_values_only[sheetmap[sheet]].rows:
                     colval = r[string.ascii_uppercase.index(column.upper())].value
                     if type(colval) == str and len(colval) > 0:
@@ -284,7 +285,7 @@ class ETable:
                     if isinstance(recid, list):
                         continue
                     code_init.input_variables.append(hyper_etable.etable_transpiler.StringLikeVariable.new(
-                        var_map=global_table_type_mapper, cell_str=input))
+                        var_map=var_mapper, cell_str=input))
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
