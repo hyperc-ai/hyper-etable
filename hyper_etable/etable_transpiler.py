@@ -574,11 +574,11 @@ class FunctionCode:
     def clean(self):
         for_del = set()
         for var in self.input_variables:
+            var_str = str(var)
             found = False
             for op in self.precondition.values():
                 if found:
                     break
-                var_str = str(var)
                 for line in op[0]:
                     if var_str in line:
                         found = True
@@ -599,7 +599,6 @@ class FunctionCode:
                         break
             if not found:
                 for_del.add(var)
-                break
         for s in for_del:
             self.input_variables.remove(s)
     
