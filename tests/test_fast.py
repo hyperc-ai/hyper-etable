@@ -7,7 +7,7 @@ import glob
 import os
 
 try:
-    @pytest.mark.timeout(300)
+    @pytest.mark.timeout(3000)
     @pytest.mark.parametrize('name, xlsx_file',
                              [(str(p),
                                p)
