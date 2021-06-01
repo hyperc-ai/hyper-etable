@@ -797,7 +797,7 @@ class EtableTranspilerEasy(EtableTranspiler):
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
         self.init_code.formula_type = "SELECTFROMRANGE"
-        return ret_var
+        return StringLikeVars(ret_var, [ret_var, rng], "")
 
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
     def f_takeif(self, *args):
