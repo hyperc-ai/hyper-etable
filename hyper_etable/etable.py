@@ -321,7 +321,7 @@ class ETable:
 
     def calculate(self):
 
-        g=self.get_range_name_by_cell("'[fff]ggg'!B1")
+        # g=self.get_range_name_by_cell("'[fff]ggg'!B1")
 
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
