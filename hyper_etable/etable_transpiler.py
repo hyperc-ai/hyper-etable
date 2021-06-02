@@ -15,9 +15,9 @@ VAR_RE = re.compile(r"\.(.+_\d+)\.")
 
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
-    cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
+    cell_ = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))
-    cell = cell[0][0].attr
+    cell = cell_[0][0].attr
     if 'r1' not in cell:
         raise Exception("Defined ranges is not supported")
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):

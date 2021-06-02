@@ -140,6 +140,45 @@ class ETable:
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
 
+    def get_range_name_by_cell(self, cellname):
+        filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname)
+        if (row, list):
+            raise Exception("get_range_name_by_cell requirec one Cell not Range")
+        
+        #collect tables 
+        # for ws in self.wb_values_only.worksheets
+
+
+        for df in self.wb_values_only.defined_names.definedName:
+            try:
+                filename_n, sheet_n, row_n, column_n = hyper_etable.etable_transpiler.split_cell(df.attr_text)
+            except:
+                pass
+            if filename == filename_n and sheet == sheet_n:
+                if (column_n, list):
+                    letter_stop = column_n[1]
+                    letter_next = column_n[0]
+                    found = False
+                    while letter_next != letter_stop:
+                        if letter_next == column:
+                            found = True
+                            break
+                        letter_next = hyperc.util.letter_index_next(letter = letter_next).lower()
+                    else:
+                        if letter_next == column:
+                            found = True
+                    if not found:
+                        continue
+                elif column_n != column:
+                    continue
+                if isinstance(row_n, list):
+                    if not(row >= row_n[0] and row <= row_n[1]):
+                        continue
+                elif row != row_n:
+                    continue
+                return df.name
+        return None
+
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
         py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
@@ -256,8 +295,11 @@ class ETable:
 
     def calculate(self):
 
+        # g=self.get_range_name_by_cell("'[fff]ggg'!B1")
+
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
+        # 
         stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
         var_mapper = {}
         global_table_type_mapper = {}
