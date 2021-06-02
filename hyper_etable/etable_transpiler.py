@@ -21,9 +21,9 @@ def split_cell(cell_str):
     if 'r1' not in cell:
         raise Exception("Defined ranges is not supported")
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
-        return (cell['excel'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
+        return (cell['filename'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
     else:
-        return (cell['excel'], cell['sheet'], int(cell['r1']), cell['c1'].lower())
+        return (cell['filename'], cell['sheet'], int(cell['r1']), cell['c1'].lower())
 
 
 def get_var_from_cell(cell_str):
@@ -31,7 +31,7 @@ def get_var_from_cell(cell_str):
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     letter = cell['c1'].lower()
     number = cell['r1']
-    sheet_name = hyperc.xtj.str_to_py(f"[{cell['excel']}]{cell['sheet']}")
+    sheet_name = hyperc.xtj.str_to_py(f"[{cell['filename']}]{cell['sheet']}")
     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
     return var_name
 

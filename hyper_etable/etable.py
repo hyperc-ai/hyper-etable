@@ -261,6 +261,7 @@ class ETable:
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
+        filename_case_remap_workaround = {}
 
         used_cell_set = set()
 
@@ -278,6 +279,8 @@ class ETable:
                     used_cell_set.add(used_cell)
                 for input in node_val['inputs']:
                     filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(input)
+                    if not filename in filename_case_remap_workaround:
+                        filename_case_remap_workaround[filename.upper()] = filename
                     py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
                     if py_table_name not in self.classes:
                         self.get_new_table(py_table_name, sheet)
@@ -397,21 +400,22 @@ class ETable:
         # TODO set goal here
         goal_code = defaultdict(list)
         for filename, book in xl_mdl.books.items():
+            filename = filename_case_remap_workaround.get(filename, filename)
             for worksheet in book[formulas.excel.BOOK].worksheets:
                 for rule_cell in worksheet.conditional_formatting._cf_rules:
                     assert len(rule_cell.sqref.ranges) == 1, "only one cell ondition support"
                     sheet = worksheet.title
-                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}".upper()
+                    cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}"
                     used_cell_set.add(cell)
-                    filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
+                    filename_, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     for rule in rule_cell.rules:
                         value = hyper_etable.etable_transpiler.formulas_parser(rule.formula[0])[0]
                         if isinstance(value, formulas.tokens.operand.Range):
                             filename_value, sheet_value, recid_value, letter_value = hyper_etable.etable_transpiler.split_cell(
                                 rule.formula[0])
-                            if filename_value == '':
-                                filename_value = filename
+                            # if filename_value == '':
+                            filename_value = filename
                             if sheet_value == '':
                                 sheet_value = sheet
                             used_cell_set.add(f"'[{filename_value}]{sheet_value}'!{letter_value.upper()}{recid_value}")
@@ -471,6 +475,7 @@ class ETable:
         for cell in used_cell_set:
 
             filename, sheet, recid_ret, letter_ret = hyper_etable.etable_transpiler.split_cell(cell)
+            filename = filename_case_remap_workaround.get(filename, filename)
             py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             if isinstance(recid_ret, list):
                 recid_ret = range(recid_ret[0], recid_ret[1] + 1)

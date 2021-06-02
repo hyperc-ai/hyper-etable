@@ -40,7 +40,7 @@ class SpileTrancer:
     
     def gen_xl_addr(self, filename, sheetname, letter, rownum):
         filename = os.path.basename(filename)
-        return f"'[{filename}]{sheetname}'!{letter}{rownum}".upper()
+        return f"'[{filename}]{sheetname}'!{letter.upper()}{rownum}"
 
     def gen_opxl_addr(self, filename, sheetname, letter, rownum):
         filename = os.path.basename(filename)
