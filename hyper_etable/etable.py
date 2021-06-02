@@ -189,6 +189,7 @@ class ETable:
                         break
                 topmost = ""
                 i = 0
+                prev_empty = False
                 for r in self.wb_values_only[sheetmap[sheet]].rows:
                     colval = r[string.ascii_uppercase.index(column.upper())].value
                     if type(colval) == str and len(colval) > 0:
@@ -286,11 +287,8 @@ class ETable:
                         self.get_new_table(py_table_name, sheet)
                     if isinstance(recid, list):
                         continue
-                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
-                    var_name = f'var_tbl_{py_table_name}__hct_direct_ref__{recid}_{letter}'
-                    # FIXME: this init code is being used+cleaned in some crazy while-true loop in def clean() in transpiler
-                    code_init.init.append(f'{var_name} = HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter} # TEST HERE')
-                    code_init.hasattr_code.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{recid}.{letter}_not_hasattr == False')
+                    code_init.input_variables.append(hyper_etable.etable_transpiler.StringLikeVariable.new(
+                        var_map=var_mapper, cell_str=input))
 
                 # formula= hyper_etable.etable_transpiler.EtableTranspiler(
                 #     node_key, node_val['inputs'].keys(), output)
@@ -337,6 +335,7 @@ class ETable:
 
         for func in code.values():
             func.clean()
+            func.gen_init()
             for var in func.sync_cell:
                 if not isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
                     continue
@@ -517,20 +516,7 @@ class ETable:
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
                     cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
-                    if not cell in xl_mdl.cells:
-                        raise ReferenceError(f"Referencing empty cell {cell}")
-                    if xl_mdl.cells[cell].value is not schedula.EMPTY:
-                        cell_value = xl_mdl.cells[cell].value
-                        setattr(self.objects[py_table_name][recid], letter, cell_value)
-                        setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
-                        # FIXME: needs type detector, then these lines can be removed -->
-                        # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
-                        # self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
-                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str  # bug hyperc#453
-                        self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453 
-                        # <-- end FIXME
-
-                    else:
+                    if cell not in xl_mdl.cells or xl_mdl.cells[cell].value is schedula.EMPTY:
                         # TODO this is stumb for novalue cell. We should use Novalue ????
                         ox_sht, ox_cell_ref = stl.gen_opxl_addr(self.filename, 
                                                         self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
@@ -540,10 +526,20 @@ class ETable:
                             setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
                             self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
                         else:
-                            setattr(self.objects[py_table_name][recid], letter, 0)
+                            setattr(self.objects[py_table_name][recid], letter, '')
                             self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
                         setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
-            
+
+                    else:
+                        cell_value = xl_mdl.cells[cell].value
+                        setattr(self.objects[py_table_name][recid], letter, cell_value)
+                        setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
+                        # FIXME: needs type detector, then these lines can be removed -->
+                        # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
+                        # self.objects[py_table_name][recid].__annotations__[letter] = type(cell_value)
+                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str  # bug hyperc#453
+                        self.objects[py_table_name][recid].__annotations__[letter] = str  # bug hyperc#453 
+                        # <-- end FIXME
         # Type detector
         # Match all group neighbor each other
         # by Breadth-first search now

@@ -4,7 +4,7 @@ import os
 
 def test_etable():
     mydir = os.path.dirname(__file__)
-    file = 'xlsx/selectfromrange_takeif_twice_synced.xlsx'
+    file = 'a_sfr_double.xlsx'
 
     et = hyper_etable.etable.ETable(os.path.join(mydir, file), "watchtakeif")
     et.calculate()
