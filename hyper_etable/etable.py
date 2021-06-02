@@ -139,15 +139,41 @@ class ETable:
         self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
+        self.table_collums = {}
+        for ws in self.wb_values_only.worksheets:
+            for t in ws.tables.values():
+                for c in t.tableColumns:
+                    _, _, unpak_range_row, unpak_range_column  = hyper_etable.etable_transpiler.split_cell(f"'[file]sheet'!{t.ref}")
+                    letter_stop = unpak_range_column[1]
+                    letter_next = unpak_range_column[0]
+                    idx = 1
+                    while idx != c.id:
+                        letter_next = hyperc.util.letter_index_next(letter=letter_next).lower()
+                        idx += 1
+                    cell_range = ""
+                    self.table_collums[(self.filename, ws.title, t.name, c.name)] = (
+                        (letter_next, letter_next), unpak_range_row)
+
 
     def get_range_name_by_cell(self, cellname):
-        filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname)
-        if (row, list):
-            raise Exception("get_range_name_by_cell requirec one Cell not Range")
-        
-        #collect tables 
-        # for ws in self.wb_values_only.worksheets
-
+        # filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname)
+        # if (row, list):
+        #     raise Exception("get_range_name_by_cell requirec one Cell not Range")
+        filename=self.filename
+        sheet = 'Sheet1'
+        row = 9
+        column = 'd'
+        #collect tables
+        #extract collums
+        table_collums = {}
+        for filename_n, sheet_n, table_name, column_name in self.table_collums:
+            column_n, row_n = self.table_collums[(filename_n, sheet_n, table_name, column_name)]
+            if filename == filename_n and sheet == sheet_n:
+                if column_n[0] != column.lower():
+                    continue
+                if not(row >= row_n[0] and row <= row_n[1]):
+                    continue
+                return f'{table_name}[{column_name}]'
 
         for df in self.wb_values_only.defined_names.definedName:
             try:
@@ -295,7 +321,7 @@ class ETable:
 
     def calculate(self):
 
-        # g=self.get_range_name_by_cell("'[fff]ggg'!B1")
+        g=self.get_range_name_by_cell("'[fff]ggg'!B1")
 
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
