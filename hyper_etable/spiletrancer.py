@@ -76,7 +76,7 @@ class SpileTrancer:
                     opxl_sht, opxl_cell_ref = self.gen_opxl_addr(self.filename, sheetname, letter, rownum)
 
                     # First, check what we currently have at this cell
-                    if (type(self.xl_dict[xl_cell_ref]) == str and 
+                    if (type(self.xl_dict.get(xl_cell_ref, None)) == str and
                             self.xl_dict[xl_cell_ref].upper().startswith("=TAKEIF")):
                         # TAKRIF -> replace default value
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
@@ -94,7 +94,7 @@ class SpileTrancer:
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
                         # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
                         self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": 'n'}
-                    elif (type(self.xl_dict[xl_cell_ref]) == str and 
+                    elif (type(self.xl_dict.get(xl_cell_ref, None)) == str and
                             (self.xl_dict[xl_cell_ref].upper().startswith("=SELECTFROMRANGE")
                             or self.xl_dict[xl_cell_ref].upper().startswith("=WATCHTAKEIF"))):
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
@@ -111,7 +111,7 @@ class SpileTrancer:
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
                         # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
                         self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": "n"}
-                    elif (type(self.xl_dict[xl_cell_ref]) == str and 
+                    elif (type(self.xl_dict.get(xl_cell_ref, None)) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=")):
                         pass
                     else:  # raw value? just write what we have
