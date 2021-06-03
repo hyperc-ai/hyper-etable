@@ -121,6 +121,9 @@ class SpileTrancer:
 
         plan_columns = ["Step N", "Automatic Decision", "Event Name", "Leftmost Value", 
                         "Topmost Value", "Column", "Row", "(Prev. Value)", "Cell Value", "Formula"]
+        final_log_entry = ["", "(final formula calculations)", "", "", 
+                           "", "", "", "", "", ""]
+        self.plan_log.append(final_log_entry)
         lettrs = "ABCDEFGHIJKLMNOP"
 
         AUDIT_TABLE_NAME = "Calculation Report"
