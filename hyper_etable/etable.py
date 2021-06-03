@@ -29,6 +29,12 @@ class PlainCell:
         self.letter = letter
         self.number = number
 
+    def __hash__(self):
+        return hash(self.filename) & hash(self.sheet) & hash(self.letter) & hash(self.number)
+
+    def __str__(self):
+        return f'[{self.filename}]{self.sheet}!{self.letter}{self.number}'
+
 def stack_code_gen_all(objects):
     l_all_hasattr_drop = []
     for cname, rows in objects.items():
@@ -146,6 +152,7 @@ class ETable:
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.table_collums = {}
+        self.cells_value = {}
         for ws in self.wb_values_only.worksheets:
             for t in ws.tables.values():
                 for c in t.tableColumns:
@@ -342,10 +349,10 @@ class ETable:
         for ws in self.wb_values_only.worksheets:
             for row in ws.iter_rows():
                 for cell in row:
-                    if text_formula is None:
+                    if cell.value is None:
                         continue # skip empty cell
                     text_formula = str(cell.value)
-                    if text_formula.startswith("="):
+                    if not text_formula.startswith("="):
                         continue # pass only formulas
                     output = hyper_etable.etable_transpiler.StringLikeVariable(
                         var_map=var_mapper, filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
