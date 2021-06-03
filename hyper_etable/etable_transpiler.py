@@ -624,6 +624,9 @@ class EtableTranspiler:
             cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"
         else:
             cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
+
+        #TODO Query range from etable.py.ETable.table_collums here
+
         return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
 
     def save_return(self, ret, type_=None):
