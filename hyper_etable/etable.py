@@ -361,9 +361,9 @@ class ETable:
                     code_init.init.append(f'#{text_formula}')
                     used_cell_set.add(PlainCell(filename=self.filename, sheet=ws.title,
                                                 letter=cell.column_letter, number=cell.column))
-                    formula = hyper_etable.etable_transpiler.EtableTranspilerEasy(
+                    formula = hyper_etable.etable_transpiler.EtableTranspiler(
                         formula=text_formula,
-                        output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
+                        output=output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                     formula.transpile_start()
                     # set default value for takeif
                     var = formula.default
@@ -427,7 +427,7 @@ class ETable:
                     code[func_name_other].merge(code[func_name])
                     del code[func_name]
                     deleted_keys.add(func_name)
-        
+
         # merge watchtakeif's
         deleted_keys = set()
         for watchif_func_name in list(code.keys()):
@@ -541,7 +541,6 @@ class ETable:
 
 
         for cell in used_cell_set:
-
             filename, sheet, recid_ret, letter_ret = hyper_etable.etable_transpiler.split_cell(cell)
             filename = filename_case_remap_workaround.get(filename, filename)
             py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')

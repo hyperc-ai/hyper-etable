@@ -257,19 +257,15 @@ class EtableTranspiler:
         self.function_parens_args = collections.defaultdict(list)
         self.code = []
         self.remember_types = {}
-        self.return_var = StringLikeVariable.new(var_map = self.var_mapper, cell_str=self.output)
         transpiled_formula_return = self.transpile(self.nodes)
-        filename, sheet, recid, letter = split_cell(self.output)
-        self.filename = filename
-        self.sheet = sheet
-        self.recid = recid
-        self.letter = letter
-        sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}")
+        sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
-        self.output_code.append(f'{self.return_var} = {transpiled_formula_return}')
-        self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
-        self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter}_not_hasattr = False')
-        self.output_code.append(f'# side effect with {self.return_var} can be added here')
+        self.output_code.append(f'{self.output} = {transpiled_formula_return}')
+        self.output_code.append(
+            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.recid}.{self.output.letter} = {self.output}')
+        self.output_code.append(
+            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.recid}.{self.output.letter}_not_hasattr = False')
+        self.output_code.append(f'# side effect with {self.output} can be added here')
 
         code = {}
         for idx, code_chunk in enumerate(self.code):
@@ -307,7 +303,7 @@ class EtableTranspiler:
             code[self.init_code.name] = self.init_code
         for c in code.values():
             c.output[c.name].extend(self.output_code)
-            c.effect_vars.add(self.return_var)
+            c.effect_vars.add(self.output)
         self.code = code
         for c in self.code.values():
             c.init_keys()
@@ -415,7 +411,7 @@ class EtableTranspiler:
         code_element = CodeElement()
         self.code.append(code_element)
         code_element.code_chunk[f'watchtakeif'].extend(self.init_code.hasattr_code)
-        self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}"]
+        self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.output.letter}"]
         code_element.code_chunk[f'watchtakeif'].extend(self.init_code.init)
         self.init_code.init = []
         self.init_code.formula_type = "WATCHTAKEIF"
@@ -423,9 +419,9 @@ class EtableTranspiler:
         if f'watchtakeif' not in code_element.precondition_chunk:
             code_element.precondition_chunk[f'watchtakeif'] = [[], 'elif']
         code_element.precondition_chunk[f'watchtakeif'][0].append(
-            f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
+            f"(WATCHTAKEIF_{takeif_cell_address}_{self.output.letter} == {self.output.number})")
         code_element.code_chunk[f'watchtakeif'].append(
-            f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} + 1")
+            f"WATCHTAKEIF_{takeif_cell_address}_{self.output.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.output.letter} + 1")
         code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
@@ -884,8 +880,3 @@ def divide_chunks(l, n):
     # looping till length l
     for i in range(0, len(l), n):
         yield l[i:i + n]
-
-class EtableTranspilerEasy(EtableTranspiler):
-
-    def transpile_start(self):
-        super(EtableTranspilerEasy, self).transpile_start()
