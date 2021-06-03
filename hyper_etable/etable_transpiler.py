@@ -13,13 +13,23 @@ import hyper_etable.type_mapper
 
 VAR_RE = re.compile(r"\.(.+_\d+)\.")
 
+
+class CellError(Exception):
+    pass    
+
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
     cell_ = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))
     cell = cell_[0][0].attr
+
+    if isinstance(cell_[0][0], formulas.tokens.operand.Error):
+        raise CellError()
+
     if 'r1' not in cell:
-        raise Exception("Defined ranges is not supported")
+        # seems cell is named range or table
+        return (cell['filename'], cell['sheet'], cell['ref'], cell['ref'])
+        
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
         return (cell['filename'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
     else:
@@ -214,7 +224,7 @@ bogus_end_re = re.compile(r"\<\d+\>$")
 
 class EtableTranspiler:
 
-    def __init__(self, formula, inputs, output, var_mapper, table_type_mapper, init_code=None):
+    def __init__(self, formula, output, var_mapper, table_type_mapper, init_code=None):
         self.var_mapper = var_mapper
         self.table_type_mapper = table_type_mapper
         if formula.endswith("<0>"):
@@ -223,7 +233,7 @@ class EtableTranspiler:
             formula = bogus_start_re.sub("=", formula, 1)
         formula = bogus_end_re.sub("", formula, 1)
         self.formula = formula
-        self.inputs = inputs
+        # self.inputs = inputs #should get from args
         self.output = output
         init_code.formula_str.add(formula)
         self.init_code = init_code
@@ -260,6 +270,179 @@ class EtableTranspiler:
         self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter} = {self.return_var}')
         self.output_code.append(f'HCT_STATIC_OBJECT.{sheet_name}_{recid}.{letter}_not_hasattr = False')
         self.output_code.append(f'# side effect with {self.return_var} can be added here')
+
+        code = {}
+        for idx, code_chunk in enumerate(self.code):
+            if isinstance(code_chunk, CodeElement):
+                if len(code_chunk.code_chunk) > 1:
+                    for ce in code_chunk.code_chunk:
+                        code[f'{self.init_code.name}_{ce}'] = FunctionCode(
+                            name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
+                        code[f'{self.init_code.name}_{ce}'].input_variables = copy.copy(self.init_code.input_variables)
+                        code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
+                        code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
+                        code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
+                        code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
+                        code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
+                        code[f'{self.init_code.name}_{ce}'].idx = idx
+                        code[f'{self.init_code.name}_{ce}'].selectable = True
+                else:
+                    ce = list(code_chunk.code_chunk.keys())[0]
+                    self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
+                    self.init_code.operators[self.init_code.name] = code_chunk.code_chunk[ce]
+                    self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
+                    self.init_code.sync_cell.update(code_chunk.sync_cells[ce])
+                    self.init_code.args.update(code_chunk.all_vars[ce])
+                    self.init_code.selectable = True
+            else:
+                self.init_code.operators[self.init_code.name].append(code_chunk)
+        if (len(code) > 1):
+            for branch_name in code:
+                code[branch_name].operators[code[branch_name].name] = self.init_code.operators[self.init_code.name][
+                    0: idx] + code[branch_name].operators[code[branch_name].name]
+                code[branch_name].operators[code[branch_name].name].extend(
+                    list(self.init_code.operators.values())[0][idx:])
+        else:
+            code[self.init_code.name] = self.init_code
+        for c in code.values():
+            c.output[c.name].extend(self.output_code)
+            c.effect_vars.add(self.return_var)
+        self.code = code
+        for c in self.code.values():
+            c.init_keys()
+
+    def f_vlookup(self, *args):
+        if len(args) == 3:
+            args = list(args)
+            args.append('True == True')
+        assert len(args) == 4, "VLOOKUP should be 3 or 4 arguments"
+        cell, rng, column, range_lookup = args
+        p = hyperc.util.letter_index_next(letter=rng.letter[0])
+        for i in range(column.var-2):
+            p = hyperc.util.letter_index_next(letter=p)
+        p = p.lower()
+        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
+
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_VLOOKUP_{get_var_from_cell(self.output)}_{self.var_counter}')
+        self.var_counter += 1
+        self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
+        self.init_code.init.append(f'{ret_var} = {rng}.{p}')
+        self.code.append(f'assert {rng}.{rng.letter[0]} == {cell}')
+
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
+        self.code.append(f'assert {rng}.recid >= {rng.number[0]}')
+        self.code.append(f'assert {rng}.recid <= {rng.number[1]}')
+
+        # self.init_code.selectable = True
+        self.init_code.is_atwill = True
+        return ret_var
+
+    def f_selectfromrange(self, rng, fix=None):
+        assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
+        rng.var_str = f'{rng.var_str}_{self.var_counter}'
+        self.var_counter += 1
+        # select_var = StringLikeVariable.new(
+        #     var_map=self.var_mapper, cell_str=rng.attr['name'])
+        # select_var.var_str
+        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
+        self.var_counter += 1
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'assert {rng}.recid >= {rng.number[0]}')
+        self.init_code.init.append(f'assert {rng}.recid <= {rng.number[1]}')
+
+        # self.init_code.selectable = True
+        self.init_code.is_atwill = True
+        self.init_code.formula_type = "SELECTFROMRANGE"
+        return StringLikeVars(ret_var, [ret_var, rng], "")
+
+    # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
+    def f_takeif(self, *args):
+        assert self.paren_level == 1, "Nested TAKEIF() is not supported"
+        assert len(args) >= 3, "TAKEIF() args should be 3 and more"
+        if len(args) == 3:
+            args = list(args)
+            args.append(None)
+        assert ((len(args)-1) % 3) == 0, "Args in TAKEIF() should be multiple of three plus one"
+        if self.paren_level == 1:
+            self.default = args[0]
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_TAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_expr = StringLikeVars(ret_var, args, "takeif")
+        self.var_counter += 1
+        code_element = CodeElement()
+        self.code.append(code_element)
+        self.init_code.formula_type = "TAKEIF"
+        part = 0
+        for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
+            branch_name = f'takeif_branch{part}'
+            if branch_name not in code_element.precondition_chunk:
+                code_element.precondition_chunk[branch_name] = [[], 'if']
+            code_element.precondition_chunk[branch_name][0].append(
+                f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
+            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
+
+            self.save_return(
+                StringLikeVars(
+                    f"{ret_expr} = {a_value}", [ret_var, a_value],
+                    "="))
+            if a_syncon is not None:
+                code_element.sync_cells[branch_name].add(a_syncon)
+            code_element.contion_vars[branch_name].extend(a_condition.variables)
+            code_element.all_vars[branch_name].extend(a_condition.variables)
+            code_element.all_vars[branch_name].extend(a_value.variables)
+            part += 1
+
+        return ret_expr
+
+    f_selectif = f_takeif
+
+    def f_watchtakeif(self, takeif_cell_address, fix=None):
+        assert self.paren_level == 1, "Nested WATCHTAKEIF() is not supported"
+        # TODO: check that takeif cell address is not a commpoud formula but a simple address of takeif cell
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f'var_tbl_WATCHTAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+        ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
+
+        code_element = CodeElement()
+        self.code.append(code_element)
+        code_element.code_chunk[f'watchtakeif'].extend(self.init_code.hasattr_code)
+        self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}"]
+        code_element.code_chunk[f'watchtakeif'].extend(self.init_code.init)
+        self.init_code.init = []
+        self.init_code.formula_type = "WATCHTAKEIF"
+        code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
+        if f'watchtakeif' not in code_element.precondition_chunk:
+            code_element.precondition_chunk[f'watchtakeif'] = [[], 'elif']
+        code_element.precondition_chunk[f'watchtakeif'][0].append(
+            f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
+        code_element.code_chunk[f'watchtakeif'].append(
+            f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} + 1")
+        code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
+        self.init_code.watchtakeif = takeif_cell_address
+        self.save_return(
+            StringLikeVars(f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))
+        return ret_expr
+
+    def f_index(self, range, idx):
+        ret_var = StringLikeVariable.new(
+            var_map=self.var_mapper, cell_str=self.output,
+            var_str=f"{idx}")
+        ret_expr = StringLikeVars(ret_var, range, "index")
+        return self.save_return(
+            StringLikeVars(
+                f"{ret_expr} = {idx}", [ret_var, idx],
+                "="))
+
+
 
     def f_and(self, *args):
         if len(args) == 2 and self.paren_level > 1:
@@ -706,177 +889,3 @@ class EtableTranspilerEasy(EtableTranspiler):
 
     def transpile_start(self):
         super(EtableTranspilerEasy, self).transpile_start()
-        code = {}
-        for idx, code_chunk in enumerate(self.code):
-            if isinstance(code_chunk, CodeElement):
-                if len(code_chunk.code_chunk) > 1:
-                    for ce in code_chunk.code_chunk:
-                        code[f'{self.init_code.name}_{ce}'] = FunctionCode(
-                            name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
-                        code[f'{self.init_code.name}_{ce}'].input_variables = copy.copy(self.init_code.input_variables)
-                        code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
-                        code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
-                        code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
-                        code[f'{self.init_code.name}_{ce}'].idx = idx
-                        code[f'{self.init_code.name}_{ce}'].selectable = True
-                else:
-                    ce = list(code_chunk.code_chunk.keys())[0]
-                    self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
-                    self.init_code.operators[self.init_code.name] = code_chunk.code_chunk[ce]
-                    self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
-                    self.init_code.sync_cell.update(code_chunk.sync_cells[ce])
-                    self.init_code.args.update(code_chunk.all_vars[ce])
-                    self.init_code.selectable = True
-            else:
-                self.init_code.operators[self.init_code.name].append(code_chunk)
-        if (len(code) > 1):
-            for branch_name in code:
-                code[branch_name].operators[code[branch_name].name] = self.init_code.operators[self.init_code.name][
-                    0: idx] + code[branch_name].operators[code[branch_name].name]
-                code[branch_name].operators[code[branch_name].name].extend(list(self.init_code.operators.values())[0][idx:])
-        else:
-            code[self.init_code.name] = self.init_code
-        for c in code.values():
-            c.output[c.name].extend(self.output_code)
-            c.effect_vars.add(self.return_var)
-        self.code = code
-        for c in self.code.values():
-            c.init_keys()
-
-    def f_vlookup(self, *args):
-        if len(args) == 3:
-            args = list(args)
-            args.append('True == True')
-        assert len(args) == 4, "VLOOKUP should be 3 or 4 arguments"
-        cell, rng, column, range_lookup = args
-        p = hyperc.util.letter_index_next(letter=rng.letter[0])
-        for i in range(column.var-2):
-            p = hyperc.util.letter_index_next(letter = p)
-        p=p.lower()
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
-
-        ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_VLOOKUP_{get_var_from_cell(self.output)}_{self.var_counter}')
-        self.var_counter += 1
-        self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
-        self.init_code.init.append(f'{ret_var} = {rng}.{p}')
-        self.code.append(f'assert {rng}.{rng.letter[0]} == {cell}')
-
-
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
-        self.code.append(f'assert {rng}.recid >= {rng.number[0]}')
-        self.code.append(f'assert {rng}.recid <= {rng.number[1]}')
-
-        # self.init_code.selectable = True
-        self.init_code.is_atwill = True
-        return ret_var
-
-
-
-    def f_selectfromrange(self, rng, fix=None):
-        assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
-        rng.var_str = f'{rng.var_str}_{self.var_counter}'
-        self.var_counter += 1
-        # select_var = StringLikeVariable.new(
-        #     var_map=self.var_mapper, cell_str=rng.attr['name'])
-        # select_var.var_str
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
-        ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
-        self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
-        self.init_code.init.append(f'assert {rng}.recid >= {rng.number[0]}')
-        self.init_code.init.append(f'assert {rng}.recid <= {rng.number[1]}')
-
-        # self.init_code.selectable = True
-        self.init_code.is_atwill = True
-        self.init_code.formula_type = "SELECTFROMRANGE"
-        return StringLikeVars(ret_var, [ret_var, rng], "")
-
-    # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
-    def f_takeif(self, *args):
-        assert self.paren_level == 1, "Nested TAKEIF() is not supported"
-        assert len(args) >= 3, "TAKEIF() args should be 3 and more"
-        if len(args) == 3:
-            args = list(args)
-            args.append(None)
-        assert ((len(args)-1) % 3) == 0, "Args in TAKEIF() should be multiple of three plus one"
-        if self.paren_level == 1:
-            self.default = args[0]
-        ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_TAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
-        ret_expr = StringLikeVars(ret_var, args, "takeif")
-        self.var_counter += 1
-        code_element = CodeElement()
-        self.code.append(code_element)
-        self.init_code.formula_type = "TAKEIF"
-        part = 0
-        for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
-            branch_name = f'takeif_branch{part}'
-            if branch_name not in code_element.precondition_chunk:
-                code_element.precondition_chunk[branch_name] = [[],'if']
-            code_element.precondition_chunk[branch_name][0].append(
-                f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
-            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
-
-            self.save_return(
-                StringLikeVars(
-                    f"{ret_expr} = {a_value}", [ret_var, a_value],
-                    "="))
-            if a_syncon is not None:
-                code_element.sync_cells[branch_name].add(a_syncon)
-            code_element.contion_vars[branch_name].extend(a_condition.variables)
-            code_element.all_vars[branch_name].extend(a_condition.variables)
-            code_element.all_vars[branch_name].extend(a_value.variables)
-            part += 1
-
-        return ret_expr
-
-    f_selectif = f_takeif
-
-    def f_watchtakeif(self, takeif_cell_address, fix=None):
-        assert self.paren_level == 1, "Nested WATCHTAKEIF() is not supported"
-        # TODO: check that takeif cell address is not a commpoud formula but a simple address of takeif cell
-        ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_WATCHTAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
-        ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
-
-        code_element = CodeElement()
-        self.code.append(code_element)
-        code_element.code_chunk[f'watchtakeif'].extend(self.init_code.hasattr_code)
-        self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter}"]
-        code_element.code_chunk[f'watchtakeif'].extend(self.init_code.init)
-        self.init_code.init=[]
-        self.init_code.formula_type = "WATCHTAKEIF"
-        code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
-        if f'watchtakeif' not in code_element.precondition_chunk:
-            code_element.precondition_chunk[f'watchtakeif'] = [[], 'elif']
-        code_element.precondition_chunk[f'watchtakeif'][0].append(
-            f"(WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} == {self.return_var.number})")
-        code_element.code_chunk[f'watchtakeif'].append(
-            f"WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.return_var.letter} + 1")
-        code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
-        self.init_code.watchtakeif = takeif_cell_address
-        self.save_return(
-            StringLikeVars( f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))
-        return ret_expr
-    
-    def f_index(self, range, idx):
-        ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f"{idx}")
-        ret_expr = StringLikeVars(ret_var, range, "index")
-        return self.save_return(
-                StringLikeVars(
-                    f"{ret_expr} = {idx}", [ret_var, idx],
-                    "="))
-
-

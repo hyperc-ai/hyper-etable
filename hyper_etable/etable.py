@@ -22,6 +22,12 @@ import openpyxl
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
+class PlainCell:
+    def __init__(self, filename, sheet, letter, number):
+        self.filename = filename
+        self.sheet = sheet
+        self.letter = letter
+        self.number = number
 
 def stack_code_gen_all(objects):
     l_all_hasattr_drop = []
@@ -136,7 +142,7 @@ class ETable:
         self.mod.HCT_OBJECTS = {}
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
-        self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
+        self.wb_values_only = openpyxl.load_workbook(filename=filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.table_collums = {}
@@ -176,10 +182,7 @@ class ETable:
                 return f'{table_name}[{column_name}]'
 
         for df in self.wb_values_only.defined_names.definedName:
-            try:
-                filename_n, sheet_n, row_n, column_n = hyper_etable.etable_transpiler.split_cell(df.attr_text)
-            except:
-                pass
+            filename_n, sheet_n, row_n, column_n = hyper_etable.etable_transpiler.split_cell(df.attr_text)
             if filename == filename_n and sheet == sheet_n:
                 if (column_n, list):
                     letter_stop = column_n[1]
@@ -322,7 +325,8 @@ class ETable:
     def calculate(self):
 
         # g=self.get_range_name_by_cell("'[fff]ggg'!B1")
-
+        # gg = hyper_etable.etable_transpiler.split_cell(
+        #     "ONESTABLE[PLUS ONES]")
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         # 
@@ -334,42 +338,32 @@ class ETable:
 
         used_cell_set = set()
 
-        for node_key, node_val in xl_mdl.dsp.dmap.nodes.items():
-            if ('inputs' in node_val) and ('outputs' in node_val):
-                if isinstance(node_val['inputs'], list): # TODO for spill skip may be wrong
-                    continue
-                assert len(node_val['outputs']) == 1, f'Currently support only one cell as output'
-                output = node_val['outputs'][0]
-                out_py = hyperc.xtj.str_to_py(output)
-                code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
-                code_init.init.append(f'#{node_key}')
-                used_cell_set.add(output)
-                for used_cell in itertools.chain(node_val['inputs'].keys(), node_val['outputs']):
-                    used_cell_set.add(used_cell)
-                for input in node_val['inputs']:
-                    filename, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(input)
-                    if not filename in filename_case_remap_workaround:
-                        filename_case_remap_workaround[filename.upper()] = filename
-                    py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
-                    if py_table_name not in self.classes:
-                        self.get_new_table(py_table_name, sheet)
-                    if isinstance(recid, list):
-                        continue
-                    code_init.input_variables.append(hyper_etable.etable_transpiler.StringLikeVariable.new(
-                        var_map=var_mapper, cell_str=input))
 
-                # formula= hyper_etable.etable_transpiler.EtableTranspiler(
-                #     node_key, node_val['inputs'].keys(), output)
-                formula = hyper_etable.etable_transpiler.EtableTranspilerEasy(
-                    node_key, node_val['inputs'].keys(),
-                    output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
-                formula.transpile_start()
-                # set default value for takeif
-                var = formula.default
-                if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
-                    var = formula.default.var
-                xl_mdl.cells[output].value = var
-                code.update(formula.code)
+        for ws in self.wb_values_only.worksheets:
+            for row in ws.iter_rows():
+                for cell in row:
+                    if text_formula is None:
+                        continue # skip empty cell
+                    text_formula = str(cell.value)
+                    if text_formula.startswith("="):
+                        continue # pass only formulas
+                    output = hyper_etable.etable_transpiler.StringLikeVariable(
+                        var_map=var_mapper, filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
+                    out_py = hyperc.xtj.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
+                    code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
+                    code_init.init.append(f'#{text_formula}')
+                    used_cell_set.add(PlainCell(filename=self.filename, sheet=ws.title,
+                                                letter=cell.column_letter, number=cell.column))
+                    formula = hyper_etable.etable_transpiler.EtableTranspilerEasy(
+                        formula=text_formula,
+                        output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
+                    formula.transpile_start()
+                    # set default value for takeif
+                    var = formula.default
+                    if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
+                        var = formula.default.var
+                    xl_mdl.cells[output].value = var
+                    code.update(formula.code)
 
         # Find what is being watched, and inject watchtakeif sync cells
         watched_takeifs = defaultdict(list)
