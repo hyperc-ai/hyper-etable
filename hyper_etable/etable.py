@@ -359,8 +359,8 @@ class ETable:
                     out_py = hyperc.xtj.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
                     code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                     code_init.init.append(f'#{text_formula}')
-                    used_cell_set.add(PlainCell(filename=self.filename, sheet=ws.title,
-                                                letter=cell.column_letter, number=cell.column))
+                    current_cell = PlainCell(filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
+                    used_cell_set.add(current_cell)
                     formula = hyper_etable.etable_transpiler.EtableTranspiler(
                         formula=text_formula,
                         output=output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
@@ -369,7 +369,7 @@ class ETable:
                     var = formula.default
                     if isinstance(formula.default, hyper_etable.etable_transpiler.StringLikeConstant):
                         var = formula.default.var
-                    xl_mdl.cells[output].value = var
+                    self.cells_value[current_cell] = var
                     code.update(formula.code)
 
         # Find what is being watched, and inject watchtakeif sync cells

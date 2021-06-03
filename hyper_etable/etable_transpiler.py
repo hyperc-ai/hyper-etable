@@ -262,9 +262,9 @@ class EtableTranspiler:
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
         self.output_code.append(
-            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.recid}.{self.output.letter} = {self.output}')
+            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
         self.output_code.append(
-            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.recid}.{self.output.letter}_not_hasattr = False')
+            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
         self.output_code.append(f'# side effect with {self.output} can be added here')
 
         code = {}
@@ -618,10 +618,13 @@ class EtableTranspiler:
             raise NotImplementedError("Not Implemented: %s" % repr(node))
 
     def transpile_range(self, node: formulas.tokens.operand.Range):
-        if not 'sheet' in node.attr:
-            raise formulas.errors.FormulaError(f"Formula reference without row ID")
-        # return node.attr
-        return StringLikeVariable.new(var_map=self.var_mapper, cell_str=node.attr['name'])
+        sheet = node.attr.get('sheet', self.output.sheet)
+        filename = node.attr.get('filename', self.output.filename)
+        if node.attr['r1'] == node.attr['r2'] and node.attr['c1'] == node.attr['c2']:
+            cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"
+        else:
+            cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
+        return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
 
     def save_return(self, ret, type_=None):
         self.remember_types[ret] = type_
