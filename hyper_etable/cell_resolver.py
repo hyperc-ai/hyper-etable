@@ -79,6 +79,7 @@ class RangeResolver:
             _, _, letter, number = hyper_etable.etable_transpiler.split_cell(df.attr_text)
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
                 self.filename, ws.title, letter, number)
+        pass
 
     def get_cell_range_by_name(self, filename, sheet, name):
         key = PlainCellNamedRange(filename, sheet, name)

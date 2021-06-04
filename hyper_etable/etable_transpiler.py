@@ -327,7 +327,7 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         transpiled_formula_return = self.transpile(self.nodes)
-        self.init_code.input_variables.extend([v for v in transpiled_formula_return if isinstance(v, StringLikeVariable)])
+        self.init_code.input_variables.extend([v for v in transpiled_formula_return.variables if isinstance(v, StringLikeVariable)])
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
@@ -698,6 +698,12 @@ class EtableTranspiler:
             return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
         else:
             name = node.attr['name'].strip("'").strip("!")
+            
+            # table[@column] <- ok takeif
+
+            # table[column] <-- ok for select from range
+            # nr == nr <-- ok for select from range
+
             return StringLikeNamedRange.new(
                 var_map=self.var_mapper, sheet=sheet, filename=filename, name=name,
                 cell=self.range_resolver.get_cell_range_by_name(sheet=sheet, filename=filename, name=name))
