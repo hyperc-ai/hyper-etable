@@ -10,6 +10,7 @@ import copy
 import random
 import string
 import hyper_etable.type_mapper
+import hyper_etable.cell_resolver
 
 VAR_RE = re.compile(r"\.(.+_\d+)\.")
 
@@ -107,6 +108,66 @@ class StringLikeConstant(object):
                 self.type_group_set.add(type_group)
             rnd_len += 1
 
+class StringLikeNamedRange:
+
+    @staticmethod
+    def new(var_map, filename, sheet, name):
+        new_str_var = StringLikeNamedRange(var_map, filename, sheet, name)
+        new_str_var_type = (new_str_var, type(new_str_var))
+        if new_str_var_type in var_map:
+            return var_map[new_str_var_type]
+        else:
+            return new_str_var
+
+    def __init__(self, var_map, filename, sheet, name):
+        self.filename = filename
+        self.sheet = sheet
+        self.name = name
+        self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
+        self.is_range = True
+        self.var_str = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
+        self.types = set()
+        self.type_group_set = set()
+        self.var_map = var_map
+        self.new_type_group(var_map)
+        self.var_map[self.var_str] = self
+        self.variables = set()
+        self.variables.add(self)
+
+    def __str__(self):
+        return self.var_str
+
+    def __hash__(self):
+        self.hash = hash(str(self.var_str))
+        return self.hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def set_types(self, type):
+        if isinstance(type, set):
+            self.types.update(type)
+        else:
+            self.types.add(type)
+
+    def new_type_group(self, var_map):
+        # random duplicateless Generator
+        loop = True
+        rnd_len = 1
+        while loop:
+            loop = False
+            type_group = 'type_group_'+''.join(random.choices(string.ascii_uppercase + string.digits, k=rnd_len))
+            for k in var_map:
+                if var_map[k].type_group == type_group:
+                    loop = True
+            if not loop:
+                self.type_group = type_group
+                self.type_group_set.add(type_group)
+            rnd_len += 1
+
+    def __repr__(self):
+        return f"StringLikeNamedRange<{self.var_str}>"
+
 class StringLikeVariable:
 
     @staticmethod
@@ -141,6 +202,7 @@ class StringLikeVariable:
                 self.var_str = f'var_tbl_{sheet_name}__range_{self.number[0]}_{self.number[1]}_{self.letter[0]}'
             else:
                 self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
+        self.cell = hyper_etable.cell_resolver.PlainCell(self.filename, self.sheet, self.letter, self.number)
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
@@ -184,7 +246,7 @@ class StringLikeVariable:
             rnd_len += 1
 
     def __repr__(self):
-        return f"StringLikeVar<{self.var_str}>"
+        return f"StringLikeVariable<{self.var_str}>"
 
 def formulas_parser(formula_str):
     return formulas.Parser().ast("="+list(formulas.Parser().ast("=" + formula_str)
@@ -218,6 +280,8 @@ class StringLikeVars:
     def __hash__(self):
         return hash(str(self.rendered_str))
 
+    def __repr__(self):
+        return f"StringLikeVars<{self.rendered_str}>"
 
 bogus_start_re = re.compile(r"^=(\[\d+\]!)")
 bogus_end_re = re.compile(r"\<\d+\>$")
@@ -620,14 +684,18 @@ class EtableTranspiler:
     def transpile_range(self, node: formulas.tokens.operand.Range):
         sheet = node.attr.get('sheet', self.output.sheet)
         filename = node.attr.get('filename', self.output.filename)
-        if node.attr['r1'] == node.attr['r2'] and node.attr['c1'] == node.attr['c2']:
-            cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"
+        if 'r1' in node.attr:
+            if node.attr['r1'] == node.attr['r2'] and node.attr['c1'] == node.attr['c2']:
+                cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"
+            else:
+                cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
+            return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
         else:
-            cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
+            return StringLikeNamedRange.new(
+                var_map=self.var_mapper, sheet=sheet, filename=filename, name=node.attr['name'])
 
         #TODO Query range from etable.py.ETable.table_collums here
 
-        return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
 
     def save_return(self, ret, type_=None):
         self.remember_types[ret] = type_

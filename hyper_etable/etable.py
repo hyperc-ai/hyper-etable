@@ -9,6 +9,7 @@ import hyperc.util
 import hyperc.settings
 import hyper_etable.etable_transpiler
 import hyper_etable.spiletrancer
+import hyper_etable.cell_resolver
 import hyperc.xtj
 import itertools
 import sys
@@ -22,18 +23,6 @@ import openpyxl
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
-class PlainCell:
-    def __init__(self, filename, sheet, letter, number):
-        self.filename = filename
-        self.sheet = sheet
-        self.letter = letter
-        self.number = number
-
-    def __hash__(self):
-        return hash(self.filename) & hash(self.sheet) & hash(self.letter) & hash(self.number)
-
-    def __str__(self):
-        return f'[{self.filename}]{self.sheet}!{self.letter}{self.number}'
 
 def stack_code_gen_all(objects):
     l_all_hasattr_drop = []
@@ -359,7 +348,8 @@ class ETable:
                     out_py = hyperc.xtj.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
                     code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                     code_init.init.append(f'#{text_formula}')
-                    current_cell = PlainCell(filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
+                    current_cell = hyper_etable.cell_resolver.PlainCell(
+                        filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
                     used_cell_set.add(current_cell)
                     formula = hyper_etable.etable_transpiler.EtableTranspiler(
                         formula=text_formula,
