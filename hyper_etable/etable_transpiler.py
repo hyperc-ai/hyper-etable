@@ -385,8 +385,8 @@ class EtableTranspiler:
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
 
         ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_VLOOKUP_{get_var_from_cell(self.output)}_{self.var_counter}')
+            var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
+            number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
         self.var_counter += 1
         self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
         self.init_code.init.append(f'{ret_var} = {rng}.{p}')
@@ -409,8 +409,8 @@ class EtableTranspiler:
         # select_var.var_str
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
         ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_SELECTFROMRANGE_{get_var_from_cell(self.output)}_{self.var_counter}')
+            var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
+            var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
         self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
@@ -433,8 +433,8 @@ class EtableTranspiler:
         if self.paren_level == 1:
             self.default = args[0]
         ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_TAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+            var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
+            var_str=f'var_tbl_TAKEIF_{self.output}_{self.var_counter}')
         ret_expr = StringLikeVars(ret_var, args, "takeif")
         self.var_counter += 1
         code_element = CodeElement()
@@ -468,8 +468,8 @@ class EtableTranspiler:
         assert self.paren_level == 1, "Nested WATCHTAKEIF() is not supported"
         # TODO: check that takeif cell address is not a commpoud formula but a simple address of takeif cell
         ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f'var_tbl_WATCHTAKEIF_{get_var_from_cell(self.output)}_{self.var_counter}')
+            var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
+            number=self.output.number, var_str=f'var_tbl_WATCHTAKEIF_{self.output}_{self.var_counter}')
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
 
         code_element = CodeElement()
@@ -494,8 +494,8 @@ class EtableTranspiler:
 
     def f_index(self, range, idx):
         ret_var = StringLikeVariable.new(
-            var_map=self.var_mapper, cell_str=self.output,
-            var_str=f"{idx}")
+            var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
+            number=self.output.number, var_str=f"{idx}")
         ret_expr = StringLikeVars(ret_var, range, "index")
         return self.save_return(
             StringLikeVars(
