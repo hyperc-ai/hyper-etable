@@ -111,18 +111,19 @@ class StringLikeConstant(object):
 class StringLikeNamedRange:
 
     @staticmethod
-    def new(var_map, filename, sheet, name):
-        new_str_var = StringLikeNamedRange(var_map, filename, sheet, name)
+    def new(var_map, filename, sheet, name, cell):
+        new_str_var = StringLikeNamedRange(var_map, filename, sheet, name, cell)
         new_str_var_type = (new_str_var, type(new_str_var))
         if new_str_var_type in var_map:
             return var_map[new_str_var_type]
         else:
             return new_str_var
 
-    def __init__(self, var_map, filename, sheet, name):
+    def __init__(self, var_map, filename, sheet, name, cell):
         self.filename = filename
         self.sheet = sheet
         self.name = name
+        self.cell = cell
         self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
         self.var_str = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
@@ -192,8 +193,12 @@ class StringLikeVariable:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
         if isinstance(self.number, list):
             self.is_range = True
+            self.cell = hyper_etable.cell_resolver.PlainCellRange(self.filename, self.sheet, self.letter, self.number)
+
         else:
-           self.is_range = False
+            self.is_range = False
+            self.cell = hyper_etable.cell_resolver.PlainCell(self.filename, self.sheet, self.letter, self.number)
+
 
         self.var_str = var_str
         if self.var_str is None:
@@ -202,7 +207,6 @@ class StringLikeVariable:
                 self.var_str = f'var_tbl_{sheet_name}__range_{self.number[0]}_{self.number[1]}_{self.letter[0]}'
             else:
                 self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
-        self.cell = hyper_etable.cell_resolver.PlainCell(self.filename, self.sheet, self.letter, self.number)
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
@@ -288,8 +292,9 @@ bogus_end_re = re.compile(r"\<\d+\>$")
 
 class EtableTranspiler:
 
-    def __init__(self, formula, output, var_mapper, table_type_mapper, init_code=None):
+    def __init__(self, formula, output, range_resolver, var_mapper, table_type_mapper, init_code=None):
         self.var_mapper = var_mapper
+        self.range_resolver = range_resolver
         self.table_type_mapper = table_type_mapper
         if formula.endswith("<0>"):
             formula = formula[:-3]
@@ -390,11 +395,11 @@ class EtableTranspiler:
         self.var_counter += 1
         self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
         self.init_code.init.append(f'{ret_var} = {rng}.{p}')
-        self.code.append(f'assert {rng}.{rng.letter[0]} == {cell}')
+        self.code.append(f'assert {rng}.{rng.cell.letter[0]} == {cell}')
 
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
-        self.code.append(f'assert {rng}.recid >= {rng.number[0]}')
-        self.code.append(f'assert {rng}.recid <= {rng.number[1]}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0]}_not_hasattr == False')
+        self.code.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
+        self.code.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
@@ -412,10 +417,10 @@ class EtableTranspiler:
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.letter[0]}')
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.letter[0]}_not_hasattr == False')
-        self.init_code.init.append(f'assert {rng}.recid >= {rng.number[0]}')
-        self.init_code.init.append(f'assert {rng}.recid <= {rng.number[1]}')
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0]}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
+        self.init_code.init.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
@@ -691,8 +696,10 @@ class EtableTranspiler:
                 cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
             return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
         else:
+            name = node.attr['name'].strip("'").strip("!")
             return StringLikeNamedRange.new(
-                var_map=self.var_mapper, sheet=sheet, filename=filename, name=node.attr['name'])
+                var_map=self.var_mapper, sheet=sheet, filename=filename, name=name,
+                cell=self.range_resolver.get_cell_range_by_name(sheet=sheet, filename=filename, name=name))
 
         #TODO Query range from etable.py.ETable.table_collums here
 

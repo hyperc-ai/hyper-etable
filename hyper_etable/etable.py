@@ -140,69 +140,8 @@ class ETable:
         self.wb_values_only = openpyxl.load_workbook(filename=filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
-        self.table_collums = {}
         self.cells_value = {}
-        for ws in self.wb_values_only.worksheets:
-            for t in ws.tables.values():
-                for c in t.tableColumns:
-                    _, _, unpak_range_row, unpak_range_column  = hyper_etable.etable_transpiler.split_cell(f"'[file]sheet'!{t.ref}")
-                    letter_stop = unpak_range_column[1]
-                    letter_next = unpak_range_column[0]
-                    idx = 1
-                    while idx != c.id:
-                        letter_next = hyperc.util.letter_index_next(letter=letter_next).lower()
-                        idx += 1
-                    cell_range = ""
-                    self.table_collums[(self.filename, ws.title, t.name, c.name)] = (
-                        (letter_next, letter_next), unpak_range_row)
-
-
-    def get_range_name_by_cell(self, cellname):
-        # filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname)
-        # if (row, list):
-        #     raise Exception("get_range_name_by_cell requirec one Cell not Range")
-        filename=self.filename
-        sheet = 'Sheet1'
-        row = 9
-        column = 'd'
-        #collect tables
-        #extract collums
-        table_collums = {}
-        for filename_n, sheet_n, table_name, column_name in self.table_collums:
-            column_n, row_n = self.table_collums[(filename_n, sheet_n, table_name, column_name)]
-            if filename == filename_n and sheet == sheet_n:
-                if column_n[0] != column.lower():
-                    continue
-                if not(row >= row_n[0] and row <= row_n[1]):
-                    continue
-                return f'{table_name}[{column_name}]'
-
-        for df in self.wb_values_only.defined_names.definedName:
-            filename_n, sheet_n, row_n, column_n = hyper_etable.etable_transpiler.split_cell(df.attr_text)
-            if filename == filename_n and sheet == sheet_n:
-                if (column_n, list):
-                    letter_stop = column_n[1]
-                    letter_next = column_n[0]
-                    found = False
-                    while letter_next != letter_stop:
-                        if letter_next == column:
-                            found = True
-                            break
-                        letter_next = hyperc.util.letter_index_next(letter = letter_next).lower()
-                    else:
-                        if letter_next == column:
-                            found = True
-                    if not found:
-                        continue
-                elif column_n != column:
-                    continue
-                if isinstance(row_n, list):
-                    if not(row >= row_n[0] and row <= row_n[1]):
-                        continue
-                elif row != row_n:
-                    continue
-                return df.name
-        return None
+        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(self.filename, self.wb_values_only)
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -352,7 +291,7 @@ class ETable:
                         filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
                     used_cell_set.add(current_cell)
                     formula = hyper_etable.etable_transpiler.EtableTranspiler(
-                        formula=text_formula,
+                        formula=text_formula, range_resolver= self.range_resolver,
                         output=output, init_code=code_init, table_type_mapper=global_table_type_mapper, var_mapper=var_mapper)
                     formula.transpile_start()
                     # set default value for takeif
