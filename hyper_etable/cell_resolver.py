@@ -44,7 +44,10 @@ class PlainCellNamedRange:
         self.this_row = this_row
 
     def __hash__(self):
-        return hash(self.filename) & hash(self.sheet) & hash(self.name.upper()) & hash(self.column_name.upper()) & hash(self.this_row)
+        if self.column_name is None:
+            return hash(self.filename) & hash(self.sheet) & hash(self.name.upper()) & hash(self.column_name) & hash(self.this_row)
+        else:
+            return hash(self.filename) & hash(self.sheet) & hash(self.name.upper()) & hash(self.column_name.upper()) & hash(self.this_row)
 
     def __str__(self):
         if self.column_name is None:
