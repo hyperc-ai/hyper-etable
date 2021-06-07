@@ -27,25 +27,32 @@ class PlainCellRange:
         self.number = [int(n) for n in number]
 
     def __hash__(self):
-        return hash(self.filename) & hash(self.sheet) & hash(self.letter) & hash(self.number)
+        return hash(str(self))
 
     def __str__(self):
-        return f'[{self.filename}]{self.sheet}!{self.letter[0]}{self.number[0]}:{self.letter[1]}{self.number[1]}'
+        return f'[{self.filename}]{self.sheet}!{self.letter[0].upper()}{self.number[0]}:{self.letter[1].upper()}{self.number[1]}'
 
     def __eq__(self, other):
         return hash(self) == hash(other)
 
 class PlainCellNamedRange:
-    def __init__(self, filename, sheet, name):
+    def __init__(self, filename, sheet, name, column_name=None, this_row = False):
         self.filename = str(filename)
         self.sheet = sheet
-        self.name = name
+        self.name = name # range or table named_range
+        self.column_name = column_name
+        self.this_row = this_row
 
     def __hash__(self):
-        return hash(self.filename) & hash(self.sheet) & hash(self.name)
+        return hash(self.filename) & hash(self.sheet) & hash(self.name.upper()) & hash(self.column_name.upper()) & hash(self.this_row)
 
     def __str__(self):
-        return f"'[{self.filename}]{self.sheet}'!{self.name}"
+        if self.column_name is None:
+            return f"'[{self.filename}]{self.sheet}'!{self.name}"
+        elif self.this_row:
+            return f"'[{self.filename}]{self.sheet}'!{self.name}[[#THIS ROW];[{self.column_name}]]"
+        else:
+            return f"'[{self.filename}]{self.sheet}'!{self.name}[{self.column_name}]"
 
     def __eq__(self, other):
         return hash(self) == hash(other)
@@ -70,8 +77,9 @@ class RangeResolver:
                         letter_next = hyperc.util.letter_index_next(letter=letter_next).lower()
                         idx += 1
                     cell_range = ""
-                    self.table_collums[PlainCellNamedRange(self.filename, ws.title, f'{t.name}[{c.name}]'.upper())] = PlainCellRange(
-                        self.filename, ws.title, [letter_next, letter_next], unpak_range_row)
+                    self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper())] = PlainCellRange(
+                        self.filename, ws.title, [letter_next.upper(), letter_next.upper()], unpak_range_row)
+                    
 
         for df in self.wb_values_only.defined_names.definedName:
             if df.type == 'ERROR':
@@ -80,6 +88,21 @@ class RangeResolver:
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
                 self.filename, ws.title, letter, number)
         pass
+
+    def replace_named_ranges(self, formula):
+        formula_ret = formula
+        for named_range, simple_range in self.table_collums.items():
+            formula_ret = formula_ret.replace(
+                named_range.name,
+                f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
+                99)
+        return formula_ret
+
+    def get_named_range_by_simple_range(self, simple_range_required):
+        for named_range, simple_range in self.table_columns.items():
+            if simple_range == simple_range_required:
+                return (named_range, simple_range)
+        return (None, None)
 
     def get_cell_range_by_name(self, filename, sheet, name):
         key = PlainCellNamedRange(filename, sheet, name)

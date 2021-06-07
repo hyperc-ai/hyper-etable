@@ -301,8 +301,7 @@ class EtableTranspiler:
         if formula.startswith("=["):
             formula = bogus_start_re.sub("=", formula, 1)
         formula = bogus_end_re.sub("", formula, 1)
-        self.formula = formula
-        # self.inputs = inputs #should get from args
+        self.formula = self.range_resolver.replace_named_ranges(formula.upper())
         self.output = output
         init_code.formula_str.add(formula)
         self.init_code = init_code
@@ -606,8 +605,10 @@ class EtableTranspiler:
                 #                 print("Paren close level", self.paren_level)
                 if self.paren_level in self.function_parens:
                     #                     print(self.function_parens[self.paren_level].lower(), self.function_parens_args[self.paren_level])
-                    ret = getattr(self, self.function_parens[self.paren_level])(
-                        *self.function_parens_args[self.paren_level])
+                    # try:
+                    ret = getattr(self, self.function_parens[self.paren_level])(*self.function_parens_args[self.paren_level])
+                    # except:
+                        # print("a")
                     self.function_parens_args[self.paren_level] = []
                     self.paren_level -= 1
                     self.function_parens_args[self.paren_level].append(ret)
@@ -694,7 +695,12 @@ class EtableTranspiler:
             if node.attr['r1'] == node.attr['r2'] and node.attr['c1'] == node.attr['c2']:
                 cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"
             else:
-                cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
+                plain_cell_range = hyper_etable.cell_resolver.PlainCellRange(filename, sheet, [node.attr['c1'], node.attr['c2']], [node.attr['r1'], node.attr['r2']])
+                named_range, simple_range = self.range_resolver.get_named_range_by_simple_range(plain_cell_range)
+                if named_range is not None :
+                    return StringLikeNamedRange.new(var_map=self.var_mapper, sheet=sheet, filename=filename, name=named_range.name, cell=simple_range)
+                else:
+                    cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
             return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
         else:
             name = node.attr['name'].strip("'").strip("!")
