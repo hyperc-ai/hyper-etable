@@ -310,7 +310,7 @@ class EtableTranspiler:
         self.default = schedula.EMPTY
         self.args = set()
         try:
-            self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
+            self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(self.formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
         except formulas.errors.FormulaError as e:
             print(f"Can't parse {formula}: {e}")

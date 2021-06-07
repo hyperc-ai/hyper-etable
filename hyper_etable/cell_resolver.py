@@ -44,10 +44,7 @@ class PlainCellNamedRange:
         self.this_row = this_row
 
     def __hash__(self):
-        if self.column_name is None:
-            return hash(self.filename) & hash(self.sheet) & hash(self.name.upper()) & hash(self.column_name) & hash(self.this_row)
-        else:
-            return hash(self.filename) & hash(self.sheet) & hash(self.name.upper()) & hash(self.column_name.upper()) & hash(self.this_row)
+        return hash(str(self))
 
     def __str__(self):
         if self.column_name is None:
@@ -96,13 +93,13 @@ class RangeResolver:
         formula_ret = formula
         for named_range, simple_range in self.table_collums.items():
             formula_ret = formula_ret.replace(
-                named_range.name,
+                f'{named_range.name.upper()}[{named_range.column_name.upper()}]',
                 f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                 99)
         return formula_ret
 
     def get_named_range_by_simple_range(self, simple_range_required):
-        for named_range, simple_range in self.table_columns.items():
+        for named_range, simple_range in self.table_collums.items():
             if simple_range == simple_range_required:
                 return (named_range, simple_range)
         return (None, None)
