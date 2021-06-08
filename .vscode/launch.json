@@ -38,6 +38,17 @@
             "justMyCode": false
         },
         {
+            "name": "PyTest Current File",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "-s",
+                "tests/${fileBasename}"
+            ],
+            "console": "integratedTerminal",
+        },
+        {
             "name": " PyTest anothe test",
             "type": "python",
             "request": "launch",
