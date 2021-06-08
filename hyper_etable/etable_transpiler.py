@@ -418,8 +418,8 @@ class EtableTranspiler:
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0]}')
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0].lower()}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0].lower()}_not_hasattr == False')
         self.init_code.init.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
         self.init_code.init.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
 
@@ -449,15 +449,17 @@ class EtableTranspiler:
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
             branch_name = f'takeif_branch{part}'
-            if isinstance(a_value, StringLikeNamedRange):
-                self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
-                self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
-                self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
             if branch_name not in code_element.precondition_chunk:
                 code_element.precondition_chunk[branch_name] = [[], 'if']
             code_element.precondition_chunk[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
-            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
+            if isinstance(a_value, StringLikeNamedRange):
+                self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
+                self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
+                self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
+                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].lower()}")
+            else:
+                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
                 StringLikeVars(
