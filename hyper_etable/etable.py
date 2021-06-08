@@ -324,12 +324,13 @@ class ETable:
         for watch_for, recid in min_recid.items():
             watch_code.append(f"WATCHTAKEIF_{watch_for} = {recid.number}")
             watch_code.append(f"WATCHTAKEIF_MAX_{watch_for} = {max_recid[watch_for].number+1}")
-        watch_code = "\n".join(watch_code)
-        fn=f"{self.tempdir}/hpy_watch_code.py"
-        with open(fn, "w+") as f:
-            f.write(watch_code)
-        f_code=compile(watch_code, fn, 'exec')
-        exec(f_code, self.mod.__dict__)
+        if len(watch_code) > 0:
+            watch_code = "\n".join(watch_code)
+            fn=f"{self.tempdir}/hpy_watch_code.py"
+            with open(fn, "w+") as f:
+                f.write(watch_code)
+            f_code=compile(watch_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
 
         for func in code.values():
             func.clean()
