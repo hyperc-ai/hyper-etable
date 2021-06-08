@@ -468,7 +468,12 @@ class ETable:
 
 
         for cell in used_cell_set:
-            filename, sheet, recid_ret, letter_ret = hyper_etable.etable_transpiler.split_cell(cell)
+            filename = cell.filename
+            sheet = cell.sheet
+            recid_ret = cell.number
+
+            letter_ret = cell.letter
+
             filename = filename_case_remap_workaround.get(filename, filename)
             py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             if isinstance(recid_ret, list):
@@ -477,6 +482,7 @@ class ETable:
                 recid_ret = [recid_ret]
 
             if isinstance(letter_ret, list):
+                letter_ret = map(str, letter_ret)
                 letter_stop = letter_ret[1]
                 letter_next = letter_ret[0]
                 letter_ret = [letter_next]
@@ -484,7 +490,7 @@ class ETable:
                     letter_next = hyperc.util.letter_index_next(letter = letter_next).lower()
                     letter_ret.append(letter_next)
             else:
-                letter_ret = [letter_ret]
+                letter_ret = [letter_ret.lower()]
             for letter in letter_ret:
                 for recid in recid_ret:
                     if recid not in self.objects[py_table_name]:
