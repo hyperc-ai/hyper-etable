@@ -388,7 +388,8 @@ class EtableTranspiler:
             p = hyperc.util.letter_index_next(letter=p)
         p = p.lower()
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
-
+        rng.var_str = f'{rng.var_str}_{self.var_counter}'
+        self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
@@ -448,6 +449,10 @@ class EtableTranspiler:
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
             branch_name = f'takeif_branch{part}'
+            if isinstance(a_value, StringLikeNamedRange):
+                self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
+                self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
+                self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
             if branch_name not in code_element.precondition_chunk:
                 code_element.precondition_chunk[branch_name] = [[], 'if']
             code_element.precondition_chunk[branch_name][0].append(
@@ -876,6 +881,9 @@ class FunctionCode:
             self.input_variables.remove(s)
     
     def gen_init(self):
+        for arg in self.function_args.keys():
+            if arg in self.input_variables:
+                self.input_variables.remove(arg)
         for var in self.input_variables:
             py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
             self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
