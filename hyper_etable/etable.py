@@ -324,12 +324,13 @@ class ETable:
         for watch_for, recid in min_recid.items():
             watch_code.append(f"WATCHTAKEIF_{watch_for} = {recid.number}")
             watch_code.append(f"WATCHTAKEIF_MAX_{watch_for} = {max_recid[watch_for].number+1}")
-        watch_code = "\n".join(watch_code)
-        fn=f"{self.tempdir}/hpy_watch_code.py"
-        with open(fn, "w+") as f:
-            f.write(watch_code)
-        f_code=compile(watch_code, fn, 'exec')
-        exec(f_code, self.mod.__dict__)
+        if len(watch_code) > 0:
+            watch_code = "\n".join(watch_code)
+            fn=f"{self.tempdir}/hpy_watch_code.py"
+            with open(fn, "w+") as f:
+                f.write(watch_code)
+            f_code=compile(watch_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
 
         for func in code.values():
             func.clean()
@@ -391,7 +392,6 @@ class ETable:
         # update keys
         code = {v.name: v for k, v in code.items()}
 
-        self.dump_functions(code, 'hpy_etable.py')
 
         # Collect conditional formatting
         # TODO set goal here
@@ -464,9 +464,7 @@ class ETable:
         main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
-        self.dump_functions(goal_code_source, 'hpy_goals.py')
 
-        code.update(goal_code_source)
 
 
         for cell in used_cell_set:
@@ -639,6 +637,9 @@ class ETable:
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
+        #dump goals and actions
+        self.dump_functions(code, 'hpy_etable.py')
+        self.dump_functions(goal_code_source, 'hpy_goals.py')
 
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))

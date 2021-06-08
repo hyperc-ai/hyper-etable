@@ -311,7 +311,7 @@ class EtableTranspiler:
         self.default = schedula.EMPTY
         self.args = set()
         try:
-            self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(formula)
+            self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(self.formula)
                                                         [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
         except formulas.errors.FormulaError as e:
             print(f"Can't parse {formula}: {e}")
@@ -389,7 +389,8 @@ class EtableTranspiler:
             p = hyperc.util.letter_index_next(letter=p)
         p = p.lower()
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
-
+        rng.var_str = f'{rng.var_str}_{self.var_counter}'
+        self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
@@ -418,8 +419,8 @@ class EtableTranspiler:
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0]}')
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0]}_not_hasattr == False')
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0].lower()}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0].lower()}_not_hasattr == False')
         self.init_code.init.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
         self.init_code.init.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
 
@@ -453,7 +454,13 @@ class EtableTranspiler:
                 code_element.precondition_chunk[branch_name] = [[], 'if']
             code_element.precondition_chunk[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
-            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
+            if isinstance(a_value, StringLikeNamedRange):
+                self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
+                self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
+                self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
+                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].lower()}")
+            else:
+                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
                 StringLikeVars(
@@ -877,6 +884,9 @@ class FunctionCode:
             self.input_variables.remove(s)
     
     def gen_init(self):
+        for arg in self.function_args.keys():
+            if arg in self.input_variables:
+                self.input_variables.remove(arg)
         for var in self.input_variables:
             py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
             self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
