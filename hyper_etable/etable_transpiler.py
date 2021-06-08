@@ -253,6 +253,7 @@ class StringLikeVariable:
         return f"StringLikeVariable<{self.var_str}>"
 
 def formulas_parser(formula_str):
+    assert not formula_str.startswith("="), "Formula can't start with = (possible programming error)"
     return formulas.Parser().ast("="+list(formulas.Parser().ast("=" + formula_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0]
 
