@@ -311,7 +311,7 @@ class EtableTranspiler:
         self.init_code = init_code
         if self.init_code is None:
             self.init_code = []
-        self.default = schedula.EMPTY
+        self.default = None
         self.args = set()
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(self.formula)

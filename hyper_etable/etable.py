@@ -281,15 +281,17 @@ class ETable:
                     if cell.value is None:
                         continue # skip empty cell
                     text_formula = str(cell.value)
+                    current_cell = hyper_etable.cell_resolver.PlainCell(
+                        filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.row)
                     if not text_formula.startswith("="):
+                        self.cells_value[current_cell] = cell.value
                         continue # pass only formulas
                     output = hyper_etable.etable_transpiler.StringLikeVariable(
                         var_map=var_mapper, filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.row)
                     out_py = hyperc.xtj.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
                     code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                     code_init.init.append(f'#{text_formula}')
-                    current_cell = hyper_etable.cell_resolver.PlainCell(
-                        filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.row)
+
                     used_cell_set.add(current_cell)
                     formula = hyper_etable.etable_transpiler.EtableTranspiler(
                         formula=text_formula, range_resolver= self.range_resolver,
@@ -524,8 +526,9 @@ class ETable:
                     if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                    cell = f"'[{filename}]{sheet}'!{letter.upper()}{recid}"
-                    if cell not in xl_mdl.cells or xl_mdl.cells[cell].value is schedula.EMPTY:
+                    cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
+                    # assert cell in self.cells_value, f"Lost value for cell {cell}"
+                    if cell not in self.cells_value or self.cells_value[cell] is None:
                         # TODO this is stumb for novalue cell. We should use Novalue ????
                         ox_sht, ox_cell_ref = stl.gen_opxl_addr(self.filename, 
                                                         self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
@@ -540,8 +543,7 @@ class ETable:
                         setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
 
                     else:
-                        cell_value = xl_mdl.cells[cell].value
-                        setattr(self.objects[py_table_name][recid], letter, cell_value)
+                        setattr(self.objects[py_table_name][recid], letter, self.cells_value[cell])
                         setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', False)
                         # FIXME: needs type detector, then these lines can be removed -->
                         # self.objects[py_table_name][recid].__class__.__annotations__[letter] = type(cell_value)
