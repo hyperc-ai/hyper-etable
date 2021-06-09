@@ -20,6 +20,7 @@ import copy
 import os.path
 import pathlib
 import openpyxl
+import hyper_etable.util
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -141,13 +142,13 @@ class ETable:
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.cells_value = {}
-        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(self.filename, self.wb_values_only)
+        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_values_only)
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
         py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
         attrname = f"{py_table_name}_{row}"
-        return getattr(getattr(self.mod.HCT_STATIC_OBJECT, attrname), column.lower())
+        return getattr(getattr(self.mod.HCT_STATIC_OBJECT, attrname), column.upper())
 
     def get_row_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -283,12 +284,12 @@ class ETable:
                     if not text_formula.startswith("="):
                         continue # pass only formulas
                     output = hyper_etable.etable_transpiler.StringLikeVariable(
-                        var_map=var_mapper, filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
+                        var_map=var_mapper, filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.row)
                     out_py = hyperc.xtj.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
                     code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                     code_init.init.append(f'#{text_formula}')
                     current_cell = hyper_etable.cell_resolver.PlainCell(
-                        filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.column)
+                        filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.row)
                     used_cell_set.add(current_cell)
                     formula = hyper_etable.etable_transpiler.EtableTranspiler(
                         formula=text_formula, range_resolver= self.range_resolver,
@@ -400,10 +401,15 @@ class ETable:
             filename = filename_case_remap_workaround.get(filename, filename)
             for worksheet in book[formulas.excel.BOOK].worksheets:
                 for rule_cell in worksheet.conditional_formatting._cf_rules:
-                    assert len(rule_cell.sqref.ranges) == 1, "only one cell ondition support"
+                    assert len(rule_cell.sqref.ranges) == 1, "Only one cell conditional rule is supported"
                     sheet = worksheet.title
+                    assert rule_cell.sqref.ranges[0].size == {'columns': 1, 'rows': 1}, "Ranged rules are not supported"
                     cell = f"'[{filename}]{sheet}'!{rule_cell.sqref.ranges[0].coord}"
-                    used_cell_set.add(cell)
+                    col_letter = hyper_etable.util.get_char_from_index(rule_cell.sqref.ranges[0].bounds[0]-1)
+                    row = rule_cell.sqref.ranges[0].bounds[1]
+                    current_cell = hyper_etable.cell_resolver.PlainCell(
+                        filename=filename, sheet=sheet, letter=col_letter, number=row)
+                    used_cell_set.add(current_cell)
                     filename_, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     for rule in rule_cell.rules:
@@ -415,7 +421,10 @@ class ETable:
                             filename_value = filename
                             if sheet_value == '':
                                 sheet_value = sheet
-                            used_cell_set.add(f"'[{filename_value}]{sheet_value}'!{letter_value.upper()}{recid_value}")
+                            # used_cell_set.add(f"'[{filename_value}]{sheet_value}'!{letter_value.upper()}{recid_value}")
+                            current_cell = hyper_etable.cell_resolver.PlainCell(
+                                filename=filename_value, sheet=sheet_value, letter=letter_value.upper(), number=recid_value)
+                            used_cell_set.add(current_cell)
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
                             goal_code[cell].append(
@@ -487,10 +496,10 @@ class ETable:
                 letter_next = letter_ret[0]
                 letter_ret = [letter_next]
                 while letter_next != letter_stop:
-                    letter_next = hyperc.util.letter_index_next(letter = letter_next).lower()
+                    letter_next = hyperc.util.letter_index_next(letter = letter_next).upper()
                     letter_ret.append(letter_next)
             else:
-                letter_ret = [letter_ret.lower()]
+                letter_ret = [letter_ret.upper()]
             for letter in letter_ret:
                 for recid in recid_ret:
                     if recid not in self.objects[py_table_name]:

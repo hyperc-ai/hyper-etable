@@ -1,3 +1,4 @@
+import os
 import re
 import formulas
 import collections
@@ -32,15 +33,15 @@ def split_cell(cell_str):
         return (cell['filename'], cell['sheet'], cell['ref'], cell['ref'])
         
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
-        return (cell['filename'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].lower(), cell['c2'].lower()])
+        return (cell['filename'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].upper(), cell['c2'].upper()])
     else:
-        return (cell['filename'], cell['sheet'], int(cell['r1']), cell['c1'].lower())
+        return (cell['filename'], cell['sheet'], int(cell['r1']), cell['c1'].upper())
 
 
 def get_var_from_cell(cell_str):
     cell = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
-    letter = cell['c1'].lower()
+    letter = cell['c1'].upper()
     number = cell['r1']
     sheet_name = hyperc.xtj.str_to_py(f"[{cell['filename']}]{cell['sheet']}")
     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
@@ -120,7 +121,8 @@ class StringLikeNamedRange:
             return new_str_var
 
     def __init__(self, var_map, filename, sheet, name, cell):
-        self.filename = filename
+        self.directory = os.path.dirname(filename)
+        self.filename = os.path.basename(filename)
         self.sheet = sheet
         self.name = name
         self.cell = cell
@@ -185,9 +187,10 @@ class StringLikeVariable:
     def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
         self.cell_str = cell_str
         if cell_str is None:
-            self.filename = filename
+            self.directory = os.path.dirname(filename)
+            self.filename = os.path.basename(filename)
             self.sheet = sheet
-            self.letter = letter
+            self.letter = letter.upper()
             self.number = int(number)
         else:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
@@ -387,7 +390,7 @@ class EtableTranspiler:
         p = hyperc.util.letter_index_next(letter=rng.letter[0])
         for i in range(column.var-2):
             p = hyperc.util.letter_index_next(letter=p)
-        p = p.lower()
+        p = p.upper()
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
         rng.var_str = f'{rng.var_str}_{self.var_counter}'
         self.var_counter += 1
@@ -419,8 +422,8 @@ class EtableTranspiler:
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0].lower()}')
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0].lower()}_not_hasattr == False')
+        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0].upper()}')
+        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0].upper()}_not_hasattr == False')
         self.init_code.init.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
         self.init_code.init.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
 
@@ -458,7 +461,7 @@ class EtableTranspiler:
                 self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
                 self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
                 self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
-                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].lower()}")
+                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].upper()}")
             else:
                 code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
@@ -698,7 +701,7 @@ class EtableTranspiler:
 
     def transpile_range(self, node: formulas.tokens.operand.Range):
         sheet = node.attr.get('sheet', self.output.sheet)
-        filename = node.attr.get('filename', self.output.filename)
+        filename = os.path.basename(node.attr.get('filename', self.output.filename))
         if 'r1' in node.attr:
             if node.attr['r1'] == node.attr['r2'] and node.attr['c1'] == node.attr['c2']:
                 cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"

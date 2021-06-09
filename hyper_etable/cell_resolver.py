@@ -1,15 +1,18 @@
 import hyperc.util
 import hyper_etable.etable_transpiler
+import os
 
 class PlainCell:
     def __init__(self, filename, sheet, letter, number):
-        self.filename = str(filename)
+        self.directory = os.path.dirname(str(filename))
+        self.filename = os.path.basename(str(filename))
         self.sheet = sheet
-        self.letter = letter
+        self.letter = letter.upper()
         self.number = int(number)
 
     def __hash__(self):
-        return hash(self.filename) & hash(self.sheet) & hash(self.letter) & hash(self.number)
+        # return hash(self.filename) & hash(self.sheet) & hash(self.letter) & hash(self.number)
+        return hash(str(self))
 
     def __str__(self):
         return f'[{self.filename}]{self.sheet}!{self.letter}{self.number}'
@@ -19,10 +22,11 @@ class PlainCell:
 
 class PlainCellRange:
     def __init__(self, filename, sheet, letter, number):
-        self.filename = str(filename)
+        self.directory = os.path.dirname(str(filename))
+        self.filename = os.path.basename(str(filename))
         self.sheet = sheet
         assert isinstance(letter, list)
-        self.letter = letter # is list
+        self.letter = [l.upper() for l in letter] # is list
         assert isinstance(number, list)
         self.number = [int(n) for n in number]
 
@@ -37,7 +41,8 @@ class PlainCellRange:
 
 class PlainCellNamedRange:
     def __init__(self, filename, sheet, name, column_name=None, this_row = False):
-        self.filename = str(filename)
+        self.directory = os.path.dirname(str(filename))
+        self.filename = os.path.basename(str(filename))
         self.sheet = sheet
         self.name = name # range or table named_range
         self.column_name = column_name
@@ -63,7 +68,8 @@ class PlainCellNamedRange:
 class RangeResolver:
     def __init__(self, filename, workbook):
         self.wb_values_only = workbook
-        self.filename = filename
+        self.directory = os.path.dirname(str(filename))
+        self.filename = os.path.basename(str(filename))
         self.table_collums = {}
         for ws in self.wb_values_only.worksheets:
             for t in ws.tables.values():
@@ -74,7 +80,7 @@ class RangeResolver:
                     letter_next = unpak_range_column[0]
                     idx = 1
                     while idx != c.id:
-                        letter_next = hyperc.util.letter_index_next(letter=letter_next).lower()
+                        letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
                         idx += 1
                     cell_range = ""
                     self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper())] = PlainCellRange(
@@ -125,7 +131,7 @@ class RangeResolver:
         for filename_n, sheet_n, table_name, column_name in self.table_collums:
             column_n, row_n = self.table_collums[(filename_n, sheet_n, table_name, column_name)]
             if filename == filename_n and sheet == sheet_n:
-                if column_n[0] != column.lower():
+                if column_n[0] != column.upper():
                     continue
                 if not(row >= row_n[0] and row <= row_n[1]):
                     continue
@@ -142,7 +148,7 @@ class RangeResolver:
                         if letter_next == column:
                             found = True
                             break
-                        letter_next = hyperc.util.letter_index_next(letter=letter_next).lower()
+                        letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
                     else:
                         if letter_next == column:
                             found = True
