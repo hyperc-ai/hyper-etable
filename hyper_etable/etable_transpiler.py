@@ -312,6 +312,7 @@ class EtableTranspiler:
         if self.init_code is None:
             self.init_code = []
         self.default = None
+        self.output_is_range = False
         self.args = set()
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(self.formula)
@@ -334,10 +335,11 @@ class EtableTranspiler:
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
-        self.output_code.append(
-            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
-        self.output_code.append(
-            f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
+        if not self.output_is_range:
+            self.output_code.append(
+                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
+            self.output_code.append(
+                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
         self.output_code.append(f'# side effect with {self.output} can be added here')
 
         code = {}
@@ -462,6 +464,12 @@ class EtableTranspiler:
                 self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
                 self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
                 code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].upper()}")
+                self.output_is_range = True
+                self.output = StringLikeVariable(
+                    var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet,
+                    letter=[self.output.letter, self.output.letter],
+                    number=a_value.cell.number)
+                self.output.var_str = a_value.var_str
             else:
                 code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
