@@ -491,7 +491,6 @@ class ETable:
                 recid_ret = [recid_ret]
 
             if isinstance(letter_ret, list):
-                letter_ret = map(str, letter_ret)
                 letter_stop = letter_ret[1]
                 letter_next = letter_ret[0]
                 letter_ret = [letter_next]
@@ -499,7 +498,7 @@ class ETable:
                     letter_next = hyperc.util.letter_index_next(letter = letter_next).upper()
                     letter_ret.append(letter_next)
             else:
-                letter_ret = [letter_ret.upper()]
+                letter_ret = [letter_ret]
             for letter in letter_ret:
                 for recid in recid_ret:
                     if recid not in self.objects[py_table_name]:
