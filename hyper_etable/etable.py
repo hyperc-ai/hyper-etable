@@ -334,7 +334,7 @@ class ETable:
             exec(f_code, self.mod.__dict__)
 
         for func in code.values():
-            func.clean()
+            used_cell_set.update(set([i.cell for i in func.input_variables]))
             func.gen_init()
             for var in func.sync_cell:
                 if not isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
