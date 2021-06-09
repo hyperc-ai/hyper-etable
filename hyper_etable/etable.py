@@ -138,11 +138,12 @@ class ETable:
         self.mod.HCT_OBJECTS = {}
         self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
-        self.wb_values_only = openpyxl.load_workbook(filename=filename)
+        self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
+        self.wb_with_formulas = openpyxl.load_workbook(filename=filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.cells_value = {}
-        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_values_only)
+        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -274,8 +275,7 @@ class ETable:
 
         used_cell_set = set()
 
-
-        for ws in self.wb_values_only.worksheets:
+        for ws in self.wb_with_formulas.worksheets:
             for row in ws.iter_rows():
                 for cell in row:
                     if cell.value is None:
@@ -534,6 +534,8 @@ class ETable:
                                                         self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
                                                         letter, recid)
                         xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
+                        if xl_orig_calculated_value in ['#NAME?']:
+                            xl_orig_calculated_value = ''
                         if type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str:
                             setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
                             self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
