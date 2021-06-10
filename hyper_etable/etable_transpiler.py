@@ -900,11 +900,9 @@ class FunctionCode:
         warrants = []
         all_vars = set()
         for var in self.input_variables:
-            if var.is_range:
-                all_vars.add(str(var))
-            else:
+            if not var.is_range:
                 sheet_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
-                all_vars.add(f'HCT_STATIC_OBJECT.{sheet_name}_{var.cell.number}.{var.cell.letter}')
+                all_vars.add(f'HCT_STATIC_OBJECT.{sheet_name}_{var.cell.number}')
         for a, b in itertools.combinations(all_vars, r=2):
             # code += f"    assert {a} != {b}\n"
             a_b = sorted([a, b])
