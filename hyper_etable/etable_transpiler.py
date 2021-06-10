@@ -405,7 +405,6 @@ class EtableTranspiler:
             p = hyperc.util.letter_index_next(letter=p)
         p = p.upper()
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
-        rng.var_str = f'{rng.var_str}_{self.var_counter}'
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
