@@ -56,7 +56,7 @@ def generate_ne_warrants(all_init):
     all_vars = set(all_vars)
     for a, b in itertools.combinations(all_vars, r=2):
         # code += f"    assert {a} != {b}\n"
-        a_b = sorted([f'{a}',f'{b}'])
+        a_b = sorted([f'{a}', f'{b}'])
         warrants.append(f"ensure_ne(HCT_STATIC_OBJECT.{a_b[0]}, HCT_STATIC_OBJECT.{a_b[1]})")
     return warrants
 
@@ -894,7 +894,24 @@ class FunctionCode:
                 for_del.add(var)
         for s in for_del:
             self.input_variables.remove(s)
-    
+
+
+    def generate_ne_warrants(self):
+        "Generate not-equal for objects that are guaranteed not to be equal"
+        warrants = []
+        all_vars = set()
+        for var in self.input_variables:
+            if var.is_range:
+                all_vars.add(var)
+            else:
+                sheet_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+                all_vars.add(f'HCT_STATIC_OBJECT.{sheet_name}_{var.cell.number}.{var.cell.letter}')
+        for a, b in itertools.combinations(all_vars, r=2):
+            # code += f"    assert {a} != {b}\n"
+            a_b = sorted([a, b])
+            warrants.append(f"ensure_ne({a_b[0]}, {a_b[1]})")
+        return warrants
+
     def gen_init(self):
         for arg in self.function_args.keys():
             if arg in self.input_variables:
@@ -945,7 +962,7 @@ class FunctionCode:
         if self.collapsed:
             operators = '\n    '.join(self.operators)
             all_code = f"{if_not_hasattr} {operators}"
-            warrants = '\n    '.join(generate_ne_warrants(all_code))
+            warrants = '\n    '.join(self.generate_ne_warrants())
             return f'''def {self.name}({function_args}):{if_not_hasattr}
     {warrants}
     {operators}
@@ -971,7 +988,7 @@ class FunctionCode:
 
                     prev_if_type = if_type
                 all_code = f"{if_not_hasattr} {init} {code}"
-                warrants = '\n    '.join(generate_ne_warrants(all_code))
+                warrants = '\n    '.join(self.generate_ne_warrants())
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
     {warrants}
@@ -991,7 +1008,7 @@ class FunctionCode:
                     output = ''
                 code = f'{code}\n    {operators}\n    {output}\n'
                 all_code = f"{if_not_hasattr} {init} {code}"
-                warrants = '\n    '.join(generate_ne_warrants(all_code))
+                warrants = '\n    '.join(self.generate_ne_warrants())
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
     {init}
     {warrants}
