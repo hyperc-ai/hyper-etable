@@ -338,15 +338,14 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         transpiled_formula_return = self.transpile(self.nodes)
-        self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(v, StringLikeVariable)]))
+        self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
+            v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
         if self.output.is_range:
             self.output_code.append(
-                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
-            self.output_code.append(
-                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
+                f'{self.output}_not_hasattr = False')
         else:
             self.output_code.append(
                 f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
@@ -432,7 +431,7 @@ class EtableTranspiler:
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.operators.append(f'{ret_var} = {rng}.{rng.cell.letter[0].upper()}')
+        self.code.append(f'{ret_var} = {rng}.{rng.cell.letter[0].upper()}')
         self.init_code.is_atwill = True
         self.init_code.formula_type = "SELECTFROMRANGE"
         return StringLikeVars(ret_var, [ret_var, rng], "")
@@ -903,10 +902,10 @@ class FunctionCode:
         for var in self.input_variables:
             py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
             if var.is_range :
-                self.init_code.function_args[var] = py_table_name
+                self.function_args[var] = py_table_name
                 self.init.append(f'assert {var.row_name}.{var.cell.letter[0]}_not_hasattr == False')
-                self.init_code.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
-                self.init_code.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
+                self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
+                self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
             else:
                 self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
                 self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
