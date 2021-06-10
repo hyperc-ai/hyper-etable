@@ -425,13 +425,12 @@ class EtableTranspiler:
 
     def f_selectfromrange(self, rng, fix=None):
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
-        rng.var_str = f'{rng.var_str}_{self.var_counter}'
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.code.append(f'{ret_var} = {rng}.{rng.cell.letter[0].upper()}')
+        self.code.append(f'{ret_var} = {rng}')
         self.init_code.is_atwill = True
         self.init_code.formula_type = "SELECTFROMRANGE"
         return StringLikeVars(ret_var, [ret_var, rng], "")
@@ -902,7 +901,7 @@ class FunctionCode:
         all_vars = set()
         for var in self.input_variables:
             if var.is_range:
-                all_vars.add(var)
+                all_vars.add(str(var))
             else:
                 sheet_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
                 all_vars.add(f'HCT_STATIC_OBJECT.{sheet_name}_{var.cell.number}.{var.cell.letter}')
