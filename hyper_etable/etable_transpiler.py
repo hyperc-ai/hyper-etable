@@ -410,17 +410,13 @@ class EtableTranspiler:
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.hasattr_code.append(f'assert {rng}.{p}_not_hasattr == False')
-        self.init_code.init.append(f'{ret_var} = {rng}.{p}')
-        self.code.append(f'assert {rng}.{rng.cell.letter[0]} == {cell}')
-
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0]}_not_hasattr == False')
-        self.code.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
-        self.code.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
+        self.init_code.hasattr_code.append(f'assert {rng}._not_hasattr == False')
+        self.init_code.init.append(f'{ret_var} = {rng}')
+        self.code.append(f'assert {rng} == {cell}')
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
-        return ret_var
+        return StringLikeVars(ret_var, [cell, rng, ret_var], "")
 
     def f_selectfromrange(self, rng, fix=None):
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
@@ -916,7 +912,7 @@ class FunctionCode:
             py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
             if var.is_range :
                 self.function_args[var] = py_table_name
-                self.init.append(f'assert {var.row_name}.{var.cell.letter[0]}_not_hasattr == False')
+                self.init.append(f'assert {var}_not_hasattr == False')
                 self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
                 self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
             else:
