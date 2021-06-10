@@ -128,7 +128,8 @@ class StringLikeNamedRange:
         self.cell = cell
         self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
-        self.var_str = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
+        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
+        self.var_str = f'{self.row_name}.{cell.letter[0]}'
         self.types = set()
         self.type_group_set = set()
         self.var_map = var_map
@@ -190,8 +191,14 @@ class StringLikeVariable:
             self.directory = os.path.dirname(filename)
             self.filename = os.path.basename(filename)
             self.sheet = sheet
-            self.letter = letter.upper()
-            self.number = int(number)
+            if isinstance(letter, list):
+                self.letter = [l.upper() for l in letter]
+            else:
+                self.letter = letter.upper()
+            if isinstance(number, list):
+                self.number = [int(n) for n in number]
+            else:
+              self.number = int(number)
         else:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
         if isinstance(self.number, list):
@@ -207,7 +214,8 @@ class StringLikeVariable:
         if self.var_str is None:
             sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
             if self.is_range:
-                self.var_str = f'var_tbl_{sheet_name}__range_{self.number[0]}_{self.number[1]}_{self.letter[0]}'
+                self.row_name = f'var_tbl_{sheet_name}__range_{self.number[0]}_{self.number[1]}_{self.letter[0]}'
+                self.var_str = f'{self.row_name}.{self.cell.letter[0]}'
             else:
                 self.var_str = f'var_tbl_{sheet_name}__hct_direct_ref__{self.number}_{self.letter}'
         self.types = set()
@@ -312,7 +320,6 @@ class EtableTranspiler:
         if self.init_code is None:
             self.init_code = []
         self.default = None
-        self.output_is_range = False
         self.args = set()
         try:
             self.nodes = formulas.Parser().ast("="+list(formulas.Parser().ast(self.formula)
@@ -335,7 +342,12 @@ class EtableTranspiler:
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
-        if not self.output_is_range:
+        if self.output.is_range:
+            self.output_code.append(
+                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
+            self.output_code.append(
+                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
+        else:
             self.output_code.append(
                 f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
             self.output_code.append(
@@ -416,20 +428,11 @@ class EtableTranspiler:
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
         rng.var_str = f'{rng.var_str}_{self.var_counter}'
         self.var_counter += 1
-        # select_var = StringLikeVariable.new(
-        #     var_map=self.var_mapper, cell_str=rng.attr['name'])
-        # select_var.var_str
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng}.{rng.cell.letter[0].upper()}')
-        self.init_code.hasattr_code.append(f'assert {rng}.{rng.cell.letter[0].upper()}_not_hasattr == False')
-        self.init_code.init.append(f'assert {rng}.recid >= {rng.cell.number[0]}')
-        self.init_code.init.append(f'assert {rng}.recid <= {rng.cell.number[1]}')
-
-        # self.init_code.selectable = True
+        self.init_code.operators.append(f'{ret_var} = {rng}.{rng.cell.letter[0].upper()}')
         self.init_code.is_atwill = True
         self.init_code.formula_type = "SELECTFROMRANGE"
         return StringLikeVars(ret_var, [ret_var, rng], "")
@@ -460,18 +463,17 @@ class EtableTranspiler:
             code_element.precondition_chunk[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
             if isinstance(a_value, StringLikeNamedRange):
-                self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
-                self.init_code.init.append(f'assert {a_value}.recid >= {a_value.cell.number[0]}')
-                self.init_code.init.append(f'assert {a_value}.recid <= {a_value.cell.number[1]}')
-                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].upper()}")
-                self.output_is_range = True
+                # self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
+
+                # code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].upper()}")
+                # self.output_is_range = True
                 self.output = StringLikeVariable(
                     var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet,
                     letter=[self.output.letter, self.output.letter],
                     number=a_value.cell.number)
                 self.output.var_str = a_value.var_str
-            else:
-                code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
+
+            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
                 StringLikeVars(
@@ -900,8 +902,14 @@ class FunctionCode:
                 self.input_variables.remove(arg)
         for var in self.input_variables:
             py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
-            self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
-            self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
+            if var.is_range :
+                self.init_code.function_args[var] = py_table_name
+                self.init.append(f'assert {var.row_name}.{var.cell.letter[0]}_not_hasattr == False')
+                self.init_code.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
+                self.init_code.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
+            else:
+                self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
+                self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
         self.init.extend(self.hasattr_code) #should gen init and hasattr
 
     def gen_not_hasattr(self):
@@ -934,7 +942,7 @@ class FunctionCode:
                 #     f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code_str = '\n    '.join(stack_code)
 
-        function_args = ', '.join([f'{k}: {v}' for k, v in self.function_args.items()])
+        function_args = ', '.join([f'{k.row_name}: {v}' for k, v in self.function_args.items()])
         if self.collapsed:
             operators = '\n    '.join(self.operators)
             all_code = f"{if_not_hasattr} {operators}"
