@@ -372,6 +372,7 @@ class EtableTranspiler:
                         code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
                         code[f'{self.init_code.name}_{ce}'].idx = idx
                         code[f'{self.init_code.name}_{ce}'].selectable = True
+
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
                     self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
@@ -393,6 +394,7 @@ class EtableTranspiler:
         for c in code.values():
             c.output[c.name].extend(self.output_code)
             c.effect_vars.add(self.output)
+            c.input_variables = c.input_variables - c.sync_cell
         self.code = code
         for c in self.code.values():
             c.init_keys()
