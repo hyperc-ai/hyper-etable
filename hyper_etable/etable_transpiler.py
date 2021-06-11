@@ -341,7 +341,6 @@ class EtableTranspiler:
         self.init_code.all_variables.update(set(transpiled_formula_return.variables))
         self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
             v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
-        self.init_code.input_variables.discard(self.output)
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
@@ -393,7 +392,9 @@ class EtableTranspiler:
         for c in code.values():
             c.output[c.name].extend(self.output_code)
             c.effect_vars.add(self.output)
-            c.input_variables = c.input_variables - c.sync_cell
+            for_del = set([ i_v for i_v in c.input_variables if i_v.cell == self.output.cell ])
+            for_del.update(c.sync_cell)
+            c.input_variables = c.input_variables - for_del
         self.code = code
         for c in self.code.values():
             c.init_keys()
