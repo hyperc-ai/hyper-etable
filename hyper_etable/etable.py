@@ -170,11 +170,11 @@ class ETable:
             substep_counter = 0
             orig_vars = {}
             for cellvar in step[0].orig_funcobject.effect_vars:  
-                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
-                orig_vars[str(cellvar.cell_str)] = self.get_cellvalue_by_cellname(cellvar.cell_str)
+                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(str(cellvar.cell)) 
+                orig_vars[str(cellvar.cell_str)] = self.get_cellvalue_by_cellname(str(cellvar.cell))
             step[0](**step[1])
             for cellvar in step[0].orig_funcobject.effect_vars:  
-                new_value = self.get_cellvalue_by_cellname(cellvar.cell_str)
+                new_value = self.get_cellvalue_by_cellname(str(cellvar.cell))
                 ftype = step[0].orig_funcobject.formula_type
                 if ftype == "TAKEIF":
                     explain_type = "Decide whether to update value"
@@ -183,9 +183,9 @@ class ETable:
                 else:
                     explain_type = "(formula recalculation)"
 
-                if new_value == orig_vars[str(cellvar.cell_str)] and ftype == "TAKEIF":
+                if new_value == orig_vars[str(cellvar.cell)] and ftype == "TAKEIF":
                     continue
-                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellvar.cell_str) 
+                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(str(cellvar.cell))
                 leftmost = ""
                 for ltr in string.ascii_uppercase:
                     colval = self.wb_values_only[sheetmap[sheet]][f"{ltr}{row}"].value
@@ -208,7 +208,7 @@ class ETable:
                     i += 1
                     if i >= row: break
                 log_entry = [step_counter, explain_type, ename, leftmost, topmost,
-                             f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cellvar.cell_str)], 
+                             f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cellvar.cell)],
                              new_value,
                              "'"+",".join(step[0].orig_funcobject.formula_str).replace(f"[{filename.upper()}]", "")]
                 if ftype == "TAKEIF":

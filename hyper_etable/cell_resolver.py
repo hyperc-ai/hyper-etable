@@ -15,7 +15,7 @@ class PlainCell:
         return hash(str(self).upper())
 
     def __str__(self):
-        return f'[{self.filename}]{self.sheet}!{self.letter}{self.number}'
+        return f"'[{self.filename}]{self.sheet}'!{self.letter}{self.number}"
 
     def __eq__(self, other):
         return hash(self) == hash(other)
@@ -37,7 +37,7 @@ class PlainCellRange:
         return hash(str(self).upper())
 
     def __str__(self):
-        return f'[{self.filename}]{self.sheet}!{self.letter[0].upper()}{self.number[0]}:{self.letter[1].upper()}{self.number[1]}'
+        return f"'[{self.filename}]{self.sheet}'!{self.letter[0].upper()}{self.number[0]}:{self.letter[1].upper()}{self.number[1]}"
 
     def __eq__(self, other):
         return hash(self) == hash(other)
