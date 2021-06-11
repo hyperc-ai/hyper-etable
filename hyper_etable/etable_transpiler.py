@@ -341,7 +341,6 @@ class EtableTranspiler:
         self.init_code.all_variables.update(set(transpiled_formula_return.variables))
         self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
             v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
-        self.init_code.output_variables.add(self.output)
         self.init_code.input_variables.discard(self.output)
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
@@ -789,7 +788,7 @@ class FunctionCode:
             self.parent_name.add(parent_name)
         self.input_variables = set() # generate self.init from this set
         self.all_variables = set()
-        self.output_variables = set()
+        self.effect_vars = set()
         self.init = []
         self.keys = []
         self.hasattr_code = []
@@ -805,7 +804,6 @@ class FunctionCode:
         self.watchtakeif = None
         self.watchtakeif_max = False
         self.is_atwill = False  # For at-will functions like selectfromrange
-        self.effect_vars = set()
         self.is_goal = is_goal
         self.formula_type = "CALCULATE CELL"
         self.formula_str = set()

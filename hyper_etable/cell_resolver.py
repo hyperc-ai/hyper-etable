@@ -12,13 +12,16 @@ class PlainCell:
 
     def __hash__(self):
         # return hash(self.filename) & hash(self.sheet) & hash(self.letter) & hash(self.number)
-        return hash(str(self))
+        return hash(str(self).upper())
 
     def __str__(self):
         return f'[{self.filename}]{self.sheet}!{self.letter}{self.number}'
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __repr__(self) -> str:
+        return f"<PlainCell>{self}"
 
 class PlainCellRange:
     def __init__(self, filename, sheet, letter, number):
@@ -31,7 +34,7 @@ class PlainCellRange:
         self.number = [int(n) for n in number]
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(str(self).upper())
 
     def __str__(self):
         return f'[{self.filename}]{self.sheet}!{self.letter[0].upper()}{self.number[0]}:{self.letter[1].upper()}{self.number[1]}'
@@ -49,7 +52,7 @@ class PlainCellNamedRange:
         self.this_row = this_row
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(str(self).upper())
 
     def __str__(self):
         if self.column_name is None:
