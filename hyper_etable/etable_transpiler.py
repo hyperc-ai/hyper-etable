@@ -407,19 +407,25 @@ class EtableTranspiler:
         for i in range(column.var-2):
             p = hyperc.util.letter_index_next(letter=p)
         p = p.upper()
+        rng_test = StringLikeVariable.new(
+            var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet, letter=[rng.letter[0], rng.letter[0]], number=rng.number)
+        rng_ret = StringLikeVariable.new(
+            var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet,
+            letter=[p,p], number=rng.number)
+        rng_ret.row_name = rng_test.row_name
+        rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
         self.var_counter += 1
-        self.init_code.hasattr_code.append(f'assert {rng}._not_hasattr == False')
-        self.init_code.init.append(f'{ret_var} = {rng}')
-        self.code.append(f'assert {rng} == {cell}')
+        self.init_code.init.append(f'{ret_var} = {rng_ret}')
+        self.code.append(f'assert {rng_test} == {cell} # main assert')
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
-        return StringLikeVars(ret_var, [cell, rng, ret_var], "")
+        return StringLikeVars(ret_var, [cell, rng, rng_test, rng_ret, ret_var], "")
 
     def f_selectfromrange(self, rng, fix=None):
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
@@ -955,7 +961,7 @@ class FunctionCode:
                 #     f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code_str = '\n    '.join(stack_code)
 
-        function_args = ', '.join([f'{k.row_name}: {v}' for k, v in self.function_args.items()])
+        function_args = ', '.join(set([f'{k.row_name}: {v}' for k, v in self.function_args.items()]))
         if self.collapsed:
             operators = '\n    '.join(self.operators)
             all_code = f"{if_not_hasattr} {operators}"
