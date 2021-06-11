@@ -338,8 +338,11 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         transpiled_formula_return = self.transpile(self.nodes)
+        self.init_code.all_variables.update(set(transpiled_formula_return.variables))
         self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
             v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
+        self.init_code.output_variables.add(self.output)
+        self.init_code.input_variables.discard(self.output)
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
@@ -777,6 +780,8 @@ class FunctionCode:
         if parent_name is not None:
             self.parent_name.add(parent_name)
         self.input_variables = set() # generate self.init from this set
+        self.all_variables = set()
+        self.output_variables = set()
         self.init = []
         self.keys = []
         self.hasattr_code = []
