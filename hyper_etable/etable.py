@@ -171,7 +171,7 @@ class ETable:
             orig_vars = {}
             for cellvar in step[0].orig_funcobject.effect_vars:  
                 filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(str(cellvar.cell)) 
-                orig_vars[str(cellvar.cell_str)] = self.get_cellvalue_by_cellname(str(cellvar.cell))
+                orig_vars[str(cellvar.cell)] = self.get_cellvalue_by_cellname(str(cellvar.cell))
             step[0](**step[1])
             for cellvar in step[0].orig_funcobject.effect_vars:  
                 new_value = self.get_cellvalue_by_cellname(str(cellvar.cell))
