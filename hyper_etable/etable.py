@@ -212,15 +212,16 @@ class ETable:
                              new_value,
                              "'"+",".join(step[0].orig_funcobject.formula_str).replace(f"[{filename.upper()}]", "")]
                 if ftype == "TAKEIF":
-                    ename_l = list(step[0].orig_funcobject.sync_cell)
-                    if ename_l:
-                        ename_str = ename_l[0]
-                        if isinstance(ename_str, hyper_etable.etable_transpiler.StringLikeVariable):
-                            ename_str = ename_str.cell_str
-                        ename_str = str(ename_str)
-                        if not ename_str.endswith('"') and not ename_str.startswith('"') and "!" in ename_str:
-                            ename_str = self.get_cellvalue_by_cellname(ename_str)
-                        ename.ename = ename_str
+                    #TODO load string from openpyxl
+                    # ename_l = list(step[0].orig_funcobject.sync_cell)
+                    # if ename_l:
+                    #     ename_str = ename_l[0]
+                    #     if isinstance(ename_str, hyper_etable.etable_transpiler.StringLikeVariable):
+                    #         ename_str = ename_str.cell_str
+                    #     ename_str = str(ename_str)
+                    #     if not ename_str.endswith('"') and not ename_str.startswith('"') and "!" in ename_str:
+                    #         ename_str = self.get_cellvalue_by_cellname(ename_str)
+                    #     ename.ename = ename_str
                     ename = EventNameHolder()
                 self.plan_log.append(log_entry)
                 substep_counter += 1
