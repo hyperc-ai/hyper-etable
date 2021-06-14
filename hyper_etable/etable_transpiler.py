@@ -84,6 +84,9 @@ class StringLikeConstant(object):
 
     def __str__(self):
         return str(self.var)
+    
+    def __repr__(self):
+        return f"<StringLikeConstant>{self.var}({type(self.var)})"
 
     def __hash__(self):
         return hash(self.var)
@@ -121,6 +124,7 @@ class StringLikeNamedRange:
             return new_str_var
 
     def __init__(self, var_map, filename, sheet, name, cell):
+        self.temp = False
         self.directory = os.path.dirname(filename)
         self.filename = os.path.basename(filename)
         self.sheet = sheet
@@ -186,6 +190,7 @@ class StringLikeVariable:
             return new_str_var
 
     def __init__(self, var_map, cell_str = None, filename=None, sheet=None, letter=None, number=None, var_str=None):
+        self.temp = False
         self.cell_str = cell_str
         if cell_str is None:
             self.directory = os.path.dirname(filename)
@@ -315,6 +320,7 @@ class EtableTranspiler:
         formula = bogus_end_re.sub("", formula, 1)
         self.formula = self.range_resolver.replace_named_ranges(formula.upper())
         self.output = output
+        self.output.var_str = f'{self.output.var_str}_output'
         init_code.formula_str.add(formula)
         self.init_code = init_code
         if self.init_code is None:
@@ -344,6 +350,7 @@ class EtableTranspiler:
         sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
+        self.output.temp = True
         if self.output.is_range:
             self.output_code.append(
                 f'{self.output}_not_hasattr = False')
@@ -392,7 +399,7 @@ class EtableTranspiler:
         for c in code.values():
             c.output[c.name].extend(self.output_code)
             c.effect_vars.add(self.output)
-            for_del = set([ i_v for i_v in c.input_variables if i_v.cell == self.output.cell ])
+            for_del = set([ i_v for i_v in c.input_variables if i_v == self.output  or i_v.temp])
             for_del.update(c.sync_cell)
             c.input_variables = c.input_variables - for_del
         self.code = code
@@ -421,6 +428,7 @@ class EtableTranspiler:
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
+        ret_var.temp = True
         self.var_counter += 1
         self.init_code.init.append(f'{ret_var} = {rng_ret}')
         self.code.append(f'assert {rng_test} == {cell} # main assert')
@@ -435,6 +443,7 @@ class EtableTranspiler:
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
+        ret_var.temp = True 
         self.var_counter += 1
         self.code.append(f'{ret_var} = {rng}')
         self.init_code.is_atwill = True
@@ -454,6 +463,7 @@ class EtableTranspiler:
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_TAKEIF_{self.output}_{self.var_counter}')
+        ret_var.temp = True
         ret_expr = StringLikeVars(ret_var, args, "takeif")
         self.var_counter += 1
         code_element = CodeElement()
@@ -500,6 +510,7 @@ class EtableTranspiler:
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_WATCHTAKEIF_{self.output}_{self.var_counter}')
+        ret_var.temp = True
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
 
         code_element = CodeElement()
@@ -526,6 +537,7 @@ class EtableTranspiler:
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f"{idx}")
+        ret_var.temp = True
         ret_expr = StringLikeVars(ret_var, range, "index")
         return self.save_return(
             StringLikeVars(
