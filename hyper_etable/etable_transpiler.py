@@ -27,7 +27,6 @@ def split_cell(cell_str):
 
     if isinstance(cell_[0][0], formulas.tokens.operand.Error):
         raise CellError()
-
     if 'r1' not in cell:
         # seems cell is named range or table
         return (cell['filename'], cell['sheet'], cell['ref'], cell['ref'])
@@ -35,7 +34,7 @@ def split_cell(cell_str):
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
         return (cell['filename'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].upper(), cell['c2'].upper()])
     else:
-        return (cell['filename'], cell['sheet'], int(cell['r1']), cell['c1'].upper())
+        return (cell.get('filename', ''), cell.get('sheet', ''), int(cell['r1']), cell['c1'].upper())
 
 
 def get_var_from_cell(cell_str):
