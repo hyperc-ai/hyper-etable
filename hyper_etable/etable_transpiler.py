@@ -398,7 +398,7 @@ class EtableTranspiler:
         for c in code.values():
             c.output[c.name].extend(self.output_code)
             c.effect_vars.add(self.output)
-            for_del = set([ i_v for i_v in c.input_variables if i_v == self.output  or i_v.temp])
+            for_del = set([i_v for i_v in c.input_variables if (not i_v.is_range) and (i_v == self.output or i_v.temp)])
             for_del.update(c.sync_cell)
             c.input_variables = c.input_variables - for_del
         self.code = code
