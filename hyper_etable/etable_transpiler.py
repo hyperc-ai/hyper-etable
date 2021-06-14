@@ -997,7 +997,7 @@ class FunctionCode:
                         operators = '\n        '.join(self.operators.get(branch_name, []))
                         output = '\n        '.join(self.output.get(branch_name, []))
                         if prev_if_type == 'if' and if_type == 'elif':
-                            code = f'{code}    if False:\n        pass{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
+                            code = f'{code}if False:\n        pass{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
                         else:
                             code = f'{code}{precondition}\n        {operators}\n        {output}\n        assert_ok = True\n'
 
