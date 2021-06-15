@@ -819,6 +819,13 @@ class FunctionCode:
         self.is_goal = is_goal
         self.formula_type = "CALCULATE CELL"
         self.formula_str = set()
+        self.next_function_name = set()
+        self.plain_input = set()
+        self.plain_output = set()
+
+    def gen_plain_cell_io(self):
+        self.plain_output.update(set([cell.cell for cell in self.effect_vars]))
+        self.plain_input.update(set([cell.cell for cell in self.input_variables if isinstance(cell, StringLikeVariable) or isinstance(cell, StringLikeNamedRange)]))
 
     def init_keys(self):
         self.keys = [self.name]
@@ -955,6 +962,9 @@ class FunctionCode:
         if_not_hasattr = ""
         stack_code = []
         stack_code_str = ""
+
+        token_checker = f'assert HCT_STATIC_OBJECT.{self.name}_TOKEN == True'
+
         if not self.is_goal:
             if self.selectable:
                 stack_code.append('_stack_drop()')
@@ -979,6 +989,7 @@ class FunctionCode:
             all_code = f"{if_not_hasattr} {operators}"
             warrants = '\n    '.join(self.generate_ne_warrants())
             return f'''def {self.name}({function_args}):{if_not_hasattr}
+    {token_checker}
     {warrants}
     {operators}
     {stack_code_str}
@@ -1005,6 +1016,7 @@ class FunctionCode:
                 all_code = f"{if_not_hasattr} {init} {code}"
                 warrants = '\n    '.join(self.generate_ne_warrants())
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
+    {token_checker}
     {init}
     {warrants}
     assert_ok = False
@@ -1025,6 +1037,7 @@ class FunctionCode:
                 all_code = f"{if_not_hasattr} {init} {code}"
                 warrants = '\n    '.join(self.generate_ne_warrants())
                 return f'''def {self.name}({function_args}):{if_not_hasattr}
+    {token_checker}
     {init}
     {warrants}
     {code}

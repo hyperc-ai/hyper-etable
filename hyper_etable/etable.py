@@ -346,6 +346,8 @@ class ETable:
                 if (cell_name in used_cell_set) and (cell_name not in xl_mdl.cells):
                     used_cell_set.remove(cell_name)
 
+
+
         # # look for mergable actions by sync
         deleted_keys = set()
         for func_name_other in list(code.keys()):
@@ -396,6 +398,10 @@ class ETable:
         # update keys
         code = {v.name: v for k, v in code.items()}
 
+        for f in code.values():
+            f.gen_plain_cell_io()
+
+        
 
         # Collect conditional formatting
         # TODO set goal here
@@ -640,7 +646,6 @@ class ETable:
             clsv.__init__.__name__ = "__init__"
 
         # Now generate init for static object
-        HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
         init_f_code = []
         init_f_code.append(f"self.GOAL = False")
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
