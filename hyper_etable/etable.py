@@ -401,7 +401,12 @@ class ETable:
         for f in code.values():
             f.gen_plain_cell_io()
 
-        
+        for f_1 in code.values():
+            for f_2 in code.values():
+                if f_1 is f_2:
+                    continue
+                if f_1.plain_input
+
 
         # Collect conditional formatting
         # TODO set goal here

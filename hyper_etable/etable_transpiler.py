@@ -822,6 +822,9 @@ class FunctionCode:
         self.next_function_name = set()
         self.plain_input = set()
         self.plain_output = set()
+        self.neigbour_function = set()
+        self.next_function = set()
+        self.previos_function = set()
 
     def gen_plain_cell_io(self):
         self.plain_output.update(set([cell.cell for cell in self.effect_vars]))
