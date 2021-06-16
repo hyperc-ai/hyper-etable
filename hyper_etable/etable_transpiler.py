@@ -351,6 +351,9 @@ class EtableTranspiler:
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
         self.output.temp = True
         if self.output.is_range:
+            out_py = hyperc.xtj.str_to_py(
+                f'[{self.output.filename}]{self.output.sheet}!{self.output.letter[0]}{self.output.number[0]}_{self.output.letter[1]}{self.output.number[1]}')
+            self.init_code.name = f'hct_{out_py}'
             self.output_code.append(
                 f'{self.output}_not_hasattr = False')
         else:
