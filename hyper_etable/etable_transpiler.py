@@ -487,7 +487,8 @@ class EtableTranspiler:
                     var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet,
                     letter=[self.output.letter, self.output.letter],
                     number=a_value.cell.number)
-                self.output.var_str = a_value.var_str
+                self.output.row_name = a_value.row_name
+                self.output.var_str = f'{self.output.row_name}.{self.output.letter[0]}'
 
             code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
 
