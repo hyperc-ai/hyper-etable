@@ -93,7 +93,7 @@ class RangeResolver:
         for df in self.wb_values_only.defined_names.definedName:
             if df.type == 'ERROR':
                 continue
-            _, _, letter, number = hyper_etable.etable_transpiler.split_cell(df.attr_text)
+            _, _, number, letter = hyper_etable.etable_transpiler.split_cell(df.attr_text)
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
                 self.filename, ws.title, letter, number)
         pass

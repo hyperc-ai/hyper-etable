@@ -32,7 +32,7 @@ def split_cell(cell_str):
         return (cell['filename'], cell['sheet'], cell['ref'], cell['ref'])
         
     if (cell['r1'] != cell['r2']) or (cell['c1'] != cell['c2']):
-        return (cell['filename'], cell['sheet'], [int(cell['r1']), int(cell['r2'])], [cell['c1'].upper(), cell['c2'].upper()])
+        return (cell.get('filename', ''), cell.get('sheet', ''), [int(cell['r1']), int(cell['r2'])], [cell['c1'].upper(), cell['c2'].upper()])
     else:
         return (cell.get('filename', ''), cell.get('sheet', ''), int(cell['r1']), cell['c1'].upper())
 
