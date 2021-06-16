@@ -101,14 +101,20 @@ class RangeResolver:
     def replace_named_ranges(self, formula):
         formula_ret = formula
         for named_range, simple_range in self.table_collums.items():
-            formula_ret = formula_ret.replace(
-                f'{named_range.name.upper()}[{named_range.column_name.upper()}]',
-                f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
-                99)
-            formula_ret = formula_ret.replace(
-                f'{named_range.name.upper()}[[#THIS ROW],[{named_range.column_name.upper()}]]',
-                f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
-                99)
+            if named_range.column_name is None:
+                formula_ret = formula_ret.replace(
+                    f'{named_range.name.upper()}',
+                    f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
+                    99)
+            else:
+                formula_ret = formula_ret.replace(
+                    f'{named_range.name.upper()}[{named_range.column_name.upper()}]',
+                    f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
+                    99)
+                formula_ret = formula_ret.replace(
+                    f'{named_range.name.upper()}[[#THIS ROW],[{named_range.column_name.upper()}]]',
+                    f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
+                    99)
         return formula_ret
 
     def get_named_range_by_simple_range(self, simple_range_required):
