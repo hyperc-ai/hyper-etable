@@ -569,8 +569,7 @@ class EtableTranspiler:
             for what in args:
                 if str(what).startswith("(") and str(what).endswith(")"):
                     what = what[1:-1]
-                self.code.append(["assert", what,
-                                  f"# {self.s_formula} from {self.cur_tbl} (action {self.action['name']})"])
+                self.code.append(f"assert {what}")
             return "True"
         else:
             raise TypeError("AND() only supports up to 4 arguments")
