@@ -169,62 +169,79 @@ class ETable:
         for step in self.metadata["plan_exec"]:
             substep_counter = 0
             orig_vars = {}
-            for cellvar in step[0].orig_funcobject.effect_vars:  
-                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(str(cellvar.cell)) 
-                orig_vars[str(cellvar.cell)] = self.get_cellvalue_by_cellname(str(cellvar.cell))
-            step[0](**step[1])
-            for cellvar in step[0].orig_funcobject.effect_vars:  
-                new_value = self.get_cellvalue_by_cellname(str(cellvar.cell))
-                ftype = step[0].orig_funcobject.formula_type
-                if ftype == "TAKEIF":
-                    explain_type = "Decide whether to update value"
-                elif ftype == "SELECTFROMRANGE":
-                    explain_type = "Choose one value from a list"
+            for cellvar in step[0].orig_funcobject.effect_vars:
+                if cellvar.is_range:
+                    recid_ret = range(cellvar.number[0], cellvar.number[1]+1)
+                    letter = cellvar.letter[0]
                 else:
-                    explain_type = "(formula recalculation)"
-
-                if new_value == orig_vars[str(cellvar.cell)] and ftype == "TAKEIF":
-                    continue
-                filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(str(cellvar.cell))
-                leftmost = ""
-                for ltr in string.ascii_uppercase:
-                    colval = self.wb_values_only[sheetmap[sheet]][f"{ltr}{row}"].value
-                    if type(colval) == str and len(colval) > 0:
-                        leftmost = colval
-                        break
-                topmost = ""
-                i = 0
-                prev_empty = False
-                for r in self.wb_values_only[sheetmap[sheet]].rows:
-                    colval = r[string.ascii_uppercase.index(column.upper())].value
-                    if type(colval) == str and len(colval) > 0:
-                        if prev_empty == True:
-                            topmost = colval
-                        prev_empty = False
-                    elif colval == None or colval == "":
-                        prev_empty = True
+                    recid_ret = [cellvar.number]
+                    letter = cellvar.letter
+                for number in recid_ret:
+                    cell = hyper_etable.cell_resolver.PlainCell(
+                        filename=cellvar.cell.filename, sheet=cellvar.cell.sheet, letter=letter, number=number)
+                    orig_vars[str(cell)] = self.get_cellvalue_by_cellname(str(cell))
+            step[0](**step[1])
+            for cellvar in step[0].orig_funcobject.effect_vars:
+                if cellvar.is_range:
+                    recid_ret = range(cellvar.number[0], cellvar.number[1]+1)
+                    letter = cellvar.letter[0]
+                else:
+                    recid_ret = [cellvar.number]
+                    letter = cellvar.letter
+                for number in recid_ret:
+                    cell = hyper_etable.cell_resolver.PlainCell(
+                        filename=cellvar.cell.filename, sheet=cellvar.cell.sheet, letter=letter, number=number)
+                    new_value = self.get_cellvalue_by_cellname(str(cell))
+                    ftype = step[0].orig_funcobject.formula_type
+                    if ftype == "TAKEIF":
+                        explain_type = "Decide whether to update value"
+                    elif ftype == "SELECTFROMRANGE":
+                        explain_type = "Choose one value from a list"
                     else:
-                        prev_empty = False
-                    i += 1
-                    if i >= row: break
-                log_entry = [step_counter, explain_type, ename, leftmost, topmost,
-                             f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cellvar.cell)],
-                             new_value,
-                             "'"+",".join(step[0].orig_funcobject.formula_str).replace(f"[{filename.upper()}]", "")]
-                if ftype == "TAKEIF":
-                    #TODO load string from openpyxl
-                    # ename_l = list(step[0].orig_funcobject.sync_cell)
-                    # if ename_l:
-                    #     ename_str = ename_l[0]
-                    #     if isinstance(ename_str, hyper_etable.etable_transpiler.StringLikeVariable):
-                    #         ename_str = ename_str.cell_str
-                    #     ename_str = str(ename_str)
-                    #     if not ename_str.endswith('"') and not ename_str.startswith('"') and "!" in ename_str:
-                    #         ename_str = self.get_cellvalue_by_cellname(ename_str)
-                    #     ename.ename = ename_str
-                    ename = EventNameHolder()
-                self.plan_log.append(log_entry)
-                substep_counter += 1
+                        explain_type = "(formula recalculation)"
+
+                    if new_value == orig_vars[str(cell)] and ftype == "TAKEIF":
+                        continue
+                    filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(str(cell))
+                    leftmost = ""
+                    for ltr in string.ascii_uppercase:
+                        colval = self.wb_values_only[sheetmap[sheet]][f"{ltr}{row}"].value
+                        if type(colval) == str and len(colval) > 0:
+                            leftmost = colval
+                            break
+                    topmost = ""
+                    i = 0
+                    prev_empty = False
+                    for r in self.wb_values_only[sheetmap[sheet]].rows:
+                        colval = r[string.ascii_uppercase.index(column.upper())].value
+                        if type(colval) == str and len(colval) > 0:
+                            if prev_empty == True:
+                                topmost = colval
+                            prev_empty = False
+                        elif colval == None or colval == "":
+                            prev_empty = True
+                        else:
+                            prev_empty = False
+                        i += 1
+                        if i >= row: break
+                    log_entry = [step_counter, explain_type, ename, leftmost, topmost,
+                                f"'{sheet.upper()}'!{column.upper()}", row, orig_vars[str(cell)],
+                                new_value,
+                                "'"+",".join(step[0].orig_funcobject.formula_str).replace(f"[{filename.upper()}]", "")]
+                    if ftype == "TAKEIF":
+                        #TODO load string from openpyxl
+                        # ename_l = list(step[0].orig_funcobject.sync_cell)
+                        # if ename_l:
+                        #     ename_str = ename_l[0]
+                        #     if isinstance(ename_str, hyper_etable.etable_transpiler.StringLikeVariable):
+                        #         ename_str = ename_str.cell_str
+                        #     ename_str = str(ename_str)
+                        #     if not ename_str.endswith('"') and not ename_str.startswith('"') and "!" in ename_str:
+                        #         ename_str = self.get_cellvalue_by_cellname(ename_str)
+                        #     ename.ename = ename_str
+                        ename = EventNameHolder()
+                    self.plan_log.append(log_entry)
+                    substep_counter += 1
             step_counter += 1
 
 
