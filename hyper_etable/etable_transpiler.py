@@ -561,24 +561,18 @@ class EtableTranspiler:
                 f"{ret_expr} = {idx}", [ret_var, idx],
                 "="))
 
-
-
     def f_and(self, *args):
-        if len(args) == 2 and self.paren_level > 1:
-            v1 = args[0]
-            v2 = args[1]
-            return self.save_return(StringLikeVars(f"({v1} and {v2})", [v1, v2], 'and'), bool)
-        elif len(args) == 3 and self.paren_level > 1:
-            v1 = args[0]
-            v2 = args[1]
-            v3 = args[2]
-            return self.save_return(StringLikeVars(f"({v1} and {v2} and {v3})", [v1, v2, v3], 'and'), bool)
-        elif len(args) == 4 and self.paren_level > 1:
-            v1 = args[0]
-            v2 = args[1]
-            v3 = args[2]
-            v4 = args[3]
-            return self.save_return(StringLikeVars(f"({v1} and {v2} and {v3} and {v4})", [v1, v2, v3, v4], 'and'), bool)
+        if self.paren_level > 1:
+            vars = []
+            for var in args:
+                if (not isinstance(var,StringLikeVars)) and var.is_range:
+                    for number in range(var.cell.number[0], var.cell.number[1]+1):
+                        vars.append(StringLikeVariable.new(var_map=self.var_mapper,
+                                filename=var.cell.filename, sheet=var.cell.sheet, letter=var.cell.letter[0], number=number))
+                else:
+                    vars.append(var)
+            vars_str=" and ".join([str(v) for v in vars])
+            return self.save_return(StringLikeVars(f"({vars_str})", vars, 'and'), bool)
         elif self.paren_level == 1:
             for what in args:
                 if str(what).startswith("(") and str(what).endswith(")"):
