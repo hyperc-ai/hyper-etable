@@ -478,16 +478,30 @@ class EtableTranspiler:
                 code_element.precondition_chunk[branch_name] = [[], 'if']
             code_element.precondition_chunk[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
-            if isinstance(a_value, StringLikeNamedRange):
-                # self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
+            ranges_set = set()
+            if isinstance(a_condition, StringLikeVars):
+                ranges_set = set([v for v in a_condition.variables if isinstance(v, StringLikeNamedRange)])
+            elif isinstance(a_condition, StringLikeNamedRange):
+                ranges_set = set([a_condition])
+            if isinstance(a_value, StringLikeVars):
+                ranges_set.update([v for v in a_value.variables if isinstance(v, StringLikeNamedRange)])
+            elif isinstance(a_value, StringLikeNamedRange):
+                ranges_set.add(a_value)
+            first_range_var = None
+            for var in ranges_set:
+                if first_range_var is None:
+                    first_range_var = var
+                else:
+                    # set row name for all variables
+                    var.row_name = first_range_var.row_name
+                    var.var_str = f'{var.row_name}.{var.letter[0]}'
 
-                # code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}.{a_value.cell.letter[0].upper()}")
-                # self.output_is_range = True
+            if first_range_var is not None:
                 self.output = StringLikeVariable(
                     var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet,
                     letter=[self.output.letter, self.output.letter],
-                    number=a_value.cell.number)
-                self.output.row_name = a_value.row_name
+                    number=first_range_var.cell.number)
+                self.output.row_name = first_range_var.row_name
                 self.output.var_str = f'{self.output.row_name}.{self.output.letter[0]}'
 
             code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
