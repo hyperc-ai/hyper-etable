@@ -89,8 +89,8 @@
                 "HYPERC_MAX_PROC": "1",
                 "HYPERC_USE_CACHE": "0",
                 "HYPERC_TEMPDIR": "./tmp",
-                "HYPERC_DONT_REMOVE_ACTIONS": "1"
-                // "HYPERC_LOGLEVEL": "DEBUG"
+                "HYPERC_DONT_REMOVE_ACTIONS": "1",
+                "HYPERC_IGNORE_EQ_BRANCH": "1"
             },
             "justMyCode": false
         }
