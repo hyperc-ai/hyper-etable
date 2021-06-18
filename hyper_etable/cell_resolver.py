@@ -88,6 +88,9 @@ class RangeResolver:
                     cell_range = ""
                     self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper())] = PlainCellRange(
                         self.filename, ws.title, [letter_next.upper(), letter_next.upper()], unpak_range_row)
+                    self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper(), this_row=True)] = PlainCellRange(
+                        self.filename, ws.title, [letter_next.upper(), letter_next.upper()], unpak_range_row)
+
                     
 
         for df in self.wb_values_only.defined_names.definedName:
@@ -97,6 +100,8 @@ class RangeResolver:
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
                 self.filename, ws.title, letter, number)
         pass
+        self.name_to_range_map = {str(k).upper(): k for k in self.table_collums.keys()}
+
 
     def replace_named_ranges(self, formula):
         formula_ret = formula
@@ -117,18 +122,22 @@ class RangeResolver:
                     99)
         return formula_ret
 
-    def get_named_range_by_simple_range(self, simple_range_required):
+    def get_named_range_by_simple_range(self, simple_range_required, this_row=False):
         for named_range, simple_range in self.table_collums.items():
-            if simple_range == simple_range_required:
+            if simple_range == simple_range_required and (named_range.this_row == this_row):
                 return (named_range, simple_range)
         return (None, None)
+    
+    def get_cell_range_by_name(self, name):
+        key = self.name_to_range_map.get(name.upper(), None)
+        return self.table_collums.get(key, None)
 
-    def get_cell_range_by_name(self, filename, sheet, name):
-        key = PlainCellNamedRange(filename, sheet, name)
-        ret =  self.table_collums.get(key, None)
+    def get_cell_range(self, filename, sheet, name, column_name=None, this_row=False):
+        key = PlainCellNamedRange(filename, sheet, name, column_name=column_name, this_row=this_row)
+        ret = self.table_collums.get(key, None)
         return ret
 
-
+    #TODO broken function
     def get_range_name_by_cell(self, cellname):
         filename = cellname.filename
         sheet = cellname.sheet
