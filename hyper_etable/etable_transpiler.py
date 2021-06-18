@@ -129,8 +129,6 @@ class StringLikeNamedRange:
         self.sheet = sheet
         self.name = name
         self.cell = cell
-        if cell is None:
-            print(cell)
         self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
         self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
@@ -320,7 +318,6 @@ class EtableTranspiler:
             formula = bogus_start_re.sub("=", formula, 1)
         formula = bogus_end_re.sub("", formula, 1)
         self.formula = self.range_resolver.replace_named_ranges(formula.upper())
-        self.formula = formula.upper()
         self.output = output
         self.output.var_str = f'{self.output.var_str}_output'
         init_code.formula_str.add(formula)
@@ -346,8 +343,6 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         transpiled_formula_return = self.transpile(self.nodes)
-        if isinstance(transpiled_formula_return,str):
-            print(transpiled_formula_return)
         self.init_code.all_variables.update(set(transpiled_formula_return.variables))
         self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
             v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
@@ -483,8 +478,6 @@ class EtableTranspiler:
                 code_element.precondition_chunk[branch_name] = [[], 'if']
             code_element.precondition_chunk[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
-            
-               
             if isinstance(a_value, StringLikeNamedRange):
                 # self.init_code.function_args[a_value] = hyperc.xtj.str_to_py(f'[{a_value.filename}]{a_value.sheet}')
 
@@ -758,7 +751,7 @@ class EtableTranspiler:
 
             return StringLikeNamedRange.new(
                 var_map=self.var_mapper, sheet=sheet, filename=filename, name=name,
-                cell=self.range_resolver.get_cell_range_by_name(name=f"'[{filename}]{sheet}'!{name}"))
+                cell=self.range_resolver.get_cell_range_by_name(sheet=sheet, filename=filename, name=name))
 
         #TODO Query range from etable.py.ETable.table_collums here
 
