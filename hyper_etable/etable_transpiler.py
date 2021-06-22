@@ -948,7 +948,7 @@ class FunctionCode:
                 self.function_args[var] = py_table_name
                 self.init.append(f'assert {var}_not_hasattr == False')
                 if isinstance(var, StringLikeNamedRange):
-                    self.init.append(f'assert {var.row_name} in DEFINED_TABLES.{var.table}')
+                    self.init.append(f'assert {var.row_name} in DEFINED_TABLES.{var.name}')
                 else:
                     self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
                     self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')

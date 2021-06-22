@@ -75,11 +75,14 @@ class RangeResolver:
         self.filename = os.path.basename(str(filename))
         self.table_collums = {}
         self.tables = {}
+        self.cell_to_table = {}
         for ws in self.wb_values_only.worksheets:
             for t in ws.tables.values():
                 _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
                     f"'[file]sheet'!{t.ref}")
-                self.tables[t.displayName] = PlainCellRange(self.filename, ws.title, unpak_range_column, unpak_range_row)
+                # unpak_range_row[0]+1 - filter header. Header have all named tables 
+                self.tables[t.displayName.upper()] = PlainCellRange(self.filename, ws.title, unpak_range_column, [
+                                                            unpak_range_row[0]+1, unpak_range_row[1]])
                 for c in t.tableColumns:
                     _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
                         f"'[file]sheet'!{t.ref}")
@@ -89,7 +92,7 @@ class RangeResolver:
                         letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
                         idx += 1
                     self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper())] = PlainCellRange(
-                        self.filename, ws.title, [letter_next.upper(), letter_next.upper()], unpak_range_row)
+                        self.filename, ws.title, [letter_next.upper(), letter_next.upper()], [unpak_range_row[0]+1, unpak_range_row[1]])
                     
 
         for df in self.wb_values_only.defined_names.definedName:
@@ -98,6 +101,15 @@ class RangeResolver:
             _, _, number, letter = hyper_etable.etable_transpiler.split_cell(df.attr_text)
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
                 self.filename, ws.title, letter, number)
+
+        for table, n_range in self.tables.items():
+            letter_stop = n_range.letter[1]
+            letter_next = n_range.letter[0]
+            for number in range(n_range.number[0], n_range.number[1]+1, 1):
+                while letter_stop != letter_next:
+                    self.cell_to_table[PlainCell(filename=n_range.filename, sheet=n_range.sheet, letter=letter_next, number=number)] = table
+                    letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
+                self.cell_to_table[PlainCell(filename=n_range.filename, sheet=n_range.sheet, letter=letter_next, number=number)] = table
         pass
 
     def replace_named_ranges(self, formula):
@@ -130,6 +142,8 @@ class RangeResolver:
         ret =  self.table_collums.get(key, None)
         return ret
 
+    def get_table_by_cell(self, cell):
+        return self.cell_to_table.get(cell, None)
 
     def get_range_name_by_cell(self, cellname):
         filename = cellname.filename

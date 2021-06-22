@@ -544,10 +544,11 @@ class ETable:
                     
                     # Declare and load defined table names
                     defined_table_name = self.range_resolver.get_table_by_cell(cell)
-                    if defined_table_name not in self.mod.DefinedTables.__annotations__:
-                        self.mod.DefinedTables.__annotations__[defined_table_name] = set
-                        setattr(self.mod.DefinedTables, defined_table_name, set())
-                    getattr(self.mod.DEFINED_TABLES, defined_table_name).add(self.objects[py_table_name][recid])
+                    if defined_table_name is not None:
+                        if defined_table_name not in self.mod.DefinedTables.__annotations__:
+                            self.mod.DefinedTables.__annotations__[defined_table_name] = set
+                            setattr(self.mod.DEFINED_TABLES, defined_table_name, set())
+                        getattr(self.mod.DEFINED_TABLES, defined_table_name).add(self.objects[py_table_name][recid])
 
                     self.objects[py_table_name][recid].__touched_annotations__.add(letter)
                     self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
@@ -628,6 +629,22 @@ class ETable:
         #     filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
         #     stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
         #     break
+
+        # Dump defined table names
+        init_f_code = []
+        for attr_name, attr_type in self.mod.DefinedTables.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = DEFINED_TABLES.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.DefinedTables.__annotations__['GOAL'] = bool
+        if init_f_code:
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_dt_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_dt_init.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
+            self.mod.DefinedTables.__init__.__name__ = "__init__"
+
 
         stack_code = stack_code_gen_all(self.objects)
 
