@@ -545,10 +545,11 @@ class ETable:
                     # Declare and load defined table names
                     defined_table_name = self.range_resolver.get_table_by_cell(cell)
                     if defined_table_name is not None:
-                        if defined_table_name not in self.mod.DefinedTables.__annotations__:
-                            self.mod.DefinedTables.__annotations__[defined_table_name] = set
-                            setattr(self.mod.DEFINED_TABLES, defined_table_name, set())
-                        getattr(self.mod.DEFINED_TABLES, defined_table_name).add(self.objects[py_table_name][recid])
+                        for dtn in defined_table_name:
+                            if dtn not in self.mod.DefinedTables.__annotations__:
+                                self.mod.DefinedTables.__annotations__[dtn] = set
+                                setattr(self.mod.DEFINED_TABLES, dtn, set())
+                            getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
 
                     self.objects[py_table_name][recid].__touched_annotations__.add(letter)
                     self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool

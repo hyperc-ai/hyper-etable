@@ -208,6 +208,7 @@ class StringLikeVariable:
         if isinstance(self.number, list):
             self.is_range = True
             self.cell = hyper_etable.cell_resolver.PlainCellRange(self.filename, self.sheet, self.letter, self.number)
+            self.range_name = f'{self.letter[0]}{self.number[0]}_{self.letter[1]}{self.number[1]}'
 
         else:
             self.is_range = False
@@ -420,9 +421,11 @@ class EtableTranspiler:
         p = p.upper()
         rng_test = StringLikeVariable.new(
             var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet, letter=[rng.letter[0], rng.letter[0]], number=rng.number)
+        rng_test.range_name = rng.range_name
         rng_ret = StringLikeVariable.new(
             var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet,
             letter=[p,p], number=rng.number)
+        rng_ret.range_name = rng.range_name
         rng_ret.row_name = rng_test.row_name
         rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
         self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
@@ -747,6 +750,8 @@ class EtableTranspiler:
                 if named_range is not None :
                     return StringLikeNamedRange.new(var_map=self.var_mapper, sheet=sheet, filename=filename, name=named_range.name, cell=simple_range)
                 else:
+                    for cell in self.range_resolver.gen_cells_from_range(plain_cell_range):
+                        self.range_resolver.cell_to_table[cell].add(f"{node.attr['c1']}{node.attr['r1']}_{node.attr['c2']}{node.attr['r2']}")
                     cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
             return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
         else:
@@ -949,9 +954,12 @@ class FunctionCode:
                 self.init.append(f'assert {var}_not_hasattr == False')
                 if isinstance(var, StringLikeNamedRange):
                     self.init.append(f'assert {var.row_name} in DEFINED_TABLES.{var.name}')
+                elif isinstance(var, StringLikeVariable):
+                    self.init.append(
+                        f'assert {var.row_name} in DEFINED_TABLES.{var.range_name}')
                 else:
-                    self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
-                    self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
+                    raise Exception(f"Unsupport range {var}")
+
             else:
                 self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
                 self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')

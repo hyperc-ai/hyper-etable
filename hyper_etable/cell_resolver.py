@@ -1,6 +1,7 @@
 import hyperc.util
 import hyper_etable.etable_transpiler
 import os
+import collections
 
 class PlainCell:
     def __init__(self, filename, sheet, letter, number):
@@ -75,7 +76,7 @@ class RangeResolver:
         self.filename = os.path.basename(str(filename))
         self.table_collums = {}
         self.tables = {}
-        self.cell_to_table = {}
+        self.cell_to_table = collections.defaultdict(set)
         for ws in self.wb_values_only.worksheets:
             for t in ws.tables.values():
                 _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
@@ -103,14 +104,22 @@ class RangeResolver:
                 self.filename, ws.title, letter, number)
 
         for table, n_range in self.tables.items():
-            letter_stop = n_range.letter[1]
-            letter_next = n_range.letter[0]
-            for number in range(n_range.number[0], n_range.number[1]+1, 1):
-                while letter_stop != letter_next:
-                    self.cell_to_table[PlainCell(filename=n_range.filename, sheet=n_range.sheet, letter=letter_next, number=number)] = table
-                    letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
-                self.cell_to_table[PlainCell(filename=n_range.filename, sheet=n_range.sheet, letter=letter_next, number=number)] = table
+            for cell in self.gen_cells_from_range(n_range):
+                self.cell_to_table[cell].add(table)
         pass
+
+    def gen_cells_from_range(self, n_range):
+        ret = []
+        letter_stop = n_range.letter[1]
+        letter_next = n_range.letter[0]
+        for number in range(n_range.number[0], n_range.number[1]+1, 1):
+            while letter_stop != letter_next:
+                ret.append(PlainCell(filename=n_range.filename, sheet=n_range.sheet, letter=letter_next, number=number))
+                letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
+            ret.append(PlainCell(filename=n_range.filename, sheet=n_range.sheet, letter=letter_next, number=number))
+        return ret
+
+
 
     def replace_named_ranges(self, formula):
         formula_ret = formula
