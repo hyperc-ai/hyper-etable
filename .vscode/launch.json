@@ -90,7 +90,8 @@
                 "HYPERC_USE_CACHE": "0",
                 "HYPERC_TEMPDIR": "./tmp",
                 "HYPERC_DONT_REMOVE_ACTIONS": "1",
-                "HYPERC_IGNORE_EQ_BRANCH": "1"
+                "HYPERC_IGNORE_EQ_BRANCH": "1",
+                "HYPERC_LOGLEVEL": "info"
             },
             "justMyCode": false
         }

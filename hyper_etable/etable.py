@@ -128,16 +128,22 @@ class ETable:
         self.objects = collections.defaultdict(dict)
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
-        self.mod.StaticObject = type("StaticObject", (object, ), {})
-        self.mod.StaticObject.__annotations__ = {'GOAL': bool}
-        self.mod.StaticObject.__annotations__ = {}
+        self.methods_classes = {}
 
+        self.mod.DefinedTables = type("DefinedTables", (object, ), {})
+        self.mod.DefinedTables.__annotations__ = {}
+        self.mod.DefinedTables.__qualname__ = f"{self.session_name}.DefinedTables"
+        self.mod.DEFINED_TABLES = self.mod.DefinedTables()
+        self.methods_classes["DefinedTables"] = self.mod.DefinedTables
+
+        self.mod.StaticObject = type("StaticObject", (object, ), {})
+        self.mod.StaticObject.__annotations__ = {}
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
         self.mod.HCT_STATIC_OBJECT = self.mod.StaticObject()
         self.mod.HCT_STATIC_OBJECT.GOAL = False
         self.mod.HCT_OBJECTS = {}
-        self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
+
         self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
         self.wb_with_formulas = openpyxl.load_workbook(filename=filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
@@ -494,8 +500,7 @@ class ETable:
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
 
-
-
+        # Load used cell
         for cell in used_cell_set:
             filename = cell.filename
             sheet = cell.sheet
@@ -521,6 +526,7 @@ class ETable:
                 letter_ret = [letter_ret]
             for letter in letter_ret:
                 for recid in recid_ret:
+                    cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if recid not in self.objects[py_table_name]:
                         if py_table_name not in self.classes:
                             ThisTable = self.get_new_table(py_table_name, sheet)
@@ -535,6 +541,14 @@ class ETable:
                         # ThisTable.__annotations_type_set__ = defaultdict(set)
                         self.objects[py_table_name][recid] = rec_obj
                         self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+                    
+                    # Declare and load defined table names
+                    defined_table_name = self.range_resolver.get_table_by_cell(cell)
+                    if defined_table_name not in self.mod.DefinedTables.__annotations__:
+                        self.mod.DefinedTables.__annotations__[defined_table_name] = set
+                        setattr(self.mod.DefinedTables, defined_table_name, set())
+                    getattr(self.mod.DEFINED_TABLES, defined_table_name).add(self.objects[py_table_name][recid])
+
                     self.objects[py_table_name][recid].__touched_annotations__.add(letter)
                     self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
                     #TODO add type detector
@@ -544,7 +558,6 @@ class ETable:
                     if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                    cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     # assert cell in self.cells_value, f"Lost value for cell {cell}"
                     if cell not in self.cells_value or self.cells_value[cell] is None:
                         # TODO this is stumb for novalue cell. We should use Novalue ????
@@ -656,12 +669,14 @@ class ETable:
             clsv.__init__ = globals()["hct_f_init"]
             clsv.__init__.__name__ = "__init__"
 
+
         # Now generate init for static object
         HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
         init_f_code = []
         init_f_code.append(f"self.GOAL = False")
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
             init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
         if init_f_code:
 
             full_f_code = '\n    '.join(init_f_code)

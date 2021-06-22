@@ -947,8 +947,11 @@ class FunctionCode:
             if var.is_range :
                 self.function_args[var] = py_table_name
                 self.init.append(f'assert {var}_not_hasattr == False')
-                self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
-                self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
+                if isinstance(var, StringLikeNamedRange):
+                    self.init.append(f'assert {var.row_name} in DEFINED_TABLES.{var.table}')
+                else:
+                    self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
+                    self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
             else:
                 self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
                 self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')

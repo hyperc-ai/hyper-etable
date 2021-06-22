@@ -74,24 +74,26 @@ class RangeResolver:
         self.directory = os.path.dirname(str(filename))
         self.filename = os.path.basename(str(filename))
         self.table_collums = {}
+        self.tables = {}
         for ws in self.wb_values_only.worksheets:
             for t in ws.tables.values():
+                _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
+                    f"'[file]sheet'!{t.ref}")
+                self.tables[t.displayName] = PlainCellRange(self.filename, ws.title, unpak_range_column, unpak_range_row)
                 for c in t.tableColumns:
                     _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
                         f"'[file]sheet'!{t.ref}")
-                    letter_stop = unpak_range_column[1]
                     letter_next = unpak_range_column[0]
                     idx = 1
                     while idx != c.id:
                         letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
                         idx += 1
-                    cell_range = ""
                     self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper())] = PlainCellRange(
                         self.filename, ws.title, [letter_next.upper(), letter_next.upper()], unpak_range_row)
                     
 
         for df in self.wb_values_only.defined_names.definedName:
-            if df.type == 'ERROR':
+            if df.type == 'ERROR' or df.attr_text == '#REF!':
                 continue
             _, _, number, letter = hyper_etable.etable_transpiler.split_cell(df.attr_text)
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
