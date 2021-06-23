@@ -19,5 +19,6 @@ try:
         project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
         et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
         et.calculate()
+        et.finish()
 except:
     pass
