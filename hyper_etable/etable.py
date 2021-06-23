@@ -270,7 +270,7 @@ class ETable:
 
     def get_new_table(self, table_name, sheet):
         ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
-        ThisTable.__annotations__ = {'__table_name__': str, 'recid': int}
+        ThisTable.__annotations__ = {'__table_name__': str}
         ThisTable.__touched_annotations__ = set()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[table_name] = ThisTable
@@ -535,7 +535,6 @@ class ETable:
                         # if 
                         rec_obj = ThisTable()
                         # rec_obj.__row_record__ = copy.copy(cell)
-                        rec_obj.recid = recid
                         rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                         rec_obj.__touched_annotations__ = set()
                         # ThisTable.__annotations_type_set__ = defaultdict(set)
