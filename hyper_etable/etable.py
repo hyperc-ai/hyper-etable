@@ -657,9 +657,9 @@ class ETable:
             clsv.__init__.__name__ = "__init__"
 
         # Now generate init for static object
-        HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
+        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
         init_f_code = []
-        init_f_code.append(f"self.GOAL = False")
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
             init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
         if init_f_code:
