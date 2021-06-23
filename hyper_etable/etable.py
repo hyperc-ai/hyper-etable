@@ -291,7 +291,7 @@ class ETable:
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         # 
-        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
+        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
@@ -562,7 +562,7 @@ class ETable:
                     # assert cell in self.cells_value, f"Lost value for cell {cell}"
                     if cell not in self.cells_value or self.cells_value[cell] is None:
                         # TODO this is stumb for novalue cell. We should use Novalue ????
-                        ox_sht, ox_cell_ref = stl.gen_opxl_addr(self.filename, 
+                        ox_sht, ox_cell_ref = self.stl.gen_opxl_addr(self.filename, 
                                                         self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
                                                         letter, recid)
                         xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
@@ -717,8 +717,9 @@ class ETable:
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
         print("finish")
-
-        stl.calculate_excel()
+        
+    def finish(self):
+        self.stl.calculate_excel()
         dirn = os.path.dirname(self.filename)
         new_dirname = os.path.join(dirn, f"{self.filename.name}_out")
         try:
