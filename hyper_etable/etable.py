@@ -696,7 +696,7 @@ class ETable:
             pass
         new_dirname_forfile = os.path.join(dirn, f"{self.filename.name}_out", str(int(time.time())))
         mkdir(new_dirname_forfile)
-        stl.write(new_dirname_forfile)
+        self.stl.write(new_dirname_forfile)
 
         self.out_filename = os.path.join(new_dirname_forfile, self.filename.name)
         return self.out_filename
