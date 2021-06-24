@@ -102,6 +102,7 @@ class RangeResolver:
             _, _, number, letter = hyper_etable.etable_transpiler.split_cell(df.attr_text)
             self.table_collums[PlainCellNamedRange(self.filename, ws.title, df.name)] = PlainCellRange(
                 self.filename, ws.title, letter, number)
+            self.tables[df.name] = PlainCellRange(self.filename, ws.title, letter, number)
 
         for table, n_range in self.tables.items():
             for cell in self.gen_cells_from_range(n_range):
