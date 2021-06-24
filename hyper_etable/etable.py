@@ -454,21 +454,27 @@ class ETable:
                             used_cell_set.add(current_cell)
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
-                            goal_code[cell].append(
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
+                            goal_code[cell].append([
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}',
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False', 
+                                f'assert HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}_not_hasattr == False'])
                         elif isinstance(value, formulas.tokens.operand.Number):
                             if str(value.attr["name"]) == "TRUE":
-                                goal_code[cell].append(
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True')
+                                goal_code[cell].append([
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True',
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
                             elif str(value.attr["name"]) == "FALSE":
-                                goal_code[cell].append(
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False')
+                                goal_code[cell].append([
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False',
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
                             else:
-                                goal_code[cell].append(
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                                goal_code[cell].append([
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}',
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
                         elif isinstance(value, formulas.tokens.operand.String):
-                            goal_code[cell].append(
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
+                            goal_code[cell].append([
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"',
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal', is_goal=True)
         goal_code_source = {}
@@ -494,7 +500,8 @@ class ETable:
 
             for idx in goal_code_source:
                 goal_code_source[idx].operators[goal_code_source[idx].name].append(f'#{goal_name}')
-                goal_code_source[idx].operators[goal_code_source[idx].name].append(g_c[idx % len(g_c)])
+                goal_code_source[idx].operators[goal_code_source[idx].name].extend(g_c[idx % len(g_c)])
+
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
         main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
