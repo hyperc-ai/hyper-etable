@@ -733,15 +733,4 @@ class ETable:
         self.out_filename = os.path.join(new_dirname_forfile, self.filename.name)
         return self.out_filename
 
-        # # xl_mdl.dsp.dispatch()
-        # print('Finished excel-model')
-
-
-        # xl_mdl.calculate({"'[EXTRA.XLSX]EXTRA'!A1:B1": [[1, 1]]})
-
-        # books = _res2books(xl_mdl.write(xl_mdl.books))
-
-        # msg = '%sCompared overwritten results in %.2fs.\n' \
-        #         '%sComparing fresh written results.'
-
-        # res_book = _res2books(xl_mdl.write())
+    # def call_sequential(self, sequency)

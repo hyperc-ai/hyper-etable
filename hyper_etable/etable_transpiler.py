@@ -954,9 +954,11 @@ class FunctionCode:
                 self.init.append(f'assert {var}_not_hasattr == False')
                 if isinstance(var, StringLikeNamedRange):
                     self.init.append(f'assert {var.row_name} in DEFINED_TABLES.{var.name}')
+                    pass
                 elif isinstance(var, StringLikeVariable):
                     self.init.append(
                         f'assert {var.row_name} in DEFINED_TABLES.{var.range_name}')
+                    pass
                 else:
                     raise Exception(f"Unsupport range {var}")
 
