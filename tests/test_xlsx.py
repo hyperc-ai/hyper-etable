@@ -16,4 +16,3 @@ def test_solve_xtj(name, xlsx_file):
     et.calculate()
     et.finish()
 
-
