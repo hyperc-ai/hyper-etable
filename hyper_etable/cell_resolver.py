@@ -84,6 +84,10 @@ class RangeResolver:
                 # unpak_range_row[0]+1 - filter header. Header have all named tables 
                 self.tables[t.displayName.upper()] = PlainCellRange(self.filename, ws.title, unpak_range_column, [
                                                             unpak_range_row[0]+1, unpak_range_row[1]])
+                self.table_collums[PlainCellNamedRange(self.filename, ws.title, f'{t.name.upper()}[#ALL]')] = PlainCellRange(self.filename, ws.title, unpak_range_column, [
+                                                            unpak_range_row[0], unpak_range_row[1]])
+                self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper())] = PlainCellRange(self.filename, ws.title, unpak_range_column, [
+                                                            unpak_range_row[0], unpak_range_row[1]])
                 for c in t.tableColumns:
                     _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
                         f"'[file]sheet'!{t.ref}")
