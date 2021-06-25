@@ -560,7 +560,9 @@ class ETable:
                                                         self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
                                                         letter, recid)
                         xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
-                        if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
+                        if xl_orig_calculated_value in ['#NAME?', '#VALUE!']  and self.enable_precalculation:
+                            raise Exception("We don't support table with error cell")
+                        else:
                             xl_orig_calculated_value = ''
                         if (type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str) and self.enable_precalculation:
                             setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
