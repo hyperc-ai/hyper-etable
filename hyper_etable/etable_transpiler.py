@@ -114,24 +114,24 @@ class StringLikeConstant(object):
 class StringLikeNamedRange:
 
     @staticmethod
-    def new(var_map, filename, sheet, name, cell):
-        new_str_var = StringLikeNamedRange(var_map, filename, sheet, name, cell)
+    def new(var_map, filename, sheet, range_name, cell):
+        new_str_var = StringLikeNamedRange(var_map, filename, sheet, range_name, cell)
         new_str_var_type = (new_str_var, type(new_str_var))
         if new_str_var_type in var_map:
             return var_map[new_str_var_type]
         else:
             return new_str_var
 
-    def __init__(self, var_map, filename, sheet, name, cell):
+    def __init__(self, var_map, filename, sheet, range_name, cell):
         self.temp = False
         self.directory = os.path.dirname(filename)
         self.filename = os.path.basename(filename)
         self.sheet = sheet
-        self.name = name
+        self.range_name = range_name
         self.cell = cell
         self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
-        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
+        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.range_name)}'
         self.var_str = f'{self.row_name}.{cell.letter[0]}'
         self.types = set()
         self.type_group_set = set()
@@ -415,20 +415,20 @@ class EtableTranspiler:
             args.append('True == True')
         assert len(args) == 4, "VLOOKUP should be 3 or 4 arguments"
         cell, rng, column, range_lookup = args
-        p = hyperc.util.letter_index_next(letter=rng.letter[0])
+        p = hyperc.util.letter_index_next(letter=rng.cell.letter[0])
         for i in range(column.var-2):
             p = hyperc.util.letter_index_next(letter=p)
         p = p.upper()
         rng_test = StringLikeVariable.new(
-            var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet, letter=[rng.letter[0], rng.letter[0]], number=rng.number)
+            var_map=self.var_mapper, filename=rng.cell.filename, sheet=rng.cell.sheet, letter=[rng.cell.letter[0], rng.cell.letter[0]], number=rng.cell.number)
         rng_test.range_name = rng.range_name
         rng_ret = StringLikeVariable.new(
-            var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet,
-            letter=[p,p], number=rng.number)
+            var_map=self.var_mapper, filename=rng.cell.filename, sheet=rng.cell.sheet,
+            letter=[p,p], number=rng.cell.number)
         rng_ret.range_name = rng.range_name
         rng_ret.row_name = rng_test.row_name
         rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
+        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
@@ -748,7 +748,7 @@ class EtableTranspiler:
                 plain_cell_range = hyper_etable.cell_resolver.PlainCellRange(filename, sheet, [node.attr['c1'], node.attr['c2']], [node.attr['r1'], node.attr['r2']])
                 named_range, simple_range = self.range_resolver.get_named_range_by_simple_range(plain_cell_range)
                 if named_range is not None :
-                    return StringLikeNamedRange.new(var_map=self.var_mapper, sheet=sheet, filename=filename, name=named_range.name, cell=simple_range)
+                    return StringLikeNamedRange.new(var_map=self.var_mapper, sheet=sheet, filename=filename, range_name=named_range.name, cell=simple_range)
                 else:
                     for cell in self.range_resolver.gen_cells_from_range(plain_cell_range):
                         self.range_resolver.cell_to_table[cell].add(f"{node.attr['c1']}{node.attr['r1']}_{node.attr['c2']}{node.attr['r2']}")
@@ -763,7 +763,7 @@ class EtableTranspiler:
             # nr == nr <-- ok for select from range
 
             return StringLikeNamedRange.new(
-                var_map=self.var_mapper, sheet=sheet, filename=filename, name=name,
+                var_map=self.var_mapper, sheet=sheet, filename=filename, range_name=name,
                 cell=self.range_resolver.get_cell_range_by_name(sheet=sheet, filename=filename, name=name))
 
         #TODO Query range from etable.py.ETable.table_collums here
@@ -952,12 +952,9 @@ class FunctionCode:
             if var.is_range :
                 self.function_args[var] = py_table_name
                 self.init.append(f'assert {var}_not_hasattr == False')
-                if isinstance(var, StringLikeNamedRange):
-                    self.init.append(f'assert {var.row_name} in DEFINED_TABLES.{var.name}')
-                    pass
-                elif isinstance(var, StringLikeVariable):
+                if isinstance(var, StringLikeNamedRange) or isinstance(var, StringLikeVariable):
                     self.init.append(
-                        f'assert {var.row_name} in DEFINED_TABLES.{var.range_name}')
+                        f'assert {var.row_name} in DEFINED_TABLES.{hyperc.xtj.str_to_py(var.range_name)}')
                     pass
                 else:
                     raise Exception(f"Unsupport range {var}")

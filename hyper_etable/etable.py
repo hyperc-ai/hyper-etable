@@ -552,7 +552,8 @@ class ETable:
                     # Declare and load defined table names
                     defined_table_name = self.range_resolver.get_table_by_cell(cell)
                     if defined_table_name is not None:
-                        for dtn in defined_table_name:
+                        for dtn_raw in defined_table_name:
+                            dtn = hyperc.xtj.str_to_py(dtn_raw)
                             if dtn not in self.mod.DefinedTables.__annotations__:
                                 self.mod.DefinedTables.__annotations__[dtn] = set
                                 setattr(self.mod.DEFINED_TABLES, dtn, set())
