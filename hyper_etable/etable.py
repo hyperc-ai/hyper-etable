@@ -113,7 +113,10 @@ class EventNameHolder:
 
 class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
-        self.enable_precalculation = True
+        if 'xlsx' == os.path.splitext(filename)[1][1:].lower():
+            self.enable_precalculation = False
+        else:
+            self.enable_precalculation = True
         filename = pathlib.PosixPath(filename)
         self.filename = filename
         self.out_filename = ""
