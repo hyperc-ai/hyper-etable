@@ -82,7 +82,10 @@ class StringLikeConstant(object):
         self.variables.add(self)
 
     def __str__(self):
-        return str(self.var)
+        if isinstance(self.var, str):
+            return f'"{self.var}"'
+        else:
+            return str(self.var)
     
     def __repr__(self):
         return f"<StringLikeConstant>{self.var}({type(self.var)})"
@@ -685,16 +688,7 @@ class EtableTranspiler:
                 self.function_parens_args[self.paren_level].append(ret)
             return ret
         elif isinstance(node, formulas.tokens.operand.String):
-            isint = True
-            if node.attr["name"].lower() == "true":  # FIX HERE: need to check inference
-                ret = True
-                isint = False
-            elif node.attr["name"].lower() == "false":
-                ret = False
-                isint = False
-            if isint:
-                ret = node.attr["expr"]
-            ret = StringLikeConstant.new(var_map=self.var_mapper, var=ret)
+            ret = StringLikeConstant.new(var_map=self.var_mapper, var=node.attr["name"])
             if self.paren_level in self.function_parens:
                 self.function_parens_args[self.paren_level].append(ret)
             return ret
