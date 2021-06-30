@@ -115,19 +115,6 @@ class RangeResolver:
                     f'{named_range.name.upper()}[[#THIS ROW],[{named_range.column_name.upper()}]]',
                     f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                     99)
-        for table_name, simple_range in self.tables.items():
-            formula_ret = formula_ret.replace(
-                f'{table_name.upper()}[#ALL]',
-                f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
-                99)
-            formula_ret = formula_ret.replace(
-                f'{table_name.upper()}[]',
-                f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
-                99)
-            formula_ret = formula_ret.replace(
-                f'{table_name.upper()}',
-                f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
-                99)
         return formula_ret
 
     def get_named_range_by_simple_range(self, simple_range_required):
