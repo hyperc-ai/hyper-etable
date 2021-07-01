@@ -575,6 +575,8 @@ class EtableTranspiler:
                     for number in range(var.cell.number[0], var.cell.number[1]+1):
                         vars.append(StringLikeVariable.new(var_map=self.var_mapper,
                                 filename=var.cell.filename, sheet=var.cell.sheet, letter=var.cell.letter[0], number=number))
+                elif isinstance(var, StringLikeVariable) or isinstance(var,StringLikeConstant):
+                    vars.append(StringLikeVars(f"({var} == True)", [var,StringLikeConstant.new(var_map=self.var_mapper,var=True)], '=='))
                 else:
                     vars.append(var)
             vars_str=" and ".join([str(v) for v in vars])
