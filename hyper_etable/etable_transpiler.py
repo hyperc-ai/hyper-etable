@@ -848,6 +848,7 @@ class FunctionCode:
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
         self.formula_str.update(other.formula_str)
+        self.function_args.update(other.function_args)
         if other.selectable:
             self.selectable = True
 
