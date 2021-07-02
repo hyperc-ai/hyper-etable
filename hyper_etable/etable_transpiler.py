@@ -321,7 +321,7 @@ class EtableTranspiler:
         if formula.startswith("=["):
             formula = bogus_start_re.sub("=", formula, 1)
         formula = bogus_end_re.sub("", formula, 1)
-        self.formula = self.range_resolver.replace_named_ranges(formula.upper())
+        self.formula = self.range_resolver.replace_named_ranges(formula)
         self.output = output
         self.output.var_str = f'{self.output.var_str}_output'
         init_code.formula_str.add(formula)

@@ -82,7 +82,7 @@ class RangeResolver:
                 _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
                     f"'[file]sheet'!{t.ref}")
                 # unpak_range_row[0]+1 - filter header. Header have all named tables 
-                self.tables[t.displayName.upper()] = PlainCellRange(self.filename, ws.title, unpak_range_column, [
+                self.tables[t.displayName] = PlainCellRange(self.filename, ws.title, unpak_range_column, [
                                                             unpak_range_row[0]+1, unpak_range_row[1]])
                 for c in t.tableColumns:
                     _, _, unpak_range_row, unpak_range_column = hyper_etable.etable_transpiler.split_cell(
@@ -92,7 +92,7 @@ class RangeResolver:
                     while idx != c.id:
                         letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
                         idx += 1
-                    self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name.upper(), c.name.upper())] = PlainCellRange(
+                    self.table_collums[PlainCellNamedRange(self.filename, ws.title, t.name, c.name)] = PlainCellRange(
                         self.filename, ws.title, [letter_next.upper(), letter_next.upper()], [unpak_range_row[0]+1, unpak_range_row[1]])
                     
 
@@ -126,30 +126,33 @@ class RangeResolver:
         formula_ret = formula
         for named_range, simple_range in self.table_collums.items():
             if named_range.column_name is None:
+                look_for = f'{named_range.name}'
                 formula_ret = formula_ret.replace(
-                    f'{named_range.name.upper()}',
+                    look_for,
                     f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                     99)
             else:
+                look_for = f'{named_range.name}[{named_range.column_name}]'
                 formula_ret = formula_ret.replace(
-                    f'{named_range.name.upper()}[{named_range.column_name.upper()}]',
+                    look_for,
                     f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                     99)
+                look_for = f'{named_range.name}[[#This Row],[{named_range.column_name}]]'
                 formula_ret = formula_ret.replace(
-                    f'{named_range.name.upper()}[[#THIS ROW],[{named_range.column_name.upper()}]]',
+                    look_for,
                     f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                     99)
         for table_name, simple_range in self.tables.items():
             formula_ret = formula_ret.replace(
-                f'{table_name.upper()}[#ALL]',
+                f'{table_name}[#All]',
                 f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                 99)
             formula_ret = formula_ret.replace(
-                f'{table_name.upper()}[]',
+                f'{table_name}[]',
                 f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                 99)
             formula_ret = formula_ret.replace(
-                f'{table_name.upper()}',
+                f'{table_name}',
                 f'{simple_range.letter[0]}{simple_range.number[0]}:{simple_range.letter[1]}{simple_range.number[1]}',
                 99)
         return formula_ret
