@@ -427,6 +427,7 @@ class ETable:
         # Collect conditional formatting
         # TODO set goal here
         goal_code = defaultdict(list)
+        goal_code_used_vars = defaultdict(set)
         for filename, book in xl_mdl.books.items():
             filename = filename_case_remap_workaround.get(filename, filename)
             for worksheet in book[formulas.excel.BOOK].worksheets:
@@ -440,6 +441,7 @@ class ETable:
                     current_cell = hyper_etable.cell_resolver.PlainCell(
                         filename=filename, sheet=sheet, letter=col_letter, number=row)
                     used_cell_set.add(current_cell)
+                    goal_code_used_vars[cell].add(current_cell)
                     filename_, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     for rule in rule_cell.rules:
@@ -454,6 +456,7 @@ class ETable:
                             # used_cell_set.add(f"'[{filename_value}]{sheet_value}'!{letter_value.upper()}{recid_value}")
                             current_cell = hyper_etable.cell_resolver.PlainCell(
                                 filename=filename_value, sheet=sheet_value, letter=letter_value.upper(), number=recid_value)
+                            goal_code_used_vars[cell].add(current_cell)
                             used_cell_set.add(current_cell)
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
@@ -499,6 +502,8 @@ class ETable:
                     goal_code_source[counter_new].operators[goal_code_source[counter_new].name] = copy.copy(goal_code_source[counter_was].operators)
                     goal_code_source[counter_new].output[goal_code_source[counter_new].name].append(
                         'HCT_STATIC_OBJECT.GOAL = True')
+                    goal_code_source[counter_new].input_variables.update(goal_code_used_vars[goal_code_used_vars])
+                    goal_code_source[counter_new].all_variables.update(goal_code_used_vars[goal_code_used_vars])
                     counter_was += 1
 
             for idx in goal_code_source:
@@ -659,6 +664,32 @@ class ETable:
             self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
             self.mod.DefinedTables.__init__.__name__ = "__init__"
 
+        # delete tailing actions
+        some_found = True
+        while some_found: #double pass search
+            some_found = True
+            for function_key_deletable in list(code.keys()):
+                func_deletable = code.get(function_key_deletable, None)
+                if func_deletable is None:
+                    continue
+                found = False
+                for function_key in list(code.keys()):
+                    func = code.get(function_key, None)
+                    if func is None:
+                        continue
+                    if func_deletable.effect_vars & func.input_variables:
+                        found = True
+                        break
+                if found:
+                    continue
+                for func in goal_code_source.values():
+                    if func_deletable.effect_vars & func.input_variables:
+                        found = True
+                        break
+                if not found:
+                    del code[function_key_deletable]
+                    some_found = False
+
 
         stack_code = stack_code_gen_all(self.objects)
 
@@ -718,6 +749,8 @@ class ETable:
             exec(f_code, self.mod.__dict__)
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
+
+
 
         #dump goals and actions
         self.dump_functions(code, 'hpy_etable.py')
