@@ -113,6 +113,10 @@ class EventNameHolder:
 
 class ETable:
     def __init__(self, filename, project_name="my_project") -> None:
+        if 'xlsx' == os.path.splitext(filename)[1][1:].lower():
+            self.enable_precalculation = False
+        else:
+            self.enable_precalculation = True
         filename = pathlib.PosixPath(filename)
         self.filename = filename
         self.out_filename = ""
@@ -128,16 +132,22 @@ class ETable:
         self.objects = collections.defaultdict(dict)
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
-        self.mod.StaticObject = type("StaticObject", (object, ), {})
-        self.mod.StaticObject.__annotations__ = {'GOAL': bool}
-        self.mod.StaticObject.__annotations__ = {}
+        self.methods_classes = {}
 
+        self.mod.DefinedTables = type("DefinedTables", (object, ), {})
+        self.mod.DefinedTables.__annotations__ = {}
+        self.mod.DefinedTables.__qualname__ = f"{self.session_name}.DefinedTables"
+        self.mod.DEFINED_TABLES = self.mod.DefinedTables()
+        self.methods_classes["DefinedTables"] = self.mod.DefinedTables
+
+        self.mod.StaticObject = type("StaticObject", (object, ), {})
+        self.mod.StaticObject.__annotations__ = {}
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
         self.mod.HCT_STATIC_OBJECT = self.mod.StaticObject()
         self.mod.HCT_STATIC_OBJECT.GOAL = False
         self.mod.HCT_OBJECTS = {}
-        self.methods_classes = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
+
         self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
         self.wb_with_formulas = openpyxl.load_workbook(filename=filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
@@ -264,7 +274,7 @@ class ETable:
 
     def get_new_table(self, table_name, sheet):
         ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
-        ThisTable.__annotations__ = {'__table_name__': str, 'recid': int}
+        ThisTable.__annotations__ = {'__table_name__': str}
         ThisTable.__touched_annotations__ = set()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[table_name] = ThisTable
@@ -285,7 +295,7 @@ class ETable:
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         # 
-        stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
+        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
@@ -447,21 +457,27 @@ class ETable:
                             used_cell_set.add(current_cell)
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
-                            goal_code[cell].append(
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}')
+                            goal_code[cell].append([
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}',
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False', 
+                                f'assert HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}_not_hasattr == False'])
                         elif isinstance(value, formulas.tokens.operand.Number):
                             if str(value.attr["name"]) == "TRUE":
-                                goal_code[cell].append(
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True')
+                                goal_code[cell].append([
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True',
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
                             elif str(value.attr["name"]) == "FALSE":
-                                goal_code[cell].append(
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False')
+                                goal_code[cell].append([
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False',
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
                             else:
-                                goal_code[cell].append(
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}')
+                                goal_code[cell].append([
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}',
+                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
                         elif isinstance(value, formulas.tokens.operand.String):
-                            goal_code[cell].append(
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"')
+                            goal_code[cell].append([
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"',
+                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal', is_goal=True)
         goal_code_source = {}
@@ -487,15 +503,15 @@ class ETable:
 
             for idx in goal_code_source:
                 goal_code_source[idx].operators[goal_code_source[idx].name].append(f'#{goal_name}')
-                goal_code_source[idx].operators[goal_code_source[idx].name].append(g_c[idx % len(g_c)])
+                goal_code_source[idx].operators[goal_code_source[idx].name].extend(g_c[idx % len(g_c)])
+
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
         main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
 
-
-
+        # Load used cell
         for cell in used_cell_set:
             filename = cell.filename
             sheet = cell.sheet
@@ -521,6 +537,7 @@ class ETable:
                 letter_ret = [letter_ret]
             for letter in letter_ret:
                 for recid in recid_ret:
+                    cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if recid not in self.objects[py_table_name]:
                         if py_table_name not in self.classes:
                             ThisTable = self.get_new_table(py_table_name, sheet)
@@ -529,12 +546,22 @@ class ETable:
                         # if 
                         rec_obj = ThisTable()
                         # rec_obj.__row_record__ = copy.copy(cell)
-                        rec_obj.recid = recid
                         rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                         rec_obj.__touched_annotations__ = set()
                         # ThisTable.__annotations_type_set__ = defaultdict(set)
                         self.objects[py_table_name][recid] = rec_obj
                         self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+                    
+                    # Declare and load defined table names
+                    defined_table_name = self.range_resolver.get_table_by_cell(cell)
+                    if defined_table_name is not None:
+                        for dtn_raw in defined_table_name:
+                            dtn = hyperc.xtj.str_to_py(dtn_raw)
+                            if dtn not in self.mod.DefinedTables.__annotations__:
+                                self.mod.DefinedTables.__annotations__[dtn] = set
+                                setattr(self.mod.DEFINED_TABLES, dtn, set())
+                            getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
+
                     self.objects[py_table_name][recid].__touched_annotations__.add(letter)
                     self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
                     #TODO add type detector
@@ -544,17 +571,18 @@ class ETable:
                     if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                    cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     # assert cell in self.cells_value, f"Lost value for cell {cell}"
                     if cell not in self.cells_value or self.cells_value[cell] is None:
                         # TODO this is stumb for novalue cell. We should use Novalue ????
-                        ox_sht, ox_cell_ref = stl.gen_opxl_addr(self.filename, 
+                        ox_sht, ox_cell_ref = self.stl.gen_opxl_addr(self.filename, 
                                                         self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
                                                         letter, recid)
                         xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
-                        if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
+                        if xl_orig_calculated_value in ['#NAME?', '#VALUE!']  and self.enable_precalculation:
+                            raise Exception("We don't support table with error cell")
+                        else:
                             xl_orig_calculated_value = ''
-                        if type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str:
+                        if (type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str) and self.enable_precalculation:
                             setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
                             self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
                         else:
@@ -616,6 +644,22 @@ class ETable:
         #     stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
         #     break
 
+        # Dump defined table names
+        init_f_code = []
+        for attr_name, attr_type in self.mod.DefinedTables.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = DEFINED_TABLES.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.DefinedTables.__annotations__['GOAL'] = bool
+        if init_f_code:
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_dt_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_dt_init.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
+            self.mod.DefinedTables.__init__.__name__ = "__init__"
+
+
         stack_code = stack_code_gen_all(self.objects)
 
         fn = f"{self.tempdir}/hpy_stack_code.py"
@@ -656,12 +700,14 @@ class ETable:
             clsv.__init__ = globals()["hct_f_init"]
             clsv.__init__.__name__ = "__init__"
 
+
         # Now generate init for static object
-        HCT_STATIC_OBJECT = self.mod.HCT_STATIC_OBJECT
+        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
         init_f_code = []
-        init_f_code.append(f"self.GOAL = False")
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
             init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
         if init_f_code:
 
             full_f_code = '\n    '.join(init_f_code)
@@ -685,8 +731,9 @@ class ETable:
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
         print("finish")
-
-        stl.calculate_excel()
+        
+    def finish(self):
+        self.stl.calculate_excel()
         dirn = os.path.dirname(self.filename)
         new_dirname = os.path.join(dirn, f"{self.filename.name}_out")
         try:
@@ -695,20 +742,9 @@ class ETable:
             pass
         new_dirname_forfile = os.path.join(dirn, f"{self.filename.name}_out", str(int(time.time())))
         mkdir(new_dirname_forfile)
-        stl.write(new_dirname_forfile)
+        self.stl.write(new_dirname_forfile)
 
         self.out_filename = os.path.join(new_dirname_forfile, self.filename.name)
         return self.out_filename
 
-        # # xl_mdl.dsp.dispatch()
-        # print('Finished excel-model')
-
-
-        # xl_mdl.calculate({"'[EXTRA.XLSX]EXTRA'!A1:B1": [[1, 1]]})
-
-        # books = _res2books(xl_mdl.write(xl_mdl.books))
-
-        # msg = '%sCompared overwritten results in %.2fs.\n' \
-        #         '%sComparing fresh written results.'
-
-        # res_book = _res2books(xl_mdl.write())
+    # def call_sequential(self, sequency)

@@ -8,3 +8,4 @@ def test_etable():
 
     et = hyper_etable.etable.ETable(os.path.join(mydir, file), "watchtakeif")
     et.calculate()
+    et.finish()

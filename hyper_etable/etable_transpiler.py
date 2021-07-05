@@ -82,7 +82,10 @@ class StringLikeConstant(object):
         self.variables.add(self)
 
     def __str__(self):
-        return str(self.var)
+        if isinstance(self.var, str):
+            return f'"{self.var}"'
+        else:
+            return str(self.var)
     
     def __repr__(self):
         return f"<StringLikeConstant>{self.var}({type(self.var)})"
@@ -114,24 +117,24 @@ class StringLikeConstant(object):
 class StringLikeNamedRange:
 
     @staticmethod
-    def new(var_map, filename, sheet, name, cell):
-        new_str_var = StringLikeNamedRange(var_map, filename, sheet, name, cell)
+    def new(var_map, filename, sheet, range_name, cell):
+        new_str_var = StringLikeNamedRange(var_map, filename, sheet, range_name, cell)
         new_str_var_type = (new_str_var, type(new_str_var))
         if new_str_var_type in var_map:
             return var_map[new_str_var_type]
         else:
             return new_str_var
 
-    def __init__(self, var_map, filename, sheet, name, cell):
+    def __init__(self, var_map, filename, sheet, range_name, cell):
         self.temp = False
         self.directory = os.path.dirname(filename)
         self.filename = os.path.basename(filename)
         self.sheet = sheet
-        self.name = name
+        self.range_name = range_name
         self.cell = cell
         self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
-        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.name)}'
+        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.range_name)}'
         self.var_str = f'{self.row_name}.{cell.letter[0]}'
         self.types = set()
         self.type_group_set = set()
@@ -208,6 +211,7 @@ class StringLikeVariable:
         if isinstance(self.number, list):
             self.is_range = True
             self.cell = hyper_etable.cell_resolver.PlainCellRange(self.filename, self.sheet, self.letter, self.number)
+            self.range_name = f'{self.letter[0]}{self.number[0]}_{self.letter[1]}{self.number[1]}'
 
         else:
             self.is_range = False
@@ -317,7 +321,7 @@ class EtableTranspiler:
         if formula.startswith("=["):
             formula = bogus_start_re.sub("=", formula, 1)
         formula = bogus_end_re.sub("", formula, 1)
-        self.formula = self.range_resolver.replace_named_ranges(formula.upper())
+        self.formula = self.range_resolver.replace_named_ranges(formula)
         self.output = output
         self.output.var_str = f'{self.output.var_str}_output'
         init_code.formula_str.add(formula)
@@ -414,18 +418,20 @@ class EtableTranspiler:
             args.append('True == True')
         assert len(args) == 4, "VLOOKUP should be 3 or 4 arguments"
         cell, rng, column, range_lookup = args
-        p = hyperc.util.letter_index_next(letter=rng.letter[0])
+        p = hyperc.util.letter_index_next(letter=rng.cell.letter[0])
         for i in range(column.var-2):
             p = hyperc.util.letter_index_next(letter=p)
         p = p.upper()
         rng_test = StringLikeVariable.new(
-            var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet, letter=[rng.letter[0], rng.letter[0]], number=rng.number)
+            var_map=self.var_mapper, filename=rng.cell.filename, sheet=rng.cell.sheet, letter=[rng.cell.letter[0], rng.cell.letter[0]], number=rng.cell.number)
+        rng_test.range_name = rng.range_name
         rng_ret = StringLikeVariable.new(
-            var_map=self.var_mapper, filename=rng.filename, sheet=rng.sheet,
-            letter=[p,p], number=rng.number)
+            var_map=self.var_mapper, filename=rng.cell.filename, sheet=rng.cell.sheet,
+            letter=[p,p], number=rng.cell.number)
+        rng_ret.range_name = rng.range_name
         rng_ret.row_name = rng_test.row_name
         rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.filename}]{rng.sheet}')
+        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
@@ -569,6 +575,8 @@ class EtableTranspiler:
                     for number in range(var.cell.number[0], var.cell.number[1]+1):
                         vars.append(StringLikeVariable.new(var_map=self.var_mapper,
                                 filename=var.cell.filename, sheet=var.cell.sheet, letter=var.cell.letter[0], number=number))
+                elif isinstance(var, StringLikeVariable) or isinstance(var,StringLikeConstant):
+                    vars.append(StringLikeVars(f"({var} == True)", [var,StringLikeConstant.new(var_map=self.var_mapper,var=True)], '=='))
                 else:
                     vars.append(var)
             vars_str=" and ".join([str(v) for v in vars])
@@ -685,16 +693,7 @@ class EtableTranspiler:
                 self.function_parens_args[self.paren_level].append(ret)
             return ret
         elif isinstance(node, formulas.tokens.operand.String):
-            isint = True
-            if node.attr["name"].lower() == "true":  # FIX HERE: need to check inference
-                ret = True
-                isint = False
-            elif node.attr["name"].lower() == "false":
-                ret = False
-                isint = False
-            if isint:
-                ret = node.attr["expr"]
-            ret = StringLikeConstant.new(var_map=self.var_mapper, var=ret)
+            ret = StringLikeConstant.new(var_map=self.var_mapper, var=node.attr["name"])
             if self.paren_level in self.function_parens:
                 self.function_parens_args[self.paren_level].append(ret)
             return ret
@@ -745,8 +744,10 @@ class EtableTranspiler:
                 plain_cell_range = hyper_etable.cell_resolver.PlainCellRange(filename, sheet, [node.attr['c1'], node.attr['c2']], [node.attr['r1'], node.attr['r2']])
                 named_range, simple_range = self.range_resolver.get_named_range_by_simple_range(plain_cell_range)
                 if named_range is not None :
-                    return StringLikeNamedRange.new(var_map=self.var_mapper, sheet=sheet, filename=filename, name=named_range.name, cell=simple_range)
+                    return StringLikeNamedRange.new(var_map=self.var_mapper, sheet=sheet, filename=filename, range_name=named_range.name, cell=simple_range)
                 else:
+                    for cell in self.range_resolver.gen_cells_from_range(plain_cell_range):
+                        self.range_resolver.cell_to_table[cell].add(f"{node.attr['c1']}{node.attr['r1']}_{node.attr['c2']}{node.attr['r2']}")
                     cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
             return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
         else:
@@ -758,7 +759,7 @@ class EtableTranspiler:
             # nr == nr <-- ok for select from range
 
             return StringLikeNamedRange.new(
-                var_map=self.var_mapper, sheet=sheet, filename=filename, name=name,
+                var_map=self.var_mapper, sheet=sheet, filename=filename, range_name=name,
                 cell=self.range_resolver.get_cell_range_by_name(sheet=sheet, filename=filename, name=name))
 
         #TODO Query range from etable.py.ETable.table_collums here
@@ -847,6 +848,7 @@ class FunctionCode:
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
         self.formula_str.update(other.formula_str)
+        self.function_args.update(other.function_args)
         if other.selectable:
             self.selectable = True
 
@@ -947,8 +949,13 @@ class FunctionCode:
             if var.is_range :
                 self.function_args[var] = py_table_name
                 self.init.append(f'assert {var}_not_hasattr == False')
-                self.init.append(f'assert {var.row_name}.recid >= {var.cell.number[0]}')
-                self.init.append(f'assert {var.row_name}.recid <= {var.cell.number[1]}')
+                if isinstance(var, StringLikeNamedRange) or isinstance(var, StringLikeVariable):
+                    self.init.append(
+                        f'assert {var.row_name} in DEFINED_TABLES.{hyperc.xtj.str_to_py(var.range_name)}')
+                    pass
+                else:
+                    raise Exception(f"Unsupport range {var}")
+
             else:
                 self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
                 self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
