@@ -516,6 +516,37 @@ class ETable:
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
 
+        # delete tailing actions
+        unused_cell_set = set()
+        some_found = True
+        while some_found: #double pass search
+            some_found = False
+            for function_key_deletable in list(code.keys()):
+                func_deletable = code.get(function_key_deletable, None)
+                if func_deletable is None:
+                    continue
+                found = False
+                effect_vars = hyper_etable.etable_transpiler.unpack_cell(func_deletable.effect_vars)
+                # look in actions
+                for function_key in list(code.keys()):
+                    func = code.get(function_key, None)
+                    if func is None:
+                        continue
+                    input_variables = hyper_etable.etable_transpiler.unpack_cell(func.input_variables)
+                    if effect_vars & input_variables:
+                        found = True
+                        break
+                if found:
+                    continue
+                # look in goals
+                if effect_vars & goal_code_used_vars:
+                    found = True
+                    continue
+                if not found:
+                    unused_cell_set.update(effect_vars)
+                    del code[function_key_deletable]
+                    some_found = True
+
         # Load used cell
         for cell in used_cell_set:
             filename = cell.filename
@@ -543,6 +574,8 @@ class ETable:
             for letter in letter_ret:
                 for recid in recid_ret:
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
+                    if cell in unused_cell_set:
+                        continue
                     if recid not in self.objects[py_table_name]:
                         if py_table_name not in self.classes:
                             ThisTable = self.get_new_table(py_table_name, sheet)
@@ -663,35 +696,6 @@ class ETable:
             exec(f_code, self.mod.__dict__)
             self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
             self.mod.DefinedTables.__init__.__name__ = "__init__"
-
-        # delete tailing actions
-        some_found = True
-        while some_found: #double pass search
-            some_found = False
-            for function_key_deletable in list(code.keys()):
-                func_deletable = code.get(function_key_deletable, None)
-                if func_deletable is None:
-                    continue
-                found = False
-                effect_vars = hyper_etable.etable_transpiler.unpack_cell(func_deletable.effect_vars)
-                # look in actions
-                for function_key in list(code.keys()):
-                    func = code.get(function_key, None)
-                    if func is None:
-                        continue
-                    input_variables = hyper_etable.etable_transpiler.unpack_cell(func.input_variables)
-                    if effect_vars & input_variables:
-                        found = True
-                        break
-                if found:
-                    continue
-                # look in goals
-                if effect_vars & goal_code_used_vars:
-                    found = True
-                    continue
-                if not found:
-                    del code[function_key_deletable]
-                    some_found = True
 
 
         stack_code = stack_code_gen_all(self.objects)
