@@ -19,6 +19,17 @@ VAR_RE = re.compile(r"\.(.+_\d+)\.")
 class CellError(Exception):
     pass    
 
+def unpack_cell(heap):
+    set_of_plain_cell = set()
+    for some_cell in heap:
+        if isinstance(some_cell, StringLikeConstant):
+            continue
+        if some_cell.is_range:
+            set_of_plain_cell.update(some_cell.cell.unpack())
+        else:
+            set_of_plain_cell.add(some_cell.cell)
+    return set_of_plain_cell
+
 def split_cell(cell_str):
     # return (file, sheet, rec_id , letter)
     cell_ = formulas.Parser().ast("="+list(formulas.Parser().ast("=" + cell_str)

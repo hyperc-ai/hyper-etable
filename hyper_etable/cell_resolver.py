@@ -34,6 +34,18 @@ class PlainCellRange:
         assert isinstance(number, list)
         self.number = [int(n) for n in number]
 
+    def unpack(self):
+        set_of_plain_cell = set()
+        letter_stop = self.letter[1]
+        letter_next = self.letter[0]
+        for number in range(self.number[0], self.number[1]+1, 1):
+            set_of_plain_cell.add(PlainCell(filename=self.filename, sheet=self.sheet, number=number, letter=letter_next))
+            while letter_stop != letter_next:
+                letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
+                set_of_plain_cell.append(PlainCell(filename=self.filename, sheet=self.sheet, letter=letter_next, number=number))
+        return set_of_plain_cell
+
+
     def __hash__(self):
         return hash(str(self).upper())
 

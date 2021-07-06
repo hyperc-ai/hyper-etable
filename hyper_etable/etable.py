@@ -673,17 +673,22 @@ class ETable:
                 if func_deletable is None:
                     continue
                 found = False
+                effect_vars = hyper_etable.etable_transpiler.unpack_cell(func_deletable.effect_vars)
+                # look in actions
                 for function_key in list(code.keys()):
                     func = code.get(function_key, None)
                     if func is None:
                         continue
-                    if func_deletable.effect_vars & func.input_variables:
+                    input_variables = hyper_etable.etable_transpiler.unpack_cell(func.input_variables)
+                    if effect_vars & input_variables:
                         found = True
                         break
                 if found:
                     continue
+                # look in goals
                 for func in goal_code_source.values():
-                    if func_deletable.effect_vars & func.input_variables:
+                    input_variables = hyper_etable.etable_transpiler.unpack_cell(func.input_variables)
+                    if effect_vars & input_variables:
                         found = True
                         break
                 if not found:
