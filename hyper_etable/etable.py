@@ -427,7 +427,7 @@ class ETable:
         # Collect conditional formatting
         # TODO set goal here
         goal_code = defaultdict(list)
-        goal_code_used_vars = defaultdict(set)
+        goal_code_used_vars = set()
         for filename, book in xl_mdl.books.items():
             filename = filename_case_remap_workaround.get(filename, filename)
             for worksheet in book[formulas.excel.BOOK].worksheets:
@@ -441,7 +441,7 @@ class ETable:
                     current_cell = hyper_etable.cell_resolver.PlainCell(
                         filename=filename, sheet=sheet, letter=col_letter, number=row)
                     used_cell_set.add(current_cell)
-                    goal_code_used_vars[cell].add(current_cell)
+                    goal_code_used_vars.add(current_cell)
                     filename_, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     for rule in rule_cell.rules:
@@ -456,7 +456,7 @@ class ETable:
                             # used_cell_set.add(f"'[{filename_value}]{sheet_value}'!{letter_value.upper()}{recid_value}")
                             current_cell = hyper_etable.cell_resolver.PlainCell(
                                 filename=filename_value, sheet=sheet_value, letter=letter_value.upper(), number=recid_value)
-                            goal_code_used_vars[cell].add(current_cell)
+                            goal_code_used_vars.add(current_cell)
                             used_cell_set.add(current_cell)
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
@@ -667,7 +667,7 @@ class ETable:
         # delete tailing actions
         some_found = True
         while some_found: #double pass search
-            some_found = True
+            some_found = False
             for function_key_deletable in list(code.keys()):
                 func_deletable = code.get(function_key_deletable, None)
                 if func_deletable is None:
@@ -686,14 +686,12 @@ class ETable:
                 if found:
                     continue
                 # look in goals
-                for func in goal_code_source.values():
-                    input_variables = hyper_etable.etable_transpiler.unpack_cell(func.input_variables)
-                    if effect_vars & input_variables:
-                        found = True
-                        break
+                if effect_vars & goal_code_used_vars:
+                    found = True
+                    continue
                 if not found:
                     del code[function_key_deletable]
-                    some_found = False
+                    some_found = True
 
 
         stack_code = stack_code_gen_all(self.objects)
