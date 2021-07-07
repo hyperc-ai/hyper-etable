@@ -849,6 +849,8 @@ class FunctionCode:
     def merge(self, other):
         self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
+        self.input_variables.update(other.input_variables)
+        self.all_variables.update(other.all_variables)
         self.keys.extend(other.keys)
         self.precondition.update(other.precondition)
         self.operators.update(other.operators)
