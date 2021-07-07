@@ -907,38 +907,6 @@ class FunctionCode:
         if other.selectable:
             self.selectable = True
 
-    def clean(self):
-        for_del = set()
-        for var in self.input_variables:
-            var_str = str(var)
-            found = False
-            for op in self.precondition.values():
-                if found:
-                    break
-                for line in op[0]:
-                    if var_str in line:
-                        found = True
-                        break
-            for op in self.operators.values():
-                if found:
-                    break
-                for line in op:
-                    if var_str in line:
-                        found = True
-                        break
-            for op in self.output.values():
-                if found:
-                    break
-                for line in op:
-                    if var_str in line:
-                        found = True
-                        break
-            if not found:
-                for_del.add(var)
-        for s in for_del:
-            self.input_variables.remove(s)
-
-
     def generate_ne_warrants(self):
         "Generate not-equal for objects that are guaranteed not to be equal"
         warrants = []
