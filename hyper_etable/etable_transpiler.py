@@ -358,6 +358,8 @@ class EtableTranspiler:
         self.code = []
         self.remember_types = {}
         transpiled_formula_return = self.transpile(self.nodes)
+        if isinstance(transpiled_formula_return, str):
+            print("ok")
         self.init_code.all_variables.update(set(transpiled_formula_return.variables))
         self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
             v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
@@ -579,27 +581,19 @@ class EtableTranspiler:
                 "="))
 
     def f_and(self, *args):
-        if self.paren_level > 1:
-            vars = []
-            for var in args:
-                if (not isinstance(var,StringLikeVars)) and var.is_range:
-                    for number in range(var.cell.number[0], var.cell.number[1]+1):
-                        vars.append(StringLikeVariable.new(var_map=self.var_mapper,
-                                filename=var.cell.filename, sheet=var.cell.sheet, letter=var.cell.letter[0], number=number))
-                elif isinstance(var, StringLikeVariable) or isinstance(var,StringLikeConstant):
-                    vars.append(StringLikeVars(f"({var} == True)", [var,StringLikeConstant.new(var_map=self.var_mapper,var=True)], '=='))
-                else:
-                    vars.append(var)
-            vars_str=" and ".join([str(v) for v in vars])
-            return self.save_return(StringLikeVars(f"({vars_str})", vars, 'and'), bool)
-        elif self.paren_level == 1:
-            for what in args:
-                if str(what).startswith("(") and str(what).endswith(")"):
-                    what = what[1:-1]
-                self.code.append(f"assert {what}")
-            return "True"
-        else:
-            raise TypeError("AND() only supports up to 4 arguments")
+        vars = []
+        for var in args:
+            if (not isinstance(var,StringLikeVars)) and var.is_range:
+                for number in range(var.cell.number[0], var.cell.number[1]+1):
+                    vars.append(StringLikeVariable.new(var_map=self.var_mapper,
+                            filename=var.cell.filename, sheet=var.cell.sheet, letter=var.cell.letter[0], number=number))
+            elif isinstance(var, StringLikeVariable) or isinstance(var,StringLikeConstant):
+                vars.append(StringLikeVars(f"({var} == True)", [var,StringLikeConstant.new(var_map=self.var_mapper,var=True)], '=='))
+            else:
+                vars.append(var)
+        vars_str=" and ".join([str(v) for v in vars])
+        return self.save_return(StringLikeVars(f"({vars_str})", vars, 'and'), bool)
+
 
     def f_or(self, v1, v2):
         return self.save_return(StringLikeVars(f"({v1} or {v2})", [v1, v2], "or"), bool)
