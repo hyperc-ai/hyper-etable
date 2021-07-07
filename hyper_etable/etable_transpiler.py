@@ -750,7 +750,8 @@ class EtableTranspiler:
         filename = os.path.basename(node.attr.get('filename', self.output.filename))
         if 'r1' in node.attr:
             if node.attr['r1'] == node.attr['r2'] and node.attr['c1'] == node.attr['c2']:
-                cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}"
+                return StringLikeVariable.new(var_map=self.var_mapper, filename=filename, sheet=sheet, letter=node.attr['c1'], number=node.attr['r1'])
+
             else:
                 plain_cell_range = hyper_etable.cell_resolver.PlainCellRange(filename, sheet, [node.attr['c1'], node.attr['c2']], [node.attr['r1'], node.attr['r2']])
                 named_range, simple_range = self.range_resolver.get_named_range_by_simple_range(plain_cell_range)
@@ -759,8 +760,7 @@ class EtableTranspiler:
                 else:
                     for cell in self.range_resolver.gen_cells_from_range(plain_cell_range):
                         self.range_resolver.cell_to_table[cell].add(f"{node.attr['c1']}{node.attr['r1']}_{node.attr['c2']}{node.attr['r2']}")
-                    cell_str = f"'[{filename}]{sheet}'!{node.attr['c1']}{node.attr['r1']}:{node.attr['c2']}{node.attr['r2']}"
-            return StringLikeVariable.new(var_map=self.var_mapper, cell_str=cell_str)
+                    return StringLikeVariable.new(var_map=self.var_mapper, filename=filename, sheet=sheet, letter=[node.attr['c1'], node.attr['c2']], number=[node.attr['r1'], node.attr['r2']])
         else:
             name = node.attr['name'].strip("'").strip("!")
             
