@@ -513,7 +513,7 @@ class EtableTranspiler:
                 else:
                     # set row name for all variables
                     var.row_name = first_range_var.row_name
-                    var.var_str = f'{var.row_name}.{var.letter[0]}'
+                    var.var_str = f'{var.row_name}.{var.cell.letter[0]}'
 
             if first_range_var is not None:
                 self.output = StringLikeVariable(
