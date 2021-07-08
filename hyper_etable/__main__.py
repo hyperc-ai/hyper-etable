@@ -157,7 +157,8 @@ def upload_file():
             full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(full_path)
             et = hyper_etable.etable.ETable(full_path, filename.replace(".", "_").replace("/", "_"))
-            SOLVED_FILES[filename] = et.calculate()
+            et.calculate()
+            SOLVED_FILES[filename] = et.finish()
 
             # return redirect(url_for('download_file', name=filename))
         else:
