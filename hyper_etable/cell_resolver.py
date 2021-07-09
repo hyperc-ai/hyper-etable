@@ -42,7 +42,7 @@ class PlainCellRange:
             set_of_plain_cell.add(PlainCell(filename=self.filename, sheet=self.sheet, number=number, letter=letter_next))
             while letter_stop != letter_next:
                 letter_next = hyperc.util.letter_index_next(letter=letter_next).upper()
-                set_of_plain_cell.append(PlainCell(filename=self.filename, sheet=self.sheet, letter=letter_next, number=number))
+                set_of_plain_cell.add(PlainCell(filename=self.filename, sheet=self.sheet, letter=letter_next, number=number))
         return set_of_plain_cell
 
 

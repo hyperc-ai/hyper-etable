@@ -91,9 +91,7 @@
                 "HYPERC_TEMPDIR": "./tmp",
                 "HYPERC_DONT_REMOVE_ACTIONS": "1",
                 "HYPERC_IGNORE_EQ_BRANCH": "1",
-                "HYPERC_LOGLEVEL": "info",
-                // "HYPERC_LIN_COUNT": "20",
-                "HYPERC_FORCE_LIN_COUNT": "1"
+                "HYPERC_LOGLEVEL": "error",
             },
             "justMyCode": false
         },
