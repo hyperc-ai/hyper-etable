@@ -836,6 +836,15 @@ class FunctionCode:
         self.is_goal = is_goal
         self.formula_type = "CALCULATE CELL"
         self.formula_str = set()
+        self.precondition_cell = set()
+        self.effect_cell = set()
+        self.forward_chaining = set()
+        self.backward_chaining = set()
+
+
+    def unpack_cell(self):
+        self.precondition_cell = unpack_cell(self.input_variables)
+        self.effect_cell = unpack_cell(self.effect_vars)
 
     def init_keys(self):
         self.keys = [self.name]
