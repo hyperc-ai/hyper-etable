@@ -550,6 +550,22 @@ class ETable:
                     del code[function_key_deletable]
                     some_found = True
 
+        # look for unsplit chaining cell
+        for function_key_1, function_1 in code.items():
+            code_copy = copy.copy(code)
+            del code_copy[function_key_1]
+            for function_2 in code.values():
+                if function_1.effect_cell & function_2.precondition_cell:
+                    function_1.forward_chaining.add(function_2)
+                    function_2.backward_chaining.add(function_1)
+                if function_2.effect_cell & function_1.precondition_cell:
+                    function_2.forward_chaining.add(function_1)
+                    function_1.backward_chaining.add(function_2)
+
+            # look in goals
+            if effect_vars & goal_code_used_vars:
+                function_1.forward_chaining.add(main_goal)
+
         # Load used cell
         for cell in used_cell_set:
             filename = cell.filename
