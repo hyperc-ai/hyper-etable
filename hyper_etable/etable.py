@@ -572,7 +572,9 @@ class ETable:
         NEIGHBOUR_ACTIONS = 1
         for function_key, function in code.items():
             if (len(function.forward_chaining)>0 and len(function.forward_chaining)<=NEIGHBOUR_ACTIONS) or (len(function.backward_chaining)>0 and len(function.backward_chaining)<=NEIGHBOUR_ACTIONS):
-                filtered_func[function_key] = function
+                for main_action_orig in function.backward_chaining:
+                    main_action_orig.glue(function)
+                del code[function.name]
 
         # Load used cell
         for cell in used_cell_set:
