@@ -502,8 +502,8 @@ class ETable:
                     goal_code_source[counter_new].operators[goal_code_source[counter_new].name] = copy.copy(goal_code_source[counter_was].operators)
                     goal_code_source[counter_new].output[goal_code_source[counter_new].name].append(
                         'HCT_STATIC_OBJECT.GOAL = True')
-                    goal_code_source[counter_new].input_variables.update(goal_code_used_vars[goal_code_used_vars])
-                    goal_code_source[counter_new].all_variables.update(goal_code_used_vars[goal_code_used_vars])
+                    goal_code_source[counter_new].input_variables.update(goal_code_used_vars)
+                    goal_code_source[counter_new].all_variables.update(goal_code_used_vars)
                     counter_was += 1
 
             for idx in goal_code_source:
