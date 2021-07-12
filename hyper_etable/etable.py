@@ -566,6 +566,14 @@ class ETable:
             if effect_vars & goal_code_used_vars:
                 function_1.forward_chaining.add(main_goal)
 
+
+        # filter contidate for unsplit
+        filtered_func = {}
+        NEIGHBOUR_ACTIONS = 1
+        for function_key, function in code.items():
+            if (len(function.forward_chaining)>0 and len(function.forward_chaining)<=NEIGHBOUR_ACTIONS) or (len(function.backward_chaining)>0 and len(function.backward_chaining)<=NEIGHBOUR_ACTIONS):
+                filtered_func[function_key] = function
+
         # Load used cell
         for cell in used_cell_set:
             filename = cell.filename
