@@ -697,6 +697,18 @@ class ETable:
             self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
             self.mod.DefinedTables.__init__.__name__ = "__init__"
 
+        if_cond_code = """def _IF(cond, ret_true, ret_false):
+    if cond == True:
+        return ret_true
+    else:
+        return ret_false"""
+
+        fn = f"{self.tempdir}/hpy_IF_code.py"
+        with open(fn, "w+") as f:
+            f.write(if_cond_code)
+
+        f_code = compile(if_cond_code, fn, 'exec')
+        exec(f_code, self.mod.__dict__)
 
         stack_code = stack_code_gen_all(self.objects)
 

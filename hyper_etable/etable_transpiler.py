@@ -599,7 +599,7 @@ class EtableTranspiler:
         return self.save_return(StringLikeVars(f"({v1} or {v2})", [v1, v2], "or"), bool)
 
     def f_eq(self, v1, v2):
-        return self.save_return(StringLikeVars(f"({v1} == {v2})", [v1, v2], "=="), bool)
+        return self.save_return(StringLikeVars(f"_IF({v1} == {v2}, True, False)", [v1, v2], "=="), bool)
 
     def f_ne(self, v1, v2):
         return self.save_return(StringLikeVars(f"({v1} != {v2})", [v1, v2], "!="), bool)
