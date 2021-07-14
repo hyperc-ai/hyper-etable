@@ -471,6 +471,10 @@ class EtableTranspiler:
         self.init_code.formula_type = "SELECTFROMRANGE"
         return StringLikeVars(ret_var, [ret_var, rng], "")
 
+    def f_if(self, cond, ret_true, ret_false):
+        self.var_counter += 1
+        return StringLikeVars(f"_IF({cond}, {ret_true}, {ret_false})", [cond, ret_true, ret_false], "")
+
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
     def f_takeif(self, *args):
         assert self.paren_level == 1, "Nested TAKEIF() is not supported"
