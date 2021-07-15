@@ -297,7 +297,7 @@ class StringLikeVars:
         self.rendered_str = rendered_str
         self.args  = args
         self.variables = set()
-        self.code_storage = FunctionCode(name=rendered_str)
+        self.code_storage = FunctionCode(name="")
         for arg in self.args:
             if isinstance(arg, StringLikeVars):
                 self.variables.update(arg.variables)
@@ -386,28 +386,20 @@ class EtableTranspiler:
 
         code = {}
         for idx, code_chunk in enumerate(self.code):
-            if isinstance(code_chunk, CodeElement):
-                if len(code_chunk.code_chunk) > 1:
-                    for ce in code_chunk.code_chunk:
+            if isinstance(code_chunk, dict):
+                if len(code_chunk) > 1:
+                    for ce in code_chunk:
                         code[f'{self.init_code.name}_{ce}'] = FunctionCode(
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].input_variables = copy.copy(self.init_code.input_variables)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].init.extend(code_chunk.init[ce])
-                        code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
-                        code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
+                        code[f'{self.init_code.name}_{ce}'].merge(code_chunk[ce], name_save=True) #TODO check this
                         code[f'{self.init_code.name}_{ce}'].idx = idx
                         code[f'{self.init_code.name}_{ce}'].selectable = True
 
                 else:
-                    ce = list(code_chunk.code_chunk.keys())[0]
-                    self.init_code.init.extend(code_chunk.init[ce])
-                    self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
-                    self.init_code.operators[self.init_code.name] = code_chunk.code_chunk[ce]
-                    self.init_code.sync_cell.update(code_chunk.sync_cells[ce])
-                    self.init_code.args.update(code_chunk.all_vars[ce])
+                    ce = list(code_chunk.keys())[0]
+                    self.init_code.merge(code_chunk[ce], name_save=True) #TODO check this
                     self.init_code.selectable = True
             else:
                 self.init_code.operators[self.init_code.name].append(code_chunk)
@@ -462,7 +454,7 @@ class EtableTranspiler:
         slv_ret =  StringLikeVars(ret_var, [cell, rng_test, rng_ret, ret_var], "")
         slv_ret.code_storage.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
         slv_ret.code_storage.init.append(f'{ret_var} = {rng_ret}')
-        slv_ret.code_storage.operators.append(f'assert {rng_test} == {cell} # main assert')
+        slv_ret.code_storage.operators[slv_ret.code_storage].append(f'assert {rng_test} == {cell} # main assert')
         return slv_ret
 
     def f_selectfromrange(self, rng, fix=None):
@@ -477,7 +469,7 @@ class EtableTranspiler:
         self.init_code.is_atwill = True
         self.init_code.formula_type = "SELECTFROMRANGE"
         slv_ret = StringLikeVars(ret_var, [ret_var, rng], "")
-        slv_ret.operators.append(f'{ret_var} = {rng}')
+        slv_ret.code_storage.operators[slv_ret.code_storage].append(f'{ret_var} = {rng}')
         return slv_ret
 
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
@@ -496,15 +488,16 @@ class EtableTranspiler:
         ret_var.temp = True
         ret_expr = StringLikeVars(ret_var, args, "takeif")
         self.var_counter += 1
-        code_element = CodeElement()
+        code_element = {}
         self.code.append(code_element)
         self.init_code.formula_type = "TAKEIF"
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
             branch_name = f'takeif_branch{part}'
-            if branch_name not in code_element.precondition_chunk:
-                code_element.precondition_chunk[branch_name] = [[], 'if']
-            code_element.precondition_chunk[branch_name][0].append(
+            code_element[branch_name] = FunctionCode(name=branch_name)
+            if branch_name not in code_element[branch_name].precondition:
+                code_element[branch_name].precondition[branch_name] = [[], 'if']
+            code_element[branch_name].precondition[branch_name][0].append(
                 f"{a_condition} == True")  # WO asser now, "assert" or "if" insert if formatting
             ranges_set = set()
             if isinstance(a_condition, StringLikeVars):
@@ -532,16 +525,16 @@ class EtableTranspiler:
                 self.output.row_name = first_range_var.row_name
                 self.output.var_str = f'{self.output.row_name}.{self.output.letter[0]}'
 
-            code_element.code_chunk[branch_name].append(f"{ret_expr} = {a_value}")
+            code_element[branch_name].operators[branch_name].append(f"{ret_expr} = {a_value}")
 
             self.save_return(
                 StringLikeVars(
                     f"{ret_expr} = {a_value}", [ret_var, a_value],
                     "="))
             if a_syncon is not None:
-                code_element.sync_cells[branch_name].add(a_syncon)
-            code_element.all_vars[branch_name].extend(a_condition.variables)
-            code_element.all_vars[branch_name].extend(a_value.variables)
+                code_element[branch_name].sync_cell.add(a_syncon)
+            code_element[branch_name].args.update(a_condition.variables)
+            code_element[branch_name].args.update(a_value.variables)
             part += 1
 
         return ret_expr
@@ -557,21 +550,22 @@ class EtableTranspiler:
         ret_var.temp = True
         ret_expr = StringLikeVars(ret_var, [takeif_cell_address], "watchtakeif")
 
-        code_element = CodeElement()
+        code_element = {}
         self.code.append(code_element)
-        code_element.code_chunk[f'watchtakeif'].extend(self.init_code.hasattr_code)
+        code_element[f'watchtakeif'] = FunctionCode(name=f'watchtakeif')
+        code_element[f'watchtakeif'].operators[f'watchtakeif'].extend(self.init_code.hasattr_code)
         self.init_code.hasattr_code = [f"global WATCHTAKEIF_{takeif_cell_address}_{self.output.letter}"]
-        code_element.code_chunk[f'watchtakeif'].extend(self.init_code.init)
+        code_element[f'watchtakeif'].operators.extend(self.init_code.init)
         self.init_code.init = []
         self.init_code.formula_type = "WATCHTAKEIF"
-        code_element.code_chunk[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
-        if f'watchtakeif' not in code_element.precondition_chunk:
-            code_element.precondition_chunk[f'watchtakeif'] = [[], 'elif']
-        code_element.precondition_chunk[f'watchtakeif'][0].append(
+        code_element[f'watchtakeif'].operators[f'watchtakeif'].append(f"{ret_expr} = {takeif_cell_address}")
+        if f'watchtakeif' not in code_element[f'watchtakeif'].precondition:
+            code_element[f'watchtakeif'].precondition[f'watchtakeif'] = [[], 'elif']
+        code_element.precondition[f'watchtakeif'][0].append(
             f"(WATCHTAKEIF_{takeif_cell_address}_{self.output.letter} == {self.output.number})")
-        code_element.code_chunk[f'watchtakeif'].append(
+        code_element[f'watchtakeif'].operators[f'watchtakeif'].append(
             f"WATCHTAKEIF_{takeif_cell_address}_{self.output.letter} = WATCHTAKEIF_{takeif_cell_address}_{self.output.letter} + 1")
-        code_element.all_vars[f'watchtakeif'].extend(takeif_cell_address.variables)
+        code_element[f'watchtakeif'].args.update(takeif_cell_address.variables)
         self.init_code.watchtakeif = takeif_cell_address
         self.save_return(
             StringLikeVars(f"{ret_expr} = {takeif_cell_address}", [ret_var, takeif_cell_address], "="))
@@ -808,14 +802,6 @@ class EtableTranspiler:
         return ret
 
 
-class CodeElement:
-
-    def __init__(self):
-        self.precondition_chunk = {}
-        self.code_chunk = collections.defaultdict(list)
-        self.sync_cells = collections.defaultdict(set)
-        self.all_vars = collections.defaultdict(list)
-
 class FunctionCode:
     def __init__(self, name, parent_name=None, is_goal=False):
         self.name = name
@@ -846,8 +832,9 @@ class FunctionCode:
     def init_keys(self):
         self.keys = [self.name]
 
-    def merge(self, other):
-        self.name = f'{self.name}_{other.name}'
+    def merge(self, other, name_save=False):
+        if not name_save:
+            self.name = f'{self.name}_{other.name}'
         self.init.extend(other.init)
         self.input_variables.update(other.input_variables)
         self.all_variables.update(other.all_variables)
