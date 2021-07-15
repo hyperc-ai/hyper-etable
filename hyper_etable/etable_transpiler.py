@@ -295,9 +295,11 @@ class StringLikeVars:
         self.rendered_str = rendered_str
         self.args  = args
         self.variables = set()
+        self.code_storage = FunctionCode(name=rendered_str)
         for arg in self.args:
             if isinstance(arg, StringLikeVars):
                 self.variables.update(arg.variables)
+                self.code_storage.merge(arg.code_storage)
             else:
                 self.variables.add(arg)
         self.operator = operator
@@ -444,19 +446,20 @@ class EtableTranspiler:
         rng_ret.range_name = rng.range_name
         rng_ret.row_name = rng_test.row_name
         rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
             number=self.output.number, var_str=f'var_tbl_VLOOKUP_{self.output}_{self.var_counter}')
         ret_var.temp = True
         self.var_counter += 1
-        self.init_code.init.append(f'{ret_var} = {rng_ret}')
-        self.code.append(f'assert {rng_test} == {cell} # main assert')
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
-        return StringLikeVars(ret_var, [cell, rng, rng_test, rng_ret, ret_var], "")
+        slv_ret =  StringLikeVars(ret_var, [cell, rng, rng_test, rng_ret, ret_var], "")
+        slv_ret.code_storage.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
+        slv_ret.code_storage.init.append(f'{ret_var} = {rng_ret}')
+        slv_ret.code_storage.operators.append(f'assert {rng_test} == {cell} # main assert')
+        return slv_ret
 
     def f_selectfromrange(self, rng, fix=None):
         assert self.paren_level == 1, "Nested ANYINDEX() is not supported"
@@ -466,10 +469,11 @@ class EtableTranspiler:
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
         ret_var.temp = True 
         self.var_counter += 1
-        self.code.append(f'{ret_var} = {rng}')
         self.init_code.is_atwill = True
         self.init_code.formula_type = "SELECTFROMRANGE"
-        return StringLikeVars(ret_var, [ret_var, rng], "")
+        slv_ret = StringLikeVars(ret_var, [ret_var, rng], "")
+        slv_ret.operators.append(f'{ret_var} = {rng}')
+        return slv_ret
 
     # takeif(default_value, precondition_1, effect_1, sync_cell_1, precondition_2, effect_2, sync_cell_2, .....
     def f_takeif(self, *args):
