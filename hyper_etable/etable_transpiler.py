@@ -396,7 +396,6 @@ class EtableTranspiler:
                         code[f'{self.init_code.name}_{ce}'].init.extend(code_chunk.init[ce])
                         code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
-                        code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
                         code[f'{self.init_code.name}_{ce}'].sync_cell.update(code_chunk.sync_cells[ce])
                         code[f'{self.init_code.name}_{ce}'].args.update(code_chunk.all_vars)
                         code[f'{self.init_code.name}_{ce}'].idx = idx
@@ -404,11 +403,9 @@ class EtableTranspiler:
 
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
-                    code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
                     self.init_code.init.extend(code_chunk.init[ce])
                     self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
                     self.init_code.operators[self.init_code.name] = code_chunk.code_chunk[ce]
-                    self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
                     self.init_code.sync_cell.update(code_chunk.sync_cells[ce])
                     self.init_code.args.update(code_chunk.all_vars[ce])
                     self.init_code.selectable = True
@@ -543,7 +540,6 @@ class EtableTranspiler:
                     "="))
             if a_syncon is not None:
                 code_element.sync_cells[branch_name].add(a_syncon)
-            code_element.contion_vars[branch_name].extend(a_condition.variables)
             code_element.all_vars[branch_name].extend(a_condition.variables)
             code_element.all_vars[branch_name].extend(a_value.variables)
             part += 1
@@ -817,7 +813,6 @@ class CodeElement:
     def __init__(self):
         self.precondition_chunk = {}
         self.code_chunk = collections.defaultdict(list)
-        self.contion_vars = collections.defaultdict(list)
         self.sync_cells = collections.defaultdict(set)
         self.all_vars = collections.defaultdict(list)
 
@@ -838,7 +833,6 @@ class FunctionCode:
         self.output = collections.defaultdict(list)
         self.args = set()
         self.function_args = {}
-        self.selected_cell = set()
         self.sync_cell = set()
         self.collapsed = False
         self.selectable = False
@@ -863,7 +857,6 @@ class FunctionCode:
         self.output.update(other.output)
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
-        self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
         self.formula_str.update(other.formula_str)
@@ -880,7 +873,6 @@ class FunctionCode:
         self.output.update(other.output)
         self.args.update(other.args)
         self.effect_vars.update(other.effect_vars)
-        self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
         self.formula_str.update(other.formula_str)
@@ -906,7 +898,6 @@ class FunctionCode:
         self.args.update(other.args)
         self.function_args.update(other.function_args)
         self.effect_vars.update(other.effect_vars)
-        self.selected_cell.update(other.selected_cell)
         self.sync_cell.update(other.sync_cell)
         self.parent_name.update(other.parent_name)
         self.formula_str.update(other.formula_str)
