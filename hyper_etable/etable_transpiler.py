@@ -393,6 +393,7 @@ class EtableTranspiler:
                             name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
                         code[f'{self.init_code.name}_{ce}'].input_variables = copy.copy(self.init_code.input_variables)
                         code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
+                        code[f'{self.init_code.name}_{ce}'].init.extend(code_chunk.init[ce])
                         code[f'{self.init_code.name}_{ce}'].precondition[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.precondition_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].operators[code[f'{self.init_code.name}_{ce}'].name] = code_chunk.code_chunk[ce]
                         code[f'{self.init_code.name}_{ce}'].selected_cell = set(code_chunk.contion_vars[ce])
@@ -403,6 +404,8 @@ class EtableTranspiler:
 
                 else:
                     ce = list(code_chunk.code_chunk.keys())[0]
+                    code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
+                    self.init_code.init.extend(code_chunk.init[ce])
                     self.init_code.precondition[self.init_code.name] = code_chunk.precondition_chunk[ce]
                     self.init_code.operators[self.init_code.name] = code_chunk.code_chunk[ce]
                     self.init_code.selected_cell = set(code_chunk.contion_vars[ce])
