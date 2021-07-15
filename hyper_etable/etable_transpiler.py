@@ -145,6 +145,7 @@ class StringLikeNamedRange:
         self.cell = cell
         self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
+        self.external_range = False
         self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.range_name)}'
         self.var_str = f'{self.row_name}.{cell.letter[0]}'
         self.types = set()
@@ -221,6 +222,7 @@ class StringLikeVariable:
             self.filename, self.sheet, self.number, self.letter = split_cell(cell_str)
         if isinstance(self.number, list):
             self.is_range = True
+            self.external_range = False
             self.cell = hyper_etable.cell_resolver.PlainCellRange(self.filename, self.sheet, self.letter, self.number)
             self.range_name = f'{self.letter[0]}{self.number[0]}_{self.letter[1]}{self.number[1]}'
 
@@ -440,10 +442,12 @@ class EtableTranspiler:
         rng_test = StringLikeVariable.new(
             var_map=self.var_mapper, filename=rng.cell.filename, sheet=rng.cell.sheet, letter=[rng.cell.letter[0], rng.cell.letter[0]], number=rng.cell.number)
         rng_test.range_name = rng.range_name
+        rng_test.external_range = True
         rng_ret = StringLikeVariable.new(
             var_map=self.var_mapper, filename=rng.cell.filename, sheet=rng.cell.sheet,
             letter=[p,p], number=rng.cell.number)
         rng_ret.range_name = rng.range_name
+        rng_test.external_range = True
         rng_ret.row_name = rng_test.row_name
         rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
         self.var_counter += 1
@@ -455,7 +459,7 @@ class EtableTranspiler:
 
         # self.init_code.selectable = True
         self.init_code.is_atwill = True
-        slv_ret =  StringLikeVars(ret_var, [cell, rng, rng_test, rng_ret, ret_var], "")
+        slv_ret =  StringLikeVars(ret_var, [cell, rng_test, rng_ret, ret_var], "")
         slv_ret.code_storage.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
         slv_ret.code_storage.init.append(f'{ret_var} = {rng_ret}')
         slv_ret.code_storage.operators.append(f'assert {rng_test} == {cell} # main assert')
@@ -467,6 +471,7 @@ class EtableTranspiler:
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter, number=self.output.number,
             var_str=f'var_tbl_SELECTFROMRANGE_{self.output}_{self.var_counter}')
+        ret_var.external_range = True
         ret_var.temp = True 
         self.var_counter += 1
         self.init_code.is_atwill = True
