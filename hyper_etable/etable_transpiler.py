@@ -383,7 +383,8 @@ class EtableTranspiler:
             self.output_code.append(
                 f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
         self.output_code.append(f'# side effect with {self.output} can be added here')
-
+        self.init_code.merge(transpiled_formula_return.code_storage, name_save=True)
+        self.init_code.name_reset(self.init_code.name)
         code = {}
         for idx, code_chunk in enumerate(self.code):
             if isinstance(code_chunk, dict):
@@ -497,11 +498,11 @@ class EtableTranspiler:
             code_element[branch_name] = FunctionCode(name=branch_name)
             if isinstance(a_condition, StringLikeVars):
                 a_condition.code_storage.name_reset(branch_name)
-                code_element[branch_name].merge(a_condition.code_storage)
+                code_element[branch_name].merge(a_condition.code_storage, name_save=True)
                 a_condition.code_storage = FunctionCode(name=branch_name)
             if isinstance(a_value, StringLikeVars):
                 a_value.code_storage.name_reset(branch_name)
-                code_element[branch_name].merge(a_value.code_storage)
+                code_element[branch_name].merge(a_value.code_storage, name_save=True)
                 a_value.code_storage = FunctionCode(name=branch_name)
             if branch_name not in code_element[branch_name].precondition:
                 code_element[branch_name].precondition[branch_name] = [[], 'if']
@@ -841,21 +842,22 @@ class FunctionCode:
         self.name = name
         l = []
         for p in self.precondition.values():
-            l.extend(p)
+            l.extend(p[1])
         self.precondition = collections.defaultdict(list)
-        self.precondition[self.name].extend(l)
+        if len(l) > 0 :
+            self.precondition[self.name][1].extend(l)
         l = []
         for p in self.operators.values():
             l.extend(p)
         self.operators = collections.defaultdict(list)
-        self.operators = collections.defaultdict(list)
-        self.operators[self.name].extend(l)
+        if len(l) > 0 :
+            self.operators[self.name].extend(l)
         l = []
         for p in self.output.values():
             l.extend(p)
         self.output = collections.defaultdict(list)
-        self.output = collections.defaultdict(list)
-        self.output[self.name].extend(l)
+        if len(l) > 0:
+            self.output[self.name].extend(l)
 
     def init_keys(self):
         self.keys = [self.name]
