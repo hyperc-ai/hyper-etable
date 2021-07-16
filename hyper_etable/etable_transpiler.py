@@ -389,13 +389,13 @@ class EtableTranspiler:
             if isinstance(code_chunk, dict):
                 if len(code_chunk) > 1:
                     for ce in code_chunk:
-                        code[f'{self.init_code.name}_{ce}'] = FunctionCode(
-                            name=f'{self.init_code.name}_{ce}', parent_name=self.init_code.name)
-                        code[f'{self.init_code.name}_{ce}'].input_variables = copy.copy(self.init_code.input_variables)
-                        code[f'{self.init_code.name}_{ce}'].init = copy.copy(self.init_code.init)
-                        code[f'{self.init_code.name}_{ce}'].merge(code_chunk[ce], name_save=True) #TODO check this
-                        code[f'{self.init_code.name}_{ce}'].idx = idx
-                        code[f'{self.init_code.name}_{ce}'].selectable = True
+                        code[ce] = FunctionCode(
+                            name=ce, parent_name=self.init_code.name)
+                        code[ce].input_variables = copy.copy(self.init_code.input_variables)
+                        code[ce].init = copy.copy(self.init_code.init)
+                        code[ce].merge(code_chunk[ce], name_save=True) #TODO check this
+                        code[ce].idx = idx
+                        code[ce].selectable = True
 
                 else:
                     ce = list(code_chunk.keys())[0]
@@ -493,8 +493,16 @@ class EtableTranspiler:
         self.init_code.formula_type = "TAKEIF"
         part = 0
         for a_condition, a_value, a_syncon in divide_chunks(args[1:], 3):  # divinde by 3 elements after first
-            branch_name = f'takeif_branch{part}'
+            branch_name = f'{self.init_code.name}_takeif_branch{part}'
             code_element[branch_name] = FunctionCode(name=branch_name)
+            if isinstance(a_condition, StringLikeVars):
+                a_condition.code_storage.name_reset(branch_name)
+                code_element[branch_name].merge(a_condition.code_storage)
+                a_condition.code_storage = FunctionCode(name=branch_name)
+            if isinstance(a_value, StringLikeVars):
+                a_value.code_storage.name_reset(branch_name)
+                code_element[branch_name].merge(a_value.code_storage)
+                a_value.code_storage = FunctionCode(name=branch_name)
             if branch_name not in code_element[branch_name].precondition:
                 code_element[branch_name].precondition[branch_name] = [[], 'if']
             code_element[branch_name].precondition[branch_name][0].append(
@@ -828,6 +836,26 @@ class FunctionCode:
         self.is_goal = is_goal
         self.formula_type = "CALCULATE CELL"
         self.formula_str = set()
+
+    def name_reset(self, name):
+        self.name = name
+        l = []
+        for p in self.precondition.values():
+            l.extend(p)
+        self.precondition = collections.defaultdict(list)
+        self.precondition[self.name].extend(l)
+        l = []
+        for p in self.operators.values():
+            l.extend(p)
+        self.operators = collections.defaultdict(list)
+        self.operators = collections.defaultdict(list)
+        self.operators[self.name].extend(l)
+        l = []
+        for p in self.output.values():
+            l.extend(p)
+        self.output = collections.defaultdict(list)
+        self.output = collections.defaultdict(list)
+        self.output[self.name].extend(l)
 
     def init_keys(self):
         self.keys = [self.name]
