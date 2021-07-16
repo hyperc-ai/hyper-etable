@@ -365,7 +365,6 @@ class ETable:
 
         for func in code.values():
             used_cell_set.update(set([i.cell for i in func.input_variables]))
-            func.gen_init()
             for var in func.sync_cell:
                 if not isinstance(var, hyper_etable.etable_transpiler.StringLikeVariable):
                     continue
@@ -546,6 +545,8 @@ class ETable:
                     unused_cell_set.update(effect_vars)
                     del code[function_key_deletable]
                     some_found = True
+        # Generate init code
+        [c.gen_init() for c in code.values()]
 
         # Load used cell
         for cell in used_cell_set:
