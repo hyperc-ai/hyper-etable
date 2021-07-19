@@ -1,7 +1,7 @@
 from collections import defaultdict
 from os import mkdir
 import string
-import schedula
+import glob
 import formulas.excel
 import formulas
 import hyperc
@@ -290,7 +290,6 @@ class ETable:
     def solve_dump(self, dump_folder= None):
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
-        # 
         self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
         var_mapper = {}
         global_table_type_mapper = {}
@@ -305,18 +304,19 @@ class ETable:
         goal_code_source['main_goal'] = main_goal
 
         # Load used cell
-        for sheet in self.wb_values_only:
+        for wb_sheet in self.wb_values_only:
+            sheet = wb_sheet.title
             filename = self.filename
             filename = filename_case_remap_workaround.get(filename, filename)
             # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in py_table_name
             letter_next = 'A'
             letter_ret = [letter_next]
-            for _ in range(sheet.max_column-1):
+            for _ in range(wb_sheet.max_column-1):
                 letter_next = hyperc.util.letter_index_next(letter = letter_next).upper()
                 letter_ret.append(letter_next)
             for letter in letter_ret:
-                for recid in range(1, sheet.max_row+1):
+                for recid in range(1, wb_sheet.max_row+1):
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     # if cell in unused_cell_set:
                     #     continue
@@ -437,10 +437,13 @@ class ETable:
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
-
-
         #dump goals and actions
         self.dump_functions(goal_code_source, 'hpy_goals.py')
+        addition_code_files = glob.glob(os.path.join(self.filename.parent, '*.py'))
+        for code_file in addition_code_files:
+            addition_code = open(code_file, "r").read()
+            f_code = compile(addition_code, code_file, 'exec')
+            exec(f_code, self.mod.__dict__)
 
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
