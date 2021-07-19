@@ -349,10 +349,6 @@ class ETable:
                             getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
 
                     self.objects[py_table_name][recid].__touched_annotations__.add(letter)
-                    self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
-                    #TODO add type detector
-                    # self.classes[py_table_name].__annotations__[letter] = int
-                    # rec_obj.__annotations__.add(letter)
                     sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
                     if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
@@ -366,7 +362,6 @@ class ETable:
                     else:
                         setattr(self.objects[py_table_name][recid], letter, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
-                    setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
 
 
         # Dump defined table names
