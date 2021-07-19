@@ -287,6 +287,169 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
+    def solve_dump(self, dump_folder= None):
+        xl_mdl = formulas.excel.ExcelModel()
+        xl_mdl.loads(str(self.filename))
+        # 
+        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
+        var_mapper = {}
+        global_table_type_mapper = {}
+        code = {}
+        filename_case_remap_workaround = {}
+
+        goal_code_source = {}
+
+        main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
+        main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
+        main_goal.operators[main_goal.name].append('pass')
+        goal_code_source['main_goal'] = main_goal
+
+        # Load used cell
+        for sheet in self.wb_values_only:
+            filename = self.filename
+            filename = filename_case_remap_workaround.get(filename, filename)
+            # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in py_table_name
+            letter_next = 'A'
+            letter_ret = [letter_next]
+            for _ in range(sheet.max_column-1):
+                letter_next = hyperc.util.letter_index_next(letter = letter_next).upper()
+                letter_ret.append(letter_next)
+            for letter in letter_ret:
+                for recid in range(1, sheet.max_row+1):
+                    cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
+                    # if cell in unused_cell_set:
+                    #     continue
+                    if recid not in self.objects[py_table_name]:
+                        if py_table_name not in self.classes:
+                            ThisTable = self.get_new_table(py_table_name, sheet)
+                        else:
+                            ThisTable = self.classes[py_table_name]
+                        # if 
+                        rec_obj = ThisTable()
+                        # rec_obj.__row_record__ = copy.copy(cell)
+                        rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
+                        rec_obj.__touched_annotations__ = set()
+                        # ThisTable.__annotations_type_set__ = defaultdict(set)
+                        self.objects[py_table_name][recid] = rec_obj
+                        self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+                    
+                    # Declare and load defined table names
+                    defined_table_name = self.range_resolver.get_table_by_cell(cell)
+                    if defined_table_name is not None:
+                        for dtn_raw in defined_table_name:
+                            dtn = hyperc.xtj.str_to_py(dtn_raw)
+                            if dtn not in self.mod.DefinedTables.__annotations__:
+                                self.mod.DefinedTables.__annotations__[dtn] = set
+                                setattr(self.mod.DEFINED_TABLES, dtn, set())
+                            getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
+
+                    self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+                    self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
+                    #TODO add type detector
+                    # self.classes[py_table_name].__annotations__[letter] = int
+                    # rec_obj.__annotations__.add(letter)
+                    sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
+                    if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
+                        setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
+                        self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+                    # assert cell in self.cells_value, f"Lost value for cell {cell}"
+                    if cell not in self.cells_value or self.cells_value[cell] is None:
+                        # TODO this is stumb for novalue cell. We should use Novalue ????
+                        ox_sht, ox_cell_ref = self.stl.gen_opxl_addr(self.filename, 
+                                                        self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
+                                                        letter, recid)
+                        xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
+                        if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
+                            raise Exception("We don't support table with error cell")
+                        if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str) and self.enable_precalculation:
+                            setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
+                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
+                        else:
+                            setattr(self.objects[py_table_name][recid], letter, '')
+                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
+                        setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
+
+
+        # Dump defined table names
+        init_f_code = []
+        for attr_name, attr_type in self.mod.DefinedTables.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = DEFINED_TABLES.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.DefinedTables.__annotations__['GOAL'] = bool
+        if init_f_code:
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_dt_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_dt_init.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
+            self.mod.DefinedTables.__init__.__name__ = "__init__"
+
+
+        for clsv in self.classes.values():
+            init_f_code = []
+            init_pars = []
+            if hyperc.settings.DEBUG:
+                print(f" {clsv} -  {clsv.__annotations__}")
+            for par_name, par_type in clsv.__annotations__.items():
+                if par_name == '__table_name__':
+                    continue
+                # Skip None type cell
+                if par_type is None:
+                    par_type = str
+                    clsv.__annotations__[par_name] = str
+                init_f_code.append(
+                    f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                # init_f_code.append(
+                    # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
+                if not par_type in hyperc.xtj.DEFAULT_VALS:
+                    raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
+                init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+            if len(init_f_code) == 0:
+                continue
+            full_f_code = '\n    '.join(init_f_code)
+            full_f_pars = ",".join(init_pars)
+            full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, globals())
+            clsv.__init__ = globals()["hct_f_init"]
+            clsv.__init__.__name__ = "__init__"
+
+
+        # Now generate init for static object
+        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
+        init_f_code = []
+        for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
+        if init_f_code:
+
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_stf_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
+            self.mod.StaticObject.__init__.__name__ = "__init__"
+
+
+
+        #dump goals and actions
+        self.dump_functions(goal_code_source, 'hpy_goals.py')
+
+        self.methods_classes.update(self.classes)
+        just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
+
+
+        plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
+                                              extra_instantiations=just_classes)
+        print("finish")     
+
     def calculate(self):
 
         # g=self.get_range_name_by_cell("'[fff]ggg'!B1")
