@@ -167,6 +167,11 @@ class ETable:
         attrname = f"{py_table_name}_{row}"
         return getattr(self.mod.HCT_STATIC_OBJECT, attrname)
 
+    def solver_call_simple(self,goal, extra_instantiations):
+        return hyperc.solve(goal, globals_=self.methods_classes, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
+                            addition_modules=[self.mod], metadata=self.metadata)
+
+
     def solver_call(self,goal, extra_instantiations):
         mod=self.mod
         HCT_STATIC_OBJECT = mod.HCT_STATIC_OBJECT
@@ -310,16 +315,15 @@ class ETable:
             filename = filename_case_remap_workaround.get(filename, filename)
             # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
             py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in py_table_name
-            letter_next = 'A'
-            letter_ret = [letter_next]
-            for _ in range(wb_sheet.max_column-1):
-                letter_next = hyperc.util.letter_index_next(letter = letter_next).upper()
-                letter_ret.append(letter_next)
-            for letter in letter_ret:
-                for recid in range(1, wb_sheet.max_row+1):
+            # for _cell in wb_sheet._cells.values():
+            for row in wb_sheet.iter_rows(): 
+                for _cell in row:
+                    xl_orig_calculated_value = getattr(_cell, "value", None)
+                    if xl_orig_calculated_value is None:
+                        continue
+                    letter = _cell.column_letter
+                    recid = _cell.row
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
-                    # if cell in unused_cell_set:
-                    #     continue
                     if recid not in self.objects[py_table_name]:
                         if py_table_name not in self.classes:
                             ThisTable = self.get_new_table(py_table_name, sheet)
@@ -353,22 +357,16 @@ class ETable:
                     if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
-                    # assert cell in self.cells_value, f"Lost value for cell {cell}"
-                    if cell not in self.cells_value or self.cells_value[cell] is None:
-                        # TODO this is stumb for novalue cell. We should use Novalue ????
-                        ox_sht, ox_cell_ref = self.stl.gen_opxl_addr(self.filename, 
-                                                        self.objects[py_table_name][recid].__class__.__xl_sheet_name__, 
-                                                        letter, recid)
-                        xl_orig_calculated_value = self.wb_values_only[ox_sht][ox_cell_ref].value
-                        if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
-                            raise Exception("We don't support table with error cell")
-                        if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str) and self.enable_precalculation:
-                            setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
-                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
-                        else:
-                            setattr(self.objects[py_table_name][recid], letter, '')
-                            self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
-                        setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
+
+                    if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
+                        raise Exception("We don't support table with error cell")
+                    if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
+                        setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
+                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
+                    else:
+                        setattr(self.objects[py_table_name][recid], letter, '')
+                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
+                    setattr(self.objects[py_table_name][recid], f'{letter}_not_hasattr', True)
 
 
         # Dump defined table names
@@ -444,12 +442,17 @@ class ETable:
             addition_code = open(code_file, "r").read()
             f_code = compile(addition_code, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
+            for f_name in f_code.co_names:
+                self.methods_classes[f_name] = self.mod.__dict__[f_name]
+        # for f in self.mod.__dict__:
+        #     if isinstance(self.mod.__dict__[f], types.FunctionType):
+        #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
 
-        plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
+        plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
         print("finish")     
 
