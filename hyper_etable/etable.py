@@ -278,13 +278,13 @@ class ETable:
 
 
     def get_new_table(self, table_name, sheet):
-        ThisTable = TableElementMeta(table_name, (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
+        ThisTable = TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
         ThisTable.__touched_annotations__ = set()
         ThisTable.__annotations_type_set__ = defaultdict(set)
-        self.mod.__dict__[table_name] = ThisTable
+        self.mod.__dict__[f'{table_name}_Class'] = ThisTable
         self.classes[table_name] = ThisTable
-        self.classes[table_name].__qualname__ = f"{self.session_name}.{table_name}"
+        self.classes[table_name].__qualname__ = f"{self.session_name}.{table_name}_Class"
         self.mod.HCT_OBJECTS[table_name] = []
         return ThisTable
 
