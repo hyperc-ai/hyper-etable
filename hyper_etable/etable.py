@@ -169,7 +169,7 @@ class ETable:
 
     def solver_call_simple(self,goal, extra_instantiations):
         return hyperc.solve(goal, globals_=self.methods_classes, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
-                            addition_modules=[self.mod], metadata=self.metadata)
+                            addition_modules=[self.mod])
 
 
     def solver_call(self,goal, extra_instantiations):
@@ -453,12 +453,12 @@ class ETable:
         print("finish")     
 
     def save_dump(self):
-        for table in self.HCT_OBJECTS.values():
-            sheet_name = table.__class__.__xl_sheet_name__
+        for table in self.mod.HCT_OBJECTS.values():
             for row in table:
+                sheet_name = row.__xl_sheet_name__
                 recid = row.__recid__
                 for letter in row.__touched_annotations__:
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'] = row[letter]
+                    self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, letter)
         
         self.wb_values_only.save(os.path.join(self.filename.parent, f'result_{self.filename.name}'))
 
