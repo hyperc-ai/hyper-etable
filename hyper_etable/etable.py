@@ -331,10 +331,9 @@ class ETable:
                             ThisTable = self.classes[py_table_name]
                         # if 
                         rec_obj = ThisTable()
-                        # rec_obj.__row_record__ = copy.copy(cell)
+                        rec_obj.__recid__ = recid
                         rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                         rec_obj.__touched_annotations__ = set()
-                        # ThisTable.__annotations_type_set__ = defaultdict(set)
                         self.objects[py_table_name][recid] = rec_obj
                         self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                     
@@ -359,9 +358,11 @@ class ETable:
                     if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
                         setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
                         self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
+                        self.objects[py_table_name][recid].__touched_annotations__.add(letter) 
                     else:
                         setattr(self.objects[py_table_name][recid], letter, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
+                        self.objects[py_table_name][recid].__touched_annotations__.add(letter)
 
 
         # Dump defined table names
@@ -450,6 +451,16 @@ class ETable:
         plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
         print("finish")     
+
+    def save_dump(self):
+        for table in self.HCT_OBJECTS.values():
+            sheet_name = table.__class__.__xl_sheet_name__
+            for row in table:
+                recid = row.__recid__
+                for letter in row.__touched_annotations__:
+                    self.wb_values_only[sheet_name][f'{letter}{recid}'] = row[letter]
+        
+        self.wb_values_only.save(os.path.join(self.filename.parent, f'result_{self.filename.name}'))
 
     def calculate(self):
 
