@@ -292,13 +292,10 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    def solve_dump(self, dump_folder= None):
+    def solve_dump(self, has_header=False):
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
-        var_mapper = {}
-        global_table_type_mapper = {}
-        code = {}
         filename_case_remap_workaround = {}
 
         goal_code_source = {}
@@ -314,23 +311,37 @@ class ETable:
             filename = self.filename
             filename = filename_case_remap_workaround.get(filename, filename)
             # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
-            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in py_table_name
-            # for _cell in wb_sheet._cells.values():
-            for row in wb_sheet.iter_rows(): 
+            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in 
+            header_map = {}
+            header_back_map = {}
+            if has_header:
+                is_header = True
+            else:
+                is_header = False
+            for row in wb_sheet.iter_rows():
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
                     if xl_orig_calculated_value is None:
                         continue
                     letter = _cell.column_letter
+                    if is_header:
+                        header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
+                        header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
+                        continue
                     recid = _cell.row
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
+                    if has_header:
+                        column_name = header_map[letter]
+                    else:
+                        column_name = letter
                     if recid not in self.objects[py_table_name]:
                         if py_table_name not in self.classes:
                             ThisTable = self.get_new_table(py_table_name, sheet)
                         else:
                             ThisTable = self.classes[py_table_name]
-                        # if 
                         rec_obj = ThisTable()
+                        if has_header:
+                            rec_obj.__header_back_map__ = header_back_map
                         rec_obj.__recid__ = recid
                         rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
                         rec_obj.__touched_annotations__ = set()
@@ -347,7 +358,7 @@ class ETable:
                                 setattr(self.mod.DEFINED_TABLES, dtn, set())
                             getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
 
-                    self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                     sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
                     if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
                         setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
@@ -356,14 +367,14 @@ class ETable:
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
                         raise Exception("We don't support table with error cell")
                     if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
-                        setattr(self.objects[py_table_name][recid], letter, xl_orig_calculated_value)
-                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.add(letter) 
+                        setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
+                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
                     else:
-                        setattr(self.objects[py_table_name][recid], letter, '')
-                        self.objects[py_table_name][recid].__class__.__annotations__[letter] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.add(letter)
-
+                        setattr(self.objects[py_table_name][recid], column_name, '')
+                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                is_header = False
 
         # Dump defined table names
         init_f_code = []
@@ -452,13 +463,17 @@ class ETable:
                                               extra_instantiations=just_classes)
         print("finish")     
 
-    def save_dump(self):
+    def save_dump(self, has_header=False):
         for table in self.mod.HCT_OBJECTS.values():
             for row in table:
                 sheet_name = row.__xl_sheet_name__
                 recid = row.__recid__
-                for letter in row.__touched_annotations__:
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, letter)
+                for attr_name in row.__touched_annotations__:
+                    if has_header:
+                        letter = row.__header_back_map__[attr_name]
+                    else:
+                        letter = attr_name
+                    self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
         
         self.wb_values_only.save(os.path.join(self.filename.parent, f'result_{self.filename.name}'))
 

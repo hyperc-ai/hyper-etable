@@ -22,3 +22,13 @@ def test_doctor():
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
     et.solve_dump()
+
+def test_header():
+    xlsx_file='./tests/header_select/has_header.xlsx'
+    xlsx_file = pathlib.Path(xlsx_file)
+    print(f"\ntest file {xlsx_file}", end='')
+    project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
+    et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
+    et.solve_dump(has_header=True)
+    et.save_dump(has_header=True)
+
