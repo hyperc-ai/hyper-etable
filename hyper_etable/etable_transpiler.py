@@ -67,7 +67,7 @@ def generate_ne_warrants(all_init):
     for a, b in itertools.combinations(all_vars, r=2):
         # code += f"    assert {a} != {b}\n"
         a_b = sorted([f'{a}', f'{b}'])
-        warrants.append(f"ensure_ne(HCT_STATIC_OBJECT.{a_b[0]}, HCT_STATIC_OBJECT.{a_b[1]})")
+        warrants.append(f"ensure_ne(DATA.{a_b[0]}, DATA.{a_b[1]})")
     return warrants
 
 
@@ -375,9 +375,9 @@ class EtableTranspiler:
                 f'{self.output}_not_hasattr = False')
         else:
             self.output_code.append(
-                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
+                f'DATA.{sheet_name}_{self.output.number}.{self.output.letter} = {self.output}')
             self.output_code.append(
-                f'HCT_STATIC_OBJECT.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
+                f'DATA.{sheet_name}_{self.output.number}.{self.output.letter}_not_hasattr = False')
         self.output_code.append(f'# side effect with {self.output} can be added here')
 
         code = {}
@@ -908,7 +908,7 @@ class FunctionCode:
         for var in self.input_variables:
             if not var.is_range:
                 sheet_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
-                all_vars.add(f'HCT_STATIC_OBJECT.{sheet_name}_{var.cell.number}')
+                all_vars.add(f'DATA.{sheet_name}_{var.cell.number}')
         for a, b in itertools.combinations(all_vars, r=2):
             # code += f"    assert {a} != {b}\n"
             a_b = sorted([a, b])
@@ -932,8 +932,8 @@ class FunctionCode:
                     raise Exception(f"Unsupport range {var}")
 
             else:
-                self.init.append(f'{var} = HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
-                self.init.append(f'assert HCT_STATIC_OBJECT.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
+                self.init.append(f'{var} = DATA.{py_table_name}_{var.number}.{var.letter} # TEST HERE')
+                self.init.append(f'assert DATA.{py_table_name}_{var.number}.{var.letter}_not_hasattr == False')
         self.init.extend(self.hasattr_code) #should gen init and hasattr
 
     def gen_not_hasattr(self):
@@ -941,7 +941,7 @@ class FunctionCode:
         for eff_var in self.effect_vars:
             py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
             not_hasattrs.append(
-                f'assert HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr == True')
+                f'assert DATA.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr == True')
         return "\n    ".join(not_hasattrs)
     
     def __str__(self):
@@ -957,13 +957,13 @@ class FunctionCode:
                 for eff_var in self.effect_vars:
                     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                     # stack_code.append(
-                    # f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+                    # f'_stack_add(DATA.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
             else:
                 pass  # do nothing if at-will like selectfromrange
                 # for eff_var in self.effect_vars:
                 #     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                 #     stack_code.append(
-                #     f'_stack_add(HCT_STATIC_OBJECT.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
+                #     f'_stack_add(DATA.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code_str = '\n    '.join(stack_code)
 
         function_args = ', '.join(set([f'{k.row_name}: {v}' for k, v in self.function_args.items()]))

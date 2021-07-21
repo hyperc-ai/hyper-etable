@@ -36,7 +36,7 @@ def stack_code_gen_all(objects):
                 # if not "not_hasattr" in col: continue
                 if not hasattr(rowobj, col): continue
                 if getattr(rowobj, f"{col}_not_hasattr") == False: continue
-                l_all_hasattr_drop.append(f"HCT_STATIC_OBJECT.{cname}_{idx}.{col}_not_hasattr = True")
+                l_all_hasattr_drop.append(f"DATA.{cname}_{idx}.{col}_not_hasattr = True")
 
     drop_content = "\n    ".join(l_all_hasattr_drop)
     warrants = '\n    '.join(hyper_etable.etable_transpiler.generate_ne_warrants(drop_content))
@@ -117,6 +117,7 @@ class ETable:
             self.enable_precalculation = False
         else:
             self.enable_precalculation = True
+        self.STATIC_STORAGE_NAME = 'DATA'
         filename = pathlib.PosixPath(filename)
         self.filename = filename
         self.out_filename = ""
@@ -143,8 +144,8 @@ class ETable:
         self.mod.StaticObject = type("StaticObject", (object, ), {})
         self.mod.StaticObject.__annotations__ = {}
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
-        self.mod.HCT_STATIC_OBJECT = self.mod.StaticObject()
-        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.DATA = self.mod.StaticObject()
+        self.mod.DATA.GOAL = False
         self.mod.HCT_OBJECTS = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
@@ -159,13 +160,13 @@ class ETable:
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
         py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
         attrname = f"{py_table_name}_{row}"
-        return getattr(getattr(self.mod.HCT_STATIC_OBJECT, attrname), column.upper())
+        return getattr(getattr(self.mod.DATA, attrname), column.upper())
 
     def get_row_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
         py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
         attrname = f"{py_table_name}_{row}"
-        return getattr(self.mod.HCT_STATIC_OBJECT, attrname)
+        return getattr(self.mod.DATA, attrname)
 
     def solver_call_simple(self,goal, extra_instantiations):
         return hyperc.solve(goal, globals_=self.methods_classes, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
@@ -174,7 +175,7 @@ class ETable:
 
     def solver_call(self,goal, extra_instantiations):
         mod=self.mod
-        HCT_STATIC_OBJECT = mod.HCT_STATIC_OBJECT
+        DATA = mod.DATA
         globals_ = self.methods_classes
         ret = hyperc.solve(goal, globals_=globals_, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
                             addition_modules=[mod], metadata=self.metadata)
@@ -295,13 +296,13 @@ class ETable:
     def solve_dump(self, has_header=False):
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
-        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
+        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.DATA, plan_log=self.plan_log)
         filename_case_remap_workaround = {}
 
         goal_code_source = {}
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
-        main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
+        main_goal.operators[main_goal.name].append('assert DATA.GOAL == True')
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
 
@@ -360,8 +361,8 @@ class ETable:
 
                     self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                     sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
-                    if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
-                        setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
+                    if not hasattr(self.mod.DATA, sheet_name):
+                        setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
 
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
@@ -425,11 +426,11 @@ class ETable:
 
 
         # Now generate init for static object
-        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.DATA.GOAL = False
         self.mod.StaticObject.__annotations__['GOAL'] = bool
         init_f_code = []
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
-            init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
+            init_f_code.append(f"self.{attr_name} = DATA.{attr_name}")  # if it does not ignore, fix it!
         self.mod.StaticObject.__annotations__['GOAL'] = bool
         if init_f_code:
 
@@ -485,7 +486,7 @@ class ETable:
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         # 
-        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.HCT_STATIC_OBJECT, plan_log=self.plan_log)
+        self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.DATA, plan_log=self.plan_log)
         var_mapper = {}
         global_table_type_mapper = {}
         code = {}
@@ -650,31 +651,31 @@ class ETable:
                             sheet_name_value = hyperc.xtj.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
                             goal_code[cell].append([
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}',
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False', 
-                                f'assert HCT_STATIC_OBJECT.{sheet_name_value}.{letter_value}_not_hasattr == False'])
+                                f'assert DATA.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} DATA.{sheet_name_value}.{letter_value}',
+                                f'assert DATA.{sheet_name}.{letter}_not_hasattr == False', 
+                                f'assert DATA.{sheet_name_value}.{letter_value}_not_hasattr == False'])
                         elif isinstance(value, formulas.tokens.operand.Number):
                             if str(value.attr["name"]) == "TRUE":
                                 goal_code[cell].append([
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True',
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
+                                    f'assert DATA.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} True',
+                                    f'assert DATA.{sheet_name}.{letter}_not_hasattr == False'])
                             elif str(value.attr["name"]) == "FALSE":
                                 goal_code[cell].append([
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False',
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
+                                    f'assert DATA.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} False',
+                                    f'assert DATA.{sheet_name}.{letter}_not_hasattr == False'])
                             else:
                                 goal_code[cell].append([
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}',
-                                    f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
+                                    f'assert DATA.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} {int(value.attr["name"])}',
+                                    f'assert DATA.{sheet_name}.{letter}_not_hasattr == False'])
                         elif isinstance(value, formulas.tokens.operand.String):
                             goal_code[cell].append([
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"',
-                                f'assert HCT_STATIC_OBJECT.{sheet_name}.{letter}_not_hasattr == False'])
+                                f'assert DATA.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} "{value.attr["name"]}"',
+                                f'assert DATA.{sheet_name}.{letter}_not_hasattr == False'])
 
         g_c = hyper_etable.etable_transpiler.FunctionCode(name='condition_goal', is_goal=True)
         goal_code_source = {}
         goal_code_source[0] = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_goal_0', is_goal=True)
-        goal_code_source[0].output[goal_code_source[0].name].append('HCT_STATIC_OBJECT.GOAL = True')
+        goal_code_source[0].output[goal_code_source[0].name].append('DATA.GOAL = True')
         goal_code_source[0].output[goal_code_source[0].name].append('pass')
 
         goal_counter = 0
@@ -690,7 +691,7 @@ class ETable:
                         name=f'hct_goal_{counter_new}', is_goal=True)
                     goal_code_source[counter_new].operators[goal_code_source[counter_new].name] = copy.copy(goal_code_source[counter_was].operators)
                     goal_code_source[counter_new].output[goal_code_source[counter_new].name].append(
-                        'HCT_STATIC_OBJECT.GOAL = True')
+                        'DATA.GOAL = True')
                     goal_code_source[counter_new].input_variables.update(goal_code_used_vars)
                     goal_code_source[counter_new].all_variables.update(goal_code_used_vars)
                     counter_was += 1
@@ -701,7 +702,7 @@ class ETable:
 
 
         main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
-        main_goal.operators[main_goal.name].append('assert HCT_STATIC_OBJECT.GOAL == True')
+        main_goal.operators[main_goal.name].append('assert DATA.GOAL == True')
         main_goal.operators[main_goal.name].append('pass')
         goal_code_source['main_goal'] = main_goal
 
@@ -797,8 +798,8 @@ class ETable:
                     # self.classes[py_table_name].__annotations__[letter] = int
                     # rec_obj.__annotations__.add(letter)
                     sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
-                    if not hasattr(self.mod.HCT_STATIC_OBJECT, sheet_name):
-                        setattr(self.mod.HCT_STATIC_OBJECT, sheet_name, self.objects[py_table_name][recid])
+                    if not hasattr(self.mod.DATA, sheet_name):
+                        setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
                     # assert cell in self.cells_value, f"Lost value for cell {cell}"
                     if cell not in self.cells_value or self.cells_value[cell] is None:
@@ -931,11 +932,11 @@ class ETable:
 
 
         # Now generate init for static object
-        self.mod.HCT_STATIC_OBJECT.GOAL = False
+        self.mod.DATA.GOAL = False
         self.mod.StaticObject.__annotations__['GOAL'] = bool
         init_f_code = []
         for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
-            init_f_code.append(f"self.{attr_name} = HCT_STATIC_OBJECT.{attr_name}")  # if it does not ignore, fix it!
+            init_f_code.append(f"self.{attr_name} = DATA.{attr_name}")  # if it does not ignore, fix it!
         self.mod.StaticObject.__annotations__['GOAL'] = bool
         if init_f_code:
 
@@ -957,7 +958,7 @@ class ETable:
         self.methods_classes.update(self.classes)
         just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
-        # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, HCT_STATIC_OBJECT)
+        # plan_or_invariants = hyperc.solve(self.methods_classes[main_goal.name], self.methods_classes, just_classes, DATA)
 
         plan_or_invariants = self.solver_call(goal=self.methods_classes[main_goal.name],
                                               extra_instantiations=just_classes)
