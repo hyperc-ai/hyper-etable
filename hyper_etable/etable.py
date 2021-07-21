@@ -366,7 +366,7 @@ class ETable:
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
 
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
-                        raise Exception("We don't support table with error cell")
+                        raise Exception(f"We don't support table with error cell {cell}")
                     if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
