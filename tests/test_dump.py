@@ -42,3 +42,11 @@ def test_dentist():
     et.save_dump(has_header=True)
 
 
+def test_space():
+    xlsx_file='./tests/space_bug/Untitled 1.xlsx'
+    xlsx_file = pathlib.Path(xlsx_file)
+    print(f"\ntest file {xlsx_file}", end='')
+    project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
+    et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
+    et.solve_dump()
+    # et.save_dump()
