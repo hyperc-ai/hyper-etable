@@ -322,12 +322,12 @@ class ETable:
             for row in wb_sheet.iter_rows():
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
-                    # if xl_orig_calculated_value is None:
-                    #     continue
+                    if xl_orig_calculated_value is None:
+                        continue
                     letter = _cell.column_letter
                     if is_header:
-                        if xl_orig_calculated_value is None:
-                            continue
+                        # if xl_orig_calculated_value is None:
+                        #     continue
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
                         continue
