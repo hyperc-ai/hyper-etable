@@ -293,7 +293,7 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    def solve_dump(self, has_header=False):
+    def open_dump(self, has_header=False):
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.DATA, plan_log=self.plan_log)
@@ -301,10 +301,10 @@ class ETable:
 
         goal_code_source = {}
 
-        main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
-        main_goal.operators[main_goal.name].append('assert DATA.GOAL == True')
-        main_goal.operators[main_goal.name].append('pass')
-        goal_code_source['main_goal'] = main_goal
+        self.main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
+        self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
+        self.main_goal.operators[self.main_goal.name].append('pass')
+        goal_code_source['main_goal'] = self.main_goal
 
         # Load used cell
         for wb_sheet in self.wb_values_only:
@@ -459,12 +459,17 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
-        just_classes = list(filter(lambda x: isinstance(x, type), self.methods_classes.values()))
 
+    # def solver_call_call_simple(self):
 
-        plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[main_goal.name],
-                                              extra_instantiations=just_classes)
-        print("finish")     
+    #     plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
+    #                                           extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+    #     print("finish")     
+    def solve_dump(self, has_header=False):
+        self.open_dump(has_header)
+        plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
+                                              extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+
 
     def save_dump(self, has_header=False):
         for table in self.mod.HCT_OBJECTS.values():
