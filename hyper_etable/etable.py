@@ -320,6 +320,24 @@ class ETable:
             else:
                 is_header = False
             for row in wb_sheet.iter_rows():
+                if py_table_name not in self.classes:
+                    ThisTable = self.get_new_table(py_table_name, sheet)
+                else:
+                    ThisTable = self.classes[py_table_name]
+                recid = list(row)[0].row
+                rec_obj = ThisTable()
+                if has_header:
+                    rec_obj.__header_back_map__ = header_back_map
+                rec_obj.__recid__ = recid
+                rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
+                rec_obj.__touched_annotations__ = set()
+                self.objects[py_table_name][recid] = rec_obj
+                self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+                sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
+                if not hasattr(self.mod.DATA, sheet_name):
+                    setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
+                    self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
                     if xl_orig_calculated_value is None:
@@ -331,26 +349,13 @@ class ETable:
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
                         continue
-                    recid = _cell.row
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if has_header:
                         column_name = header_map[letter]
                     else:
                         column_name = letter
-                    if recid not in self.objects[py_table_name]:
-                        if py_table_name not in self.classes:
-                            ThisTable = self.get_new_table(py_table_name, sheet)
-                        else:
-                            ThisTable = self.classes[py_table_name]
-                        rec_obj = ThisTable()
-                        if has_header:
-                            rec_obj.__header_back_map__ = header_back_map
-                        rec_obj.__recid__ = recid
-                        rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                        rec_obj.__touched_annotations__ = set()
-                        self.objects[py_table_name][recid] = rec_obj
-                        self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-                    
+                    if has_header:
+                        self.objects[py_table_name][recid].__header_back_map__ = header_back_map
                     # Declare and load defined table names
                     defined_table_name = self.range_resolver.get_table_by_cell(cell)
                     if defined_table_name is not None:
@@ -362,10 +367,6 @@ class ETable:
                             getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
 
                     self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
-                    sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
-                    if not hasattr(self.mod.DATA, sheet_name):
-                        setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
-                        self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
 
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
                         raise Exception(f"We don't support table with error cell {cell}")
@@ -377,7 +378,17 @@ class ETable:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
-                is_header = False
+                if is_header:
+                    is_header = False
+                    continue
+
+                for column_name in header_back_map.keys():
+                    if not hasattr(rec_obj, column_name):
+                        setattr(self.objects[py_table_name][recid], column_name, '')
+                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+
+                    
 
         # Dump defined table names
         init_f_code = []
