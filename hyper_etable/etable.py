@@ -499,7 +499,7 @@ class ETable:
         for step in self.metadata["plan_exec"]:
             args = ", ".join([f'{k}={prefix}{a.__py_sheet_name__}' for k, a in step[1].items()])
             code.append(f'{step[0].__name__}({args})')
-        code_str = "/n".join(code)
+        code_str = "\n".join(code)
         with open(code_file, "w+") as f:
                 f.write(code_str)
         if exec_plan:
