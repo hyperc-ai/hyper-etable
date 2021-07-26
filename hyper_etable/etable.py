@@ -155,6 +155,7 @@ class ETable:
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
+        self.plan_or_invariants = None
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -172,6 +173,14 @@ class ETable:
         return hyperc.solve(goal, globals_=self.methods_classes, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
                             addition_modules=[self.mod])
 
+    def solver_call_simple_wo_exec(self):
+        def gg(s, g, e):
+            hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
+                            addition_modules=[s.mod], metadata=s.metadata)
+        gg(self,self.methods_classes[self.main_goal.name],
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+                        
+        
 
     def solver_call(self,goal, extra_instantiations):
         mod=self.mod
@@ -337,6 +346,8 @@ class ETable:
                 if not hasattr(self.mod.DATA, sheet_name):
                     setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+                
+                rec_obj.__py_sheet_name__ = sheet_name
 
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
@@ -478,9 +489,22 @@ class ETable:
     #     print("finish")     
     def solve_dump(self, has_header=False):
         self.open_dump(has_header)
-        plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
+        ret = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
                                               extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+        self.plan_or_invariants = ret
 
+    def save_plan(self, prefix="DATA.", exec_plan=False):
+        code_file = os.path.join(self.filename.parent, f'plan_{self.filename.name}.py')
+        code = []
+        for step in self.metadata["plan_exec"]:
+            args = ", ".join([f'{k}={prefix}{a.__py_sheet_name__}' for k, a in step[1].items()])
+            code.append(f'{step[0].__name__}({args})')
+        code_str = "/n".join(code)
+        with open(code_file, "w+") as f:
+                f.write(code_str)
+        if exec_plan:
+            f_code = compile(code_str, code_file, 'exec')
+            exec(f_code, self.mod.__dict__)
 
     def save_dump(self, has_header=False):
         for table in self.mod.HCT_OBJECTS.values():
