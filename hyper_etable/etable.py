@@ -526,7 +526,7 @@ class ETable:
             code.append(f'{step[0].__name__}({args})')
         code_str = "\n".join(code)
         with open(code_file, "w+") as f:
-                f.write(code_str)
+            f.write(code_str)
         if exec_plan:
             f_code = compile(code_str, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
