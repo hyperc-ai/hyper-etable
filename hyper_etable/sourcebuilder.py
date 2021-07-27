@@ -1,7 +1,4 @@
-try:
-    from cStringIO import StringIO
-except ImportError:  # pragma: no cover
-    from StringIO import StringIO
+from io import StringIO
 
 INDENT = ' ' * 4
 

@@ -1,7 +1,7 @@
 from __future__ import with_statement
 import textwrap
 from contextlib import contextmanager
-from sourcebuilder import SourceBuilder
+from hyper_etable.sourcebuilder import SourceBuilder
 
 INDENT = ' ' * 4
 TRIPLE_QUOTES = '"' * 3
@@ -76,3 +76,21 @@ class PySourceBuilder(SourceBuilder):
                     self.writeln(wrap)
             self.writeln()
             self.writeln(delimiter)
+
+def build_source_from_class(class_instance):
+    sb = PySourceBuilder()
+# >>> for klass in klasses:
+# ...     with sb.block('class {0}(object)'.format(klass):, 2):
+# ...         sb.docstring('TODO: Document {0}'.format(klass))
+    # import inspect
+    # gg = inspect.getmembers(class_instance)
+
+    with sb.block(f'class {class_instance.__name__}({class_instance.__class__.__name__})'):
+        with sb.block(f'def __init__(self)'):
+            for attr in class_instance.__dict__:
+                attr_val = getattr(class_instance, attr)
+                if callable(attr_val):
+                    continue
+                elif attr not in list(class_instance.__class__.__dict__):
+                    sb.writeln(f'self.{attr} = {attr_val}')
+    return sb

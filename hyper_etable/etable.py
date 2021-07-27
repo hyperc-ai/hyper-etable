@@ -21,6 +21,7 @@ import os.path
 import pathlib
 import openpyxl
 import hyper_etable.util
+import hyper_etable.pysourcebuilder
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -156,6 +157,7 @@ class ETable:
         self.cells_value = {}
         self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
         self.plan_or_invariants = None
+        self.source_code = defaultdict(list)
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -481,7 +483,10 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
-
+        
+        for c in self.classes.values():
+            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c).end())
+    
     # def solver_call_call_simple(self):
 
     #     plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
