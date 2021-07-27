@@ -208,7 +208,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/test_dump.py::test_dentist"
+                "tests/test_dentist_cycle.py::test_dentist_cycle"
             ],
             "console": "integratedTerminal",
             "env": {
@@ -223,7 +223,8 @@
                 "HYPERC_IGNORE_EQ_BRANCH": "1",
                 "HYPERC_LOGLEVEL": "info",
                 "HYPERC_LIN_COUNT": "20",
-                "HYPERC_FORCE_LIN_COUNT": "1"
+                "HYPERC_FORCE_LIN_COUNT": "1",
+                "DOWNWARD_TOTAL_PUSHES": "500000000"
             },
             "justMyCode": false
         }

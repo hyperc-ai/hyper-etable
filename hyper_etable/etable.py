@@ -494,7 +494,12 @@ class ETable:
         self.plan_or_invariants = ret
 
     def save_plan(self, prefix="DATA.", exec_plan=False):
-        code_file = os.path.join(self.filename.parent, f'plan_{self.filename.name}.py')
+        code_file = os.path.join(self.filename.parent, f'plan/plan_{self.filename.name}.py')
+        plan_dir =  os.path.join(self.filename.parent, 'plan')
+        try:
+            os.mkdir(plan_dir)
+        except FileExistsError:
+            pass 
         code = []
         for step in self.metadata["plan_exec"]:
             args = ", ".join([f'{k}={prefix}{a.__py_sheet_name__}' for k, a in step[1].items()])
