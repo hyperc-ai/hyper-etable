@@ -487,6 +487,21 @@ class ETable:
         for c in self.classes.values():
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c).end())
     
+    def dump_py(self):
+        dir =  os.path.join(self.filename.parent, 'xlsx_to_py')
+        try:
+            os.mkdir(dir)
+        except FileExistsError:
+            pass 
+        for f_name, code  in self.source_code.items():
+            self.source_code['classes.py'].append(hyper_etable.pysourcebuilder.build_source_from_class(c).end())
+            code_file = os.path.join(dir, f'{f_name}.py')
+            s_code =""
+            for func in code:
+                s_code += str(func)
+                s_code += '\n'
+            open(code_file, "w+").write(s_code)
+
     # def solver_call_call_simple(self):
 
     #     plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
