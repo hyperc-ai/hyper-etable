@@ -484,8 +484,10 @@ class ETable:
 
         self.methods_classes.update(self.classes)
         
+        self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(TableElementMeta, ['__table_name__','__xl_sheet_name__']).end())
+
         for c in self.classes.values():
-            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c).end())
+            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
     
     def dump_py(self):
         dir =  os.path.join(self.filename.parent, 'xlsx_to_py')
@@ -494,7 +496,6 @@ class ETable:
         except FileExistsError:
             pass 
         for f_name, code  in self.source_code.items():
-            self.source_code['classes.py'].append(hyper_etable.pysourcebuilder.build_source_from_class(c).end())
             code_file = os.path.join(dir, f'{f_name}.py')
             s_code =""
             for func in code:

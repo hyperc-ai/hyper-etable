@@ -77,7 +77,7 @@ class PySourceBuilder(SourceBuilder):
             self.writeln()
             self.writeln(delimiter)
 
-def build_source_from_class(class_instance):
+def build_source_from_class(class_instance, allow_attr):
     sb = PySourceBuilder()
 # >>> for klass in klasses:
 # ...     with sb.block('class {0}(object)'.format(klass):, 2):
@@ -85,12 +85,23 @@ def build_source_from_class(class_instance):
     # import inspect
     # gg = inspect.getmembers(class_instance)
 
-    with sb.block(f'class {class_instance.__name__}({class_instance.__class__.__name__})'):
-        with sb.block(f'def __init__(self)'):
+    with sb.block(f'class {class_instance.__name__}({class_instance.__class__.__name__}):'):
+        pass_ok = True
+        for a, t in getattr(class_instance, '__annotations__', {}).items():
+            sb.writeln(f'{a}: {t.__name__}')
+            pass_ok = False
+        if pass_ok:
+            sb.writeln(f'pass')
+        with sb.block(f'def __init__(self):'):
+            pass_ok = True
             for attr in class_instance.__dict__:
                 attr_val = getattr(class_instance, attr)
-                if callable(attr_val):
+                if callable(attr_val) or (attr.startswith('__') and attr not in allow_attr) or attr in list(class_instance.__class__.__dict__):
                     continue
-                elif attr not in list(class_instance.__class__.__dict__):
-                    sb.writeln(f'self.{attr} = {attr_val}')
+                if isinstance(attr_val,str):
+                     attr_val = f'"{attr_val}"'
+                sb.writeln(f'self.{attr} = {attr_val}')
+                pass_ok = False
+            if pass_ok:
+                sb.writeln(f'pass')
     return sb
