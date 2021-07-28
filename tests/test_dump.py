@@ -30,10 +30,11 @@ def test_header():
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
     et.open_dump(has_header=True)
+    et.generate_invariants()
     et.dump_py()
-    et.solver_call_simple_wo_exec()
-    et.save_plan(exec_plan=True)
-    et.save_dump(has_header=True)
+    # et.solver_call_simple_wo_exec()
+    # et.save_plan(exec_plan=True)
+    # et.save_dump(has_header=True)
 
 def test_dentist():
     xlsx_file='./tests/dentist/dentists3.xlsx'
