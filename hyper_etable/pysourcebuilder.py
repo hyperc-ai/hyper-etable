@@ -95,8 +95,8 @@ def build_source_from_class(class_instance, allow_attr):
         with sb.block(f'def __init__(self):'):
             pass_ok = True
             for attr in class_instance.__dict__:
-                attr_val = getattr(class_instance, attr)
-                if callable(attr_val) or (attr.startswith('__') and attr not in allow_attr) or attr in list(class_instance.__class__.__dict__):
+                attr_val = getattr(class_instance, attr, None)
+                if attr_val is None or callable(attr_val) or (attr.startswith('__') and attr not in allow_attr) or attr in list(class_instance.__class__.__dict__):
                     continue
                 if isinstance(attr_val,str):
                      attr_val = f'"{attr_val}"'

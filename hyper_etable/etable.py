@@ -483,12 +483,12 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
-        
-        self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(TableElementMeta, ['__table_name__','__xl_sheet_name__']).end())
-
-        for c in self.classes.values():
+        # dump classes as python code
+        for c in itertools.chain([self.mod.StaticObject, self.mod.DefinedTables, TableElementMeta], self.classes.values()):
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
-    
+
+        # dump object as python code
+
     def dump_py(self):
         dir =  os.path.join(self.filename.parent, 'xlsx_to_py')
         try:
