@@ -21,6 +21,7 @@ import os.path
 import pathlib
 import openpyxl
 import hyper_etable.util
+import hyper_etable.pysourcebuilder
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -156,6 +157,7 @@ class ETable:
         self.cells_value = {}
         self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
         self.plan_or_invariants = None
+        self.source_code = defaultdict(list)
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -481,6 +483,26 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
+        # dump classes as python code
+        for c in itertools.chain([self.mod.StaticObject, self.mod.DefinedTables, TableElementMeta], self.classes.values()):
+            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
+
+        # dump object as python code
+        
+
+    def dump_py(self):
+        dir =  os.path.join(self.filename.parent, 'xlsx_to_py')
+        try:
+            os.mkdir(dir)
+        except FileExistsError:
+            pass 
+        for f_name, code  in self.source_code.items():
+            code_file = os.path.join(dir, f'{f_name}.py')
+            s_code =""
+            for func in code:
+                s_code += str(func)
+                s_code += '\n'
+            open(code_file, "w+").write(s_code)
 
     # def solver_call_call_simple(self):
 
@@ -506,7 +528,7 @@ class ETable:
             code.append(f'{step[0].__name__}({args})')
         code_str = "\n".join(code)
         with open(code_file, "w+") as f:
-                f.write(code_str)
+            f.write(code_str)
         if exec_plan:
             f_code = compile(code_str, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
