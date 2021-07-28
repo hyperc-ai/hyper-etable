@@ -105,3 +105,13 @@ def build_source_from_class(class_instance, allow_attr):
             if pass_ok:
                 sb.writeln(f'pass')
     return sb
+
+def build_source_from_object(instance, allow_attr, name = None):
+    sb = PySourceBuilder()
+    if type(instance) in (int, str, bool, float):
+        if isinstance(instance,str):
+            instance = f'"{instance}"'
+        sb.writeln(f'{name} =  {instance}')
+    sb.writeln(f'{name} = {instance.__class__.__name__}()')
+    
+    return sb
