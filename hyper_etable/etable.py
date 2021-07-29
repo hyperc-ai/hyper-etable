@@ -495,8 +495,10 @@ class ETable:
         # dump object as python code
         
 
-    def dump_py(self):
-        dir =  os.path.join(self.filename.parent, 'xlsx_to_py')
+    def dump_py(self, dir):
+        """"Dump classes as python code"""
+        if dir is None:
+            dir =  self.filename.parent
         try:
             os.mkdir(dir)
         except FileExistsError:
@@ -520,11 +522,13 @@ class ETable:
                                               extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
         self.plan_or_invariants = ret
 
-    def save_plan(self, prefix="DATA.", exec_plan=False):
-        code_file = os.path.join(self.filename.parent, f'plan/plan_{self.filename.name}.py')
-        plan_dir =  os.path.join(self.filename.parent, 'plan')
+    def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None):
+        """Dump plan as python code"""
+        if out_dir is None:
+            out_dir =  os.path.join(self.filename.parent, 'out')
+        code_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
         try:
-            os.mkdir(plan_dir)
+            os.mkdir(out_dir)
         except FileExistsError:
             pass 
         code = []
@@ -538,7 +542,13 @@ class ETable:
             f_code = compile(code_str, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
 
-    def save_dump(self, has_header=False):
+    def save_dump(self, has_header=False, out_dir=None):
+        if out_dir is None:
+            out_dir =  os.path.join(self.filename.parent, 'out')
+        try:
+            os.mkdir(out_dir)
+        except FileExistsError:
+            pass 
         for table in self.mod.HCT_OBJECTS.values():
             for row in table:
                 sheet_name = row.__xl_sheet_name__
@@ -550,7 +560,7 @@ class ETable:
                         letter = attr_name
                     self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
         
-        self.wb_values_only.save(os.path.join(self.filename.parent, f'result_{self.filename.name}'))
+        self.wb_values_only.save(os.path.join(out_dir, f'{self.filename.name}'))
 
     def calculate(self):
 
