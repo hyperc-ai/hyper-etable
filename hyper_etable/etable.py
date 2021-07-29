@@ -113,14 +113,15 @@ class EventNameHolder:
         return v
 
 class ETable:
-    def __init__(self, filename, project_name="my_project") -> None:
-        if 'xlsx' == os.path.splitext(filename)[1][1:].lower():
+    def __init__(self, filenames, project_name="my_project") -> None:
+        filenames = [pathlib.PosixPath(f) for f in filenames]
+        self.filename = filenames[0] #TODO currently only one file support
+        if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
             self.enable_precalculation = False
         else:
             self.enable_precalculation = True
         self.STATIC_STORAGE_NAME = 'DATA'
-        filename = pathlib.PosixPath(filename)
-        self.filename = filename
+
         self.out_filename = ""
         APPENDIX = hyperc.settings.APPENDIX
         hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(filename)) + "_" + project_name
