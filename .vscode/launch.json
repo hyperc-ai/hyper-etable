@@ -8,8 +8,8 @@
             "name": "Python: Текущий файл",
             "type": "python",
             "request": "launch",
-            // "program": "${file}",
-            "program": "hyper_etable/etable.py",
+            "program": "${file}",
+            // "program": "hyper_etable/etable.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },
