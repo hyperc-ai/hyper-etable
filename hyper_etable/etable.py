@@ -114,8 +114,11 @@ class EventNameHolder:
 
 class ETable:
     def __init__(self, filenames, project_name="my_project") -> None:
-        filenames = [pathlib.PosixPath(f) for f in filenames]
-        self.filename = filenames[0] #TODO currently only one file support
+        if isinstance(filenames,list):
+            filenames = [pathlib.PosixPath(f) for f in filenames]
+            self.filename = filenames[0] #TODO currently only one file support
+        else:
+            self.filename = pathlib.PosixPath(filenames)
         if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
             self.enable_precalculation = False
         else:
@@ -305,7 +308,7 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    def open_dump(self, has_header=False):
+    def open_dump(self, has_header=False, addition_python_files=[]):
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.DATA, plan_log=self.plan_log)
@@ -470,10 +473,11 @@ class ETable:
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
-        #dump goals and actions
+        # dump goals and actions
         self.dump_functions(goal_code_source, 'hpy_goals.py')
-        addition_code_files = glob.glob(os.path.join(self.filename.parent, '*.py'))
-        for code_file in addition_code_files:
+
+        # addition python code
+        for code_file in addition_python_files:
             addition_code = open(code_file, "r").read()
             f_code = compile(addition_code, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
