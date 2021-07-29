@@ -21,6 +21,7 @@ import os.path
 import pathlib
 import openpyxl
 import hyper_etable.util
+import hyper_etable.pysourcebuilder
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -112,17 +113,21 @@ class EventNameHolder:
         return v
 
 class ETable:
-    def __init__(self, filename, project_name="my_project") -> None:
-        if 'xlsx' == os.path.splitext(filename)[1][1:].lower():
+    def __init__(self, filenames, project_name="my_project") -> None:
+        if isinstance(filenames,list):
+            filenames = [pathlib.PosixPath(f) for f in filenames]
+            self.filename = filenames[0] #TODO currently only one file support
+        else:
+            self.filename = pathlib.PosixPath(filenames)
+        if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
             self.enable_precalculation = False
         else:
             self.enable_precalculation = True
         self.STATIC_STORAGE_NAME = 'DATA'
-        filename = pathlib.PosixPath(filename)
-        self.filename = filename
+
         self.out_filename = ""
         APPENDIX = hyperc.settings.APPENDIX
-        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(filename)) + "_" + project_name
+        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(self.filename)) + "_" + project_name
         self.tempdir = hyperc.util.get_work_dir()
         hyperc.settings.APPENDIX = APPENDIX
         self.session_name = "etable_mod"
@@ -149,13 +154,14 @@ class ETable:
         self.mod.HCT_OBJECTS = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
-        self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=filename)
+        self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
+        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
         self.plan_or_invariants = None
+        self.source_code = defaultdict(list)
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -302,7 +308,7 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    def open_dump(self, has_header=False):
+    def open_dump(self, has_header=False, addition_python_files=[]):
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.DATA, plan_log=self.plan_log)
@@ -467,10 +473,11 @@ class ETable:
             self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
             self.mod.StaticObject.__init__.__name__ = "__init__"
 
-        #dump goals and actions
+        # dump goals and actions
         self.dump_functions(goal_code_source, 'hpy_goals.py')
-        addition_code_files = glob.glob(os.path.join(self.filename.parent, '*.py'))
-        for code_file in addition_code_files:
+
+        # addition python code
+        for code_file in addition_python_files:
             addition_code = open(code_file, "r").read()
             f_code = compile(addition_code, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
@@ -481,6 +488,28 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
+        # dump classes as python code
+        for c in itertools.chain([TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
+            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
+
+        # dump object as python code
+        
+
+    def dump_py(self, dir):
+        """"Dump classes as python code"""
+        if dir is None:
+            dir =  self.filename.parent
+        try:
+            os.mkdir(dir)
+        except FileExistsError:
+            pass 
+        for f_name, code  in self.source_code.items():
+            code_file = os.path.join(dir, f'{f_name}.py')
+            s_code =""
+            for func in code:
+                s_code += str(func)
+                s_code += '\n'
+            open(code_file, "w+").write(s_code)
 
     # def solver_call_call_simple(self):
 
@@ -493,20 +522,38 @@ class ETable:
                                               extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
         self.plan_or_invariants = ret
 
-    def save_plan(self, prefix="DATA.", exec_plan=False):
-        code_file = os.path.join(self.filename.parent, f'plan_{self.filename.name}.py')
+    def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None):
+        """Dump plan as python code"""
+        if out_dir is None:
+            out_dir =  os.path.join(self.filename.parent, 'out')
+        code_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
+        try:
+            os.mkdir(out_dir)
+        except FileExistsError:
+            pass 
         code = []
         for step in self.metadata["plan_exec"]:
             args = ", ".join([f'{k}={prefix}{a.__py_sheet_name__}' for k, a in step[1].items()])
             code.append(f'{step[0].__name__}({args})')
         code_str = "\n".join(code)
         with open(code_file, "w+") as f:
-                f.write(code_str)
+            f.write(code_str)
         if exec_plan:
             f_code = compile(code_str, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
 
-    def save_dump(self, has_header=False):
+    def run_plan(self, py_plan_filename):
+        plan_code_str = open(py_plan_filename, "r").read()
+        f_code = compile(plan_code_str, py_plan_filename, 'exec')
+        exec(f_code, self.mod.__dict__)
+
+    def save_dump(self, has_header=False, out_dir=None):
+        if out_dir is None:
+            out_dir =  os.path.join(self.filename.parent, 'out')
+        try:
+            os.mkdir(out_dir)
+        except FileExistsError:
+            pass 
         for table in self.mod.HCT_OBJECTS.values():
             for row in table:
                 sheet_name = row.__xl_sheet_name__
@@ -518,7 +565,7 @@ class ETable:
                         letter = attr_name
                     self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
         
-        self.wb_values_only.save(os.path.join(self.filename.parent, f'result_{self.filename.name}'))
+        self.wb_values_only.save(os.path.join(out_dir, f'{self.filename.name}'))
 
     def calculate(self):
 

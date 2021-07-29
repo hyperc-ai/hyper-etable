@@ -8,8 +8,8 @@
             "name": "Python: Текущий файл",
             "type": "python",
             "request": "launch",
-            // "program": "${file}",
-            "program": "hyper_etable/etable.py",
+            "program": "${file}",
+            // "program": "hyper_etable/etable.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },
@@ -223,7 +223,8 @@
                 "HYPERC_IGNORE_EQ_BRANCH": "1",
                 "HYPERC_LOGLEVEL": "info",
                 "HYPERC_LIN_COUNT": "20",
-                "HYPERC_FORCE_LIN_COUNT": "1"
+                "HYPERC_FORCE_LIN_COUNT": "1",
+                "DOWNWARD_TOTAL_PUSHES": "500000000"
             },
             "justMyCode": false
         },
