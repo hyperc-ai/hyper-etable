@@ -208,7 +208,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/test_dentist_cycle.py::test_dentist_cycle"
+                "tests/test_dump.py::test_dentist"
             ],
             "console": "integratedTerminal",
             "env": {

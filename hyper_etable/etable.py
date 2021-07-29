@@ -127,7 +127,7 @@ class ETable:
 
         self.out_filename = ""
         APPENDIX = hyperc.settings.APPENDIX
-        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(filename)) + "_" + project_name
+        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(self.filename)) + "_" + project_name
         self.tempdir = hyperc.util.get_work_dir()
         hyperc.settings.APPENDIX = APPENDIX
         self.session_name = "etable_mod"
@@ -154,8 +154,8 @@ class ETable:
         self.mod.HCT_OBJECTS = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
-        self.wb_values_only = openpyxl.load_workbook(filename=filename, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=filename)
+        self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
+        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
         self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.cells_value = {}
@@ -489,7 +489,7 @@ class ETable:
 
         self.methods_classes.update(self.classes)
         # dump classes as python code
-        for c in itertools.chain([self.mod.StaticObject, self.mod.DefinedTables, TableElementMeta], self.classes.values()):
+        for c in itertools.chain([TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
 
         # dump object as python code
