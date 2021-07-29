@@ -542,6 +542,11 @@ class ETable:
             f_code = compile(code_str, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
 
+    def run_plan(self, py_plan_filename):
+        plan_code_str = open(py_plan_filename, "r").read()
+        f_code = compile(plan_code_str, py_plan_filename, 'exec')
+        exec(f_code, self.mod.__dict__)
+
     def save_dump(self, has_header=False, out_dir=None):
         if out_dir is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
