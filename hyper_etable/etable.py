@@ -568,7 +568,9 @@ class ETable:
                         letter = attr_name
                     self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
         
-        self.wb_values_only.save(os.path.join(out_dir, f'{self.filename.name}'))
+        outfile_path = os.path.join(out_dir, f'{self.filename.name}')
+        self.wb_values_only.save(outfile_path)
+        return outfile_path
 
     def calculate(self):
 
