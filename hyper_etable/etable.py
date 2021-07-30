@@ -499,7 +499,8 @@ class ETable:
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
 
         # dump object as python code
-        
+        self.source_code['classes'].append('DATA = StaticObject()')
+
 
     def dump_py(self, dir=None):
         """"Dump classes as python code"""

@@ -24,16 +24,16 @@ def test_doctor():
     et.solve_dump()
 
 def test_header():
-    xlsx_file='./tests/header_select/has_header.xlsx'
+    xlsx_file='./tests/header_select/data.xlsx'
     xlsx_file = pathlib.Path(xlsx_file)
     print(f"\ntest file {xlsx_file}", end='')
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable([xlsx_file], project_name=project_name)
-    et.open_dump(has_header=True, addition_python_files=['./tests/header_select/a.py'])
-    et.dump_py()
+    et.open_dump(has_header=True, addition_python_files=['./tests/header_select/dentists4a.py'])
+    # et.dump_py()
     et.solver_call_simple_wo_exec()
-    et.save_plan(exec_plan=True)
-    et.save_dump(has_header=True)
+    # et.save_plan(exec_plan=True)
+    # et.save_dump(has_header=True)
 
 def test_dentist():
     xlsx_file='./tests/dentist/dentists3.xlsx'
