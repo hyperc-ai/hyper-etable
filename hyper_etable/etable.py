@@ -480,9 +480,12 @@ class ETable:
         # addition python code
         for code_file in addition_python_files:
             addition_code = open(code_file, "r").read()
+            if addition_code.startswith("from"):  # workaround for module imports
+                addition_code = "#"+addition_code
             f_code = compile(addition_code, code_file, 'exec')
             exec(f_code, self.mod.__dict__)
             for f_name in f_code.co_names:
+                if "." in f_name: continue  # workaround for module names
                 self.methods_classes[f_name] = self.mod.__dict__[f_name]
         # for f in self.mod.__dict__:
         #     if isinstance(self.mod.__dict__[f], types.FunctionType):
@@ -575,7 +578,9 @@ class ETable:
                         letter = attr_name
                     self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
         
-        self.wb_values_only.save(os.path.join(out_dir, f'{self.filename.name}'))
+        outfile_path = os.path.join(out_dir, f'{self.filename.name}')
+        self.wb_values_only.save(outfile_path)
+        return outfile_path
 
     def calculate(self):
 

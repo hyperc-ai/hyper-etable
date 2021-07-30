@@ -12,10 +12,12 @@ if command == "calculate":
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
     et.open_dump(has_header=True, addition_python_files=[py_file])
-    et.dump_py()
+    et.dump_py("xlsx_to_py")
     et.solver_call_simple_wo_exec()
     et.save_plan(exec_plan=True)
-    et.save_dump(has_header=True)
+    outfile_path = et.save_dump(has_header=True)
+    print("... done!")
+    print("To open result, CTRL-Click here:", outfile_path)
 elif command == "genclass":
     xlsx_file = sys.argv[2]
     print("Generating classes from file:", xlsx_file)
@@ -23,7 +25,7 @@ elif command == "genclass":
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
     et.open_dump(has_header=True)
-    et.dump_py()
+    et.dump_py("xlsx_to_py")
 elif command == "run_plan":
     xlsx_file = sys.argv[2]
     py_file = sys.argv[3] # be careful pass file with origin function(action) declarations
