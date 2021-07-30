@@ -115,10 +115,10 @@ class EventNameHolder:
 class ETable:
     def __init__(self, filenames, project_name="my_project") -> None:
         if isinstance(filenames,list):
-            filenames = [pathlib.PosixPath(f) for f in filenames]
+            filenames = [pathlib.Path(f) for f in filenames]
             self.filename = filenames[0] #TODO currently only one file support
         else:
-            self.filename = pathlib.PosixPath(filenames)
+            self.filename = pathlib.Path(filenames)
         if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
             self.enable_precalculation = False
         else:
