@@ -368,7 +368,10 @@ class ETable:
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if has_header:
-                        column_name = header_map[letter]
+                        column_name = header_map.get(letter, None)
+                        #Skip column with empty header bug #176
+                        if column_name is None or column_name == "":
+                            continue
                     else:
                         column_name = letter
                     if has_header:

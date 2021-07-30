@@ -78,7 +78,7 @@
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_fast.py::test_fast"
+                "tests/test_fast.py::test_fast_open"
             ],
             "console": "integratedTerminal",
             "env": {
@@ -195,7 +195,8 @@
                 "HYPERC_IGNORE_EQ_BRANCH": "1",
                 "HYPERC_LOGLEVEL": "info",
                 "HYPERC_LIN_COUNT": "20",
-                "HYPERC_FORCE_LIN_COUNT": "1"
+                "HYPERC_FORCE_LIN_COUNT": "1",
+                "HYPERC_STORE_SAS": "1"
             },
             "justMyCode": false
         },
