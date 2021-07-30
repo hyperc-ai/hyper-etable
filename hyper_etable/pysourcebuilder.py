@@ -79,13 +79,15 @@ class PySourceBuilder(SourceBuilder):
 
 def build_source_from_class(class_instance, allow_attr):
     sb = PySourceBuilder()
-# >>> for klass in klasses:
-# ...     with sb.block('class {0}(object)'.format(klass):, 2):
-# ...         sb.docstring('TODO: Document {0}'.format(klass))
-    # import inspect
-    # gg = inspect.getmembers(class_instance)
-
-    with sb.block(f'class {class_instance.__name__}({class_instance.__class__.__name__}):'):
+    # if type in class_instance.__base__:
+    #     base_class = '(type)'
+    # else:
+    #     base_class = ""
+    if hasattr(class_instance, '__base__') and class_instance.__base__ is not object:
+        base_class = f'({class_instance.__base__.__name__})'
+    else:
+        base_class = ""
+    with sb.block(f'class {class_instance.__name__}{base_class}:'):
         pass_ok = True
         for a, t in getattr(class_instance, '__annotations__', {}).items():
             sb.writeln(f'{a}: {t.__name__}')

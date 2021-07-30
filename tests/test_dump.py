@@ -28,8 +28,8 @@ def test_header():
     xlsx_file = pathlib.Path(xlsx_file)
     print(f"\ntest file {xlsx_file}", end='')
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
-    et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
-    et.open_dump(has_header=True)
+    et = hyper_etable.etable.ETable([xlsx_file], project_name=project_name)
+    et.open_dump(has_header=True, addition_python_files=['./tests/header_select/a.py'])
     et.generate_invariants()
     et.dump_py()
     # et.solver_call_simple_wo_exec()
@@ -42,9 +42,8 @@ def test_dentist():
     print(f"\ntest file {xlsx_file}", end='')
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
-    et.solve_dump(has_header=True)
-    et.save_dump(has_header=True)
-
+    et.open_dump(has_header=True)
+    et.dump_py()
 
 def test_space():
     xlsx_file='./tests/space_bug/Untitled 1.xlsx'
