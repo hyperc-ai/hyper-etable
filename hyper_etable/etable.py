@@ -498,7 +498,7 @@ class ETable:
         # dump object as python code
         
 
-    def dump_py(self, dir):
+    def dump_py(self, dir=None):
         """"Dump classes as python code"""
         if dir is None:
             dir =  self.filename.parent
