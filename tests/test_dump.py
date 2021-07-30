@@ -24,7 +24,7 @@ def test_doctor():
     et.solve_dump()
 
 def test_header():
-    xlsx_file='./tests/header_select/has_header.xlsx'
+    xlsx_file='./tests/header_select/data.xlsx'
     xlsx_file = pathlib.Path(xlsx_file)
     print(f"\ntest file {xlsx_file}", end='')
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")

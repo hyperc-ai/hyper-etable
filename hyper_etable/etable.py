@@ -369,7 +369,10 @@ class ETable:
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if has_header:
-                        column_name = header_map[letter]
+                        column_name = header_map.get(letter, None)
+                        #Skip column with empty header bug #176
+                        if column_name is None or column_name == "":
+                            continue
                     else:
                         column_name = letter
                     if has_header:
@@ -497,6 +500,8 @@ class ETable:
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
 
         # dump object as python code
+        self.source_code['classes'].append('DATA = StaticObject()')
+
     def generate_invariants(self):
         def gg(s, g, e):
             return hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
@@ -505,8 +510,6 @@ class ETable:
         invariants = gg(self,self.methods_classes[self.main_goal.name],
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
         return invariants
-                        
-        
 
     def dump_py(self, dir=None):
         """"Dump classes as python code"""
