@@ -582,10 +582,10 @@ class ETable:
                         letter = row.__header_back_map__[attr_name]
                     else:
                         letter = attr_name
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
+                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
         
         outfile_path = os.path.join(out_dir, f'{self.filename.name}')
-        self.wb_values_only.save(outfile_path)
+        self.wb_with_formulas.save(outfile_path)
         return outfile_path
 
     def calculate(self):
