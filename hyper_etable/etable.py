@@ -187,7 +187,13 @@ class ETable:
         gg(self,self.methods_classes[self.main_goal.name],
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
                         
-        
+    def solver_call_simple_with_exec(self):
+        def gg(s, g, e):
+            hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
+                            addition_modules=[s.mod], metadata=s.metadata)
+        self.metadata = None
+        gg(self,self.methods_classes[self.main_goal.name],
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))  
 
     def solver_call(self,goal, extra_instantiations):
         self.metadata = {"plan_steps": [], "plan_exec": []}
@@ -527,18 +533,6 @@ class ETable:
                 s_code += str(func)
                 s_code += '\n'
             open(code_file, "w+").write(s_code)
-
-    # def solver_call_call_simple(self):
-
-    #     plan_or_invariants = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
-    #                                           extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
-    #     print("finish")     
-    def solve_dump(self, has_header=False):
-        self.open_dump(has_header)
-        self.metadata = {"plan_steps": [], "plan_exec": []}
-        ret = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
-                                              extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
-        self.plan_or_invariants = ret
 
     def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None):
         """Dump plan as python code"""
