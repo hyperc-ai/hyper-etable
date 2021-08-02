@@ -176,7 +176,7 @@ class ETable:
 
     def solver_call_simple(self,goal, extra_instantiations):
         return hyperc.solve(goal, globals_=self.methods_classes, extra_instantiations=extra_instantiations, work_dir=self.tempdir, 
-                            addition_modules=[self.mod])
+                            addition_modules=[self.mod], metadata=self.metadata)
 
     def solver_call_simple_wo_exec(self):
         def gg(s, g, e):
