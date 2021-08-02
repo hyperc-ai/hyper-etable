@@ -555,6 +555,7 @@ class ETable:
         exec(f_code, self.mod.__dict__)
 
     def save_dump(self, has_header=False, out_dir=None):
+        """Save objects into XLSX file"""
         if out_dir is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
         try:

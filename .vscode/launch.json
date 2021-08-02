@@ -14,13 +14,13 @@
             "justMyCode": false
         },
         {
-            "name": " PyTest etable",
+            "name": " PyTest Текущий файл",
             "type": "python",
             "request": "launch",
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_etable.py::test_etable"
+                "${file}"
             ],
             "console": "integratedTerminal",
             "env": {
@@ -31,9 +31,12 @@
                 "HYPERC_MAX_PROC": "1",
                 "HYPERC_USE_CACHE": "0",
                 "HYPERC_TEMPDIR": "./tmp",
-                "HYPERC_DONT_REMOVE_ACTIONS": "1"
-                // "HYPERC_DONT_FILTER_FACTS": "1"
-                // "HYPERC_LOGLEVEL": "DEBUG"
+                "HYPERC_DONT_REMOVE_ACTIONS": "1",
+                "HYPERC_IGNORE_EQ_BRANCH": "1",
+                "HYPERC_LOGLEVEL": "info",
+                "HYPERC_LIN_COUNT": "20",
+                "HYPERC_FORCE_LIN_COUNT": "1",
+                "DOWNWARD_TOTAL_PUSHES": "5000000000000"
             },
             "justMyCode": false
         },
