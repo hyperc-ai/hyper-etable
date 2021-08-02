@@ -156,7 +156,6 @@ class ETable:
 
         self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
-        self.metadata = {"plan_steps": [], "plan_exec": []}
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
@@ -183,12 +182,14 @@ class ETable:
         def gg(s, g, e):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
                             addition_modules=[s.mod], metadata=s.metadata)
+        self.metadata = {"plan_steps": [], "plan_exec": []}
         gg(self,self.methods_classes[self.main_goal.name],
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
                         
         
 
     def solver_call(self,goal, extra_instantiations):
+        self.metadata = {"plan_steps": [], "plan_exec": []}
         mod=self.mod
         DATA = mod.DATA
         globals_ = self.methods_classes
@@ -501,6 +502,14 @@ class ETable:
         # dump object as python code
         self.source_code['classes'].append('DATA = StaticObject()')
 
+    def generate_invariants(self):
+        def gg(s, g, e):
+            return hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
+                            addition_modules=[s.mod], metadata=s.metadata)
+        self.metadata = {"GENERATE_INVARIANTS": []}
+        invariants = gg(self,self.methods_classes[self.main_goal.name],
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+        return invariants
 
     def dump_py(self, dir=None):
         """"Dump classes as python code"""
