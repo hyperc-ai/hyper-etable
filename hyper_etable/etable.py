@@ -161,6 +161,7 @@ class ETable:
         self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
         self.plan_or_invariants = None
         self.source_code = defaultdict(list)
+        self.metadata = {}
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
@@ -534,6 +535,7 @@ class ETable:
     #     print("finish")     
     def solve_dump(self, has_header=False):
         self.open_dump(has_header)
+        self.metadata = {"plan_steps": [], "plan_exec": []}
         ret = self.solver_call_simple(goal=self.methods_classes[self.main_goal.name],
                                               extra_instantiations=list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
         self.plan_or_invariants = ret
