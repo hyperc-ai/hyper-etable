@@ -4,3 +4,4 @@
 tmp
 *.xlsx_out*
 
+out/
