@@ -576,7 +576,11 @@ class ETable:
                         letter = row.__header_back_map__[attr_name]
                     else:
                         letter = attr_name
-                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'] = getattr(row, attr_name)
+                    new_value = getattr(row, attr_name)
+                    if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
+                        continue
+                    print(f'{sheet_name}:{letter}{recid} get - "{self.wb_with_formulas[sheet_name][f"{letter}{recid}"].value}" set - "{new_value}"')
+                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         
         outfile_path = os.path.join(out_dir, f'{self.filename.name}')
         self.wb_with_formulas.save(outfile_path)
