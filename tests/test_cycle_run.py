@@ -2,7 +2,7 @@ import hyper_etable.run_util
 import hyper_etable.etable
 import pathlib
 
-def test_header():
+def test_cycle_run():
     xlsx_file=pathlib.Path('./tests/basic/main.xlsx')
     out_dir = pathlib.Path('./tests/basic/out/')
     print(f"\ntest file {xlsx_file}", end='')
