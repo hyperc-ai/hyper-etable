@@ -1,31 +1,23 @@
+import hyper_etable.run_util
 import hyper_etable.etable
-import itertools
-import pytest
 import pathlib
-import glob
-import os
-
 
 def test_dump():
-    xlsx_file='./tests/dump/dump_me.xlsx'
-    xlsx_file = pathlib.Path(xlsx_file)
+    xlsx_file=pathlib.Path('./tests/dump/dump_me.xlsx')
+    out_dir = pathlib.Path('./tests/dump/out/')
     print(f"\ntest file {xlsx_file}", end='')
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
-    et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
-    et.solve_dump()
-    et.save_dump()
+    hyper_etable.run_util.open_test_solve_save_run(
+        input_xlsx=[xlsx_file],
+        input_py=['./tests/dump/gg.py'],
+        output_dir_classes=out_dir,
+        output_dir_plan=out_dir,
+        output_dir_solution=out_dir,
+        project_name=project_name,
+        has_header=False)
     
-def test_doctor():
-    xlsx_file='./tests/doctor/Doctor shifts schedulling - new.xlsx'
-    xlsx_file = pathlib.Path(xlsx_file)
-    print(f"\ntest file {xlsx_file}", end='')
-    project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
-    et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
-    et.solve_dump()
-
 def test_header():
-    xlsx_file='./tests/header_select/data.xlsx'
-    xlsx_file = pathlib.Path(xlsx_file)
+    xlsx_file=pathlib.Path('./tests/header_select/data.xlsx')
     print(f"\ntest file {xlsx_file}", end='')
     project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable([xlsx_file], project_name=project_name)
@@ -35,15 +27,6 @@ def test_header():
     # et.solver_call_simple_wo_exec()
     # et.save_plan(exec_plan=True)
     # et.save_dump(has_header=True)
-
-def test_dentist():
-    xlsx_file='./tests/dentist/dentists3.xlsx'
-    xlsx_file = pathlib.Path(xlsx_file)
-    print(f"\ntest file {xlsx_file}", end='')
-    project_name = xlsx_file.name.replace("/", "_").replace(".", "_")
-    et = hyper_etable.etable.ETable(xlsx_file, project_name=project_name)
-    et.open_dump(has_header=True)
-    et.dump_py()
 
 def test_space():
     xlsx_file='./tests/space_bug/Untitled 1.xlsx'

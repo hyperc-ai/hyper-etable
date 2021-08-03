@@ -113,7 +113,8 @@ class EventNameHolder:
         return v
 
 class ETable:
-    def __init__(self, filenames, project_name="my_project") -> None:
+    def __init__(self, filenames, project_name="my_project", has_header=True) -> None:
+        self.has_header = has_header
         if isinstance(filenames,list):
             filenames = [pathlib.Path(f) for f in filenames]
             self.filename = filenames[0] #TODO currently only one file support
@@ -316,7 +317,9 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    def open_dump(self, has_header=False, addition_python_files=[]):
+    def open_dump(self, has_header=None, addition_python_files=[]):
+        if has_header is not None:
+            self.has_header = has_header
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         self.stl = hyper_etable.spiletrancer.SpileTrancer(self.filename, xl_mdl, self.mod.DATA, plan_log=self.plan_log)
@@ -338,7 +341,7 @@ class ETable:
             py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in 
             header_map = {}
             header_back_map = {}
-            if has_header:
+            if self.has_header:
                 is_header = True
             else:
                 is_header = False
@@ -349,7 +352,7 @@ class ETable:
                     ThisTable = self.classes[py_table_name]
                 recid = list(row)[0].row
                 rec_obj = ThisTable()
-                if has_header:
+                if self.has_header:
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
@@ -375,14 +378,14 @@ class ETable:
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
-                    if has_header:
+                    if self.has_header:
                         column_name = header_map.get(letter, None)
                         #Skip column with empty header bug #176
                         if column_name is None or column_name == "":
                             continue
                     else:
                         column_name = letter
-                    if has_header:
+                    if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
                     # Declare and load defined table names
                     defined_table_name = self.range_resolver.get_table_by_cell(cell)
@@ -502,12 +505,22 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
-        # dump classes as python code
-        for c in itertools.chain([TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
-            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
 
-        # dump object as python code
-        self.source_code['classes'].append('DATA = StaticObject()')
+    def reset_data(self):
+        for table in self.mod.HCT_OBJECTS.values():
+            for row in table:
+                sheet_name = row.__xl_sheet_name__
+                recid = row.__recid__
+                for attr_name in row.__touched_annotations__:
+                    if self.has_header:
+                        letter = row.__header_back_map__[attr_name]
+                    else:
+                        letter = attr_name
+                    if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
+                        continue
+                    old_value = self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value
+                    setattr(row, attr_name, old_value)
+        self.mod.DATA.GOAL = False
 
     def generate_invariants(self):
         def gg(s, g, e):
@@ -526,6 +539,14 @@ class ETable:
             os.mkdir(dir)
         except FileExistsError:
             pass 
+        
+        # dump classes as python code
+        for c in itertools.chain([TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
+            self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__']).end())
+
+        # dump object as python code
+        self.source_code['classes'].append('DATA = StaticObject()')
+
         for f_name, code  in self.source_code.items():
             code_file = os.path.join(dir, f'{f_name}.py')
             s_code =""
@@ -538,7 +559,7 @@ class ETable:
         """Dump plan as python code"""
         if out_dir is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
-        code_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
+        self.plan_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
         try:
             os.mkdir(out_dir)
         except FileExistsError:
@@ -548,10 +569,10 @@ class ETable:
             args = ", ".join([f'{k}={prefix}{a.__py_sheet_name__}' for k, a in step[1].items()])
             code.append(f'{step[0].__name__}({args})')
         code_str = "\n".join(code)
-        with open(code_file, "w+") as f:
+        with open(self.plan_file, "w+") as f:
             f.write(code_str)
         if exec_plan:
-            f_code = compile(code_str, code_file, 'exec')
+            f_code = compile(code_str, self.plan_file, 'exec')
             exec(f_code, self.mod.__dict__)
 
     def run_plan(self, py_plan_filename):
@@ -572,14 +593,13 @@ class ETable:
                 sheet_name = row.__xl_sheet_name__
                 recid = row.__recid__
                 for attr_name in row.__touched_annotations__:
-                    if has_header:
+                    if self.has_header:
                         letter = row.__header_back_map__[attr_name]
                     else:
                         letter = attr_name
                     new_value = getattr(row, attr_name)
                     if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
                         continue
-                    print(f'{sheet_name}:{letter}{recid} get - "{self.wb_with_formulas[sheet_name][f"{letter}{recid}"].value}" set - "{new_value}"')
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         
         outfile_path = os.path.join(out_dir, f'{self.filename.name}')
