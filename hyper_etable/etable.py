@@ -159,7 +159,7 @@ class ETable:
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
         self.plan_log = []
         self.cells_value = {}
-        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
+        self.range_resolver = None # will be initialized later in self.calulate() not in self.open_dump
         self.plan_or_invariants = None
         self.source_code = defaultdict(list)
         self.metadata = {}
@@ -387,15 +387,6 @@ class ETable:
                         column_name = letter
                     if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
-                    # Declare and load defined table names
-                    defined_table_name = self.range_resolver.get_table_by_cell(cell)
-                    if defined_table_name is not None:
-                        for dtn_raw in defined_table_name:
-                            dtn = hyperc.xtj.str_to_py(dtn_raw)
-                            if dtn not in self.mod.DefinedTables.__annotations__:
-                                self.mod.DefinedTables.__annotations__[dtn] = set
-                                setattr(self.mod.DEFINED_TABLES, dtn, set())
-                            getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
 
                     self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
@@ -622,6 +613,8 @@ class ETable:
         # g=self.get_range_name_by_cell("'[fff]ggg'!B1")
         # gg = hyper_etable.etable_transpiler.split_cell(
         #     "ONESTABLE[PLUS ONES]")
+        self.range_resolver = hyper_etable.cell_resolver.RangeResolver(os.path.basename(self.filename), self.wb_with_formulas)
+
         xl_mdl = formulas.excel.ExcelModel()
         xl_mdl.loads(str(self.filename))
         # 
