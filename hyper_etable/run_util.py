@@ -49,7 +49,7 @@ class CycleRun:
     has_header:bool=True
     ):
         self.first_run = True
-        self.run_counter = 0
+        self.run_counter = 1
         self.input_xlsx_filename = input_xlsx_filename
         self.input_py_filename = input_py_filename
         self.output_classes_filename = pathlib.Path(output_classes_filename)
@@ -58,7 +58,7 @@ class CycleRun:
         self.output_xlsx_filename_origin = pathlib.Path(output_xlsx_filename)
         self.output_xlsx_filename_origin.parent.mkdir(parents=True, exist_ok=True)
         self.output_plan_filename = output_plan_filename
-        self.output_plan_filename_origin = output_plan_filename
+        self.output_plan_filename_origin = pathlib.Path(output_plan_filename)
         self.output_plan_filename_origin.parent.mkdir(parents=True, exist_ok=True)
         project_name = pathlib.Path(input_xlsx_filename).name.replace("/", "_").replace(".", "_")
         self.e_table = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
@@ -70,12 +70,16 @@ class CycleRun:
         if self.first_run:
             self.first_run = False
         else:
-            output_xlsx_filename_was = self.output_xlsx_filename
-            output_plan_filename_was = self.output_plan_filename
+            if self.run_counter == 1:
+                output_xlsx_filename_was = self.output_xlsx_filename
+                output_plan_filename_was = self.output_plan_filename
+                self.output_xlsx_filename = pathlib.Path(os.path.join(self.output_xlsx_filename_origin.parent, f'0_{self.output_xlsx_filename_origin.name}'))
+                self.output_plan_filename = pathlib.Path(os.path.join(self.output_plan_filename_origin.parent, f'0_{self.output_plan_filename_origin.name}'))
+                shutil.move(output_xlsx_filename_was, self.output_xlsx_filename)
+                shutil.move(output_plan_filename_was, self.output_plan_filename)
             self.output_xlsx_filename = pathlib.Path(os.path.join(self.output_xlsx_filename_origin.parent, f'{self.run_counter}_{self.output_xlsx_filename_origin.name}'))
             self.output_plan_filename = pathlib.Path(os.path.join(self.output_plan_filename_origin.parent, f'{self.run_counter}_{self.output_plan_filename_origin.name}'))
-            shutil.move(output_xlsx_filename_was, self.output_xlsx_filename)
-            shutil.move(output_plan_filename_was, self.output_plan_filename)
+            self.run_counter += 1
         self.e_table.solver_call_simple_wo_exec()  # solve without execution
         self.e_table.save_plan(prefix='DATA.', out_filename=self.output_plan_filename) # save execution plan in py file
         self.e_table.run_plan(self.output_plan_filename)

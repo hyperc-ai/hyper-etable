@@ -151,13 +151,13 @@
             "justMyCode": false
         },
         {
-            "name": " PyTest doctor",
+            "name": " PyTest cycle",
             "type": "python",
             "request": "launch",
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_dump.py::test_doctor"
+                "tests/test_dump.py::test_cycle"
             ],
             "console": "integratedTerminal",
             "env": {
