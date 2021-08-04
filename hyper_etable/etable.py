@@ -531,7 +531,7 @@ class ETable:
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
         return invariants
 
-    def dump_py(self, dir=None):
+    def dump_py(self, dir=None, out_filename=None):
         """"Dump classes as python code"""
         if dir is None:
             dir =  self.filename.parent
@@ -546,20 +546,30 @@ class ETable:
 
         # dump object as python code
         self.source_code['classes'].append('DATA = StaticObject()')
-
-        for f_name, code  in self.source_code.items():
-            code_file = os.path.join(dir, f'{f_name}.py')
+        if out_filename is None:
+            for f_name, code  in self.source_code.items():
+                code_file = os.path.join(dir, f'{f_name}.py')
+                s_code =""
+                for func in code:
+                    s_code += str(func)
+                    s_code += '\n'
+                open(code_file, "w+").write(s_code)
+        else:
             s_code =""
-            for func in code:
-                s_code += str(func)
-                s_code += '\n'
-            open(code_file, "w+").write(s_code)
+            for f_name, code  in self.source_code.items():
+                for func in code:
+                    s_code += str(func)
+                    s_code += '\n'
+            open(out_filename, "w+").write(s_code)
 
-    def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None):
+    def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None, out_filename=None):
         """Dump plan as python code"""
         if out_dir is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
-        self.plan_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
+        if out_filename is None:
+            self.plan_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
+        else:
+            self.plan_file = out_filename
         try:
             os.mkdir(out_dir)
         except FileExistsError:
@@ -576,18 +586,19 @@ class ETable:
             exec(f_code, self.mod.__dict__)
 
     def run_plan(self, py_plan_filename):
+        """Run python plan"""
         plan_code_str = open(py_plan_filename, "r").read()
         f_code = compile(plan_code_str, py_plan_filename, 'exec')
         exec(f_code, self.mod.__dict__)
 
-    def save_dump(self, has_header=False, out_dir=None):
+    def save_dump(self, has_header=False, out_dir=None, out_filename=None):
         """Save objects into XLSX file"""
         if out_dir is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
         try:
             os.mkdir(out_dir)
         except FileExistsError:
-            pass 
+            pass
         for table in self.mod.HCT_OBJECTS.values():
             for row in table:
                 sheet_name = row.__xl_sheet_name__
@@ -601,10 +612,10 @@ class ETable:
                     if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
                         continue
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        
-        outfile_path = os.path.join(out_dir, f'{self.filename.name}')
-        self.wb_with_formulas.save(outfile_path)
-        return outfile_path
+        if out_filename is None:
+            out_filename = os.path.join(out_dir, f'{self.filename.name}')
+        self.wb_with_formulas.save(out_filename)
+        return out_filename
 
     def calculate(self):
 
