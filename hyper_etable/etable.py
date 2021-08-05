@@ -25,7 +25,6 @@ import hyper_etable.pysourcebuilder
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
-
 def stack_code_gen_all(objects):
     l_all_hasattr_drop = []
     for cname, rows in objects.items():
@@ -125,7 +124,7 @@ class ETable:
         else:
             self.enable_precalculation = True
         self.STATIC_STORAGE_NAME = 'DATA'
-
+        self.plan_data_prefix = 'DATA.'
         self.out_filename = ""
         APPENDIX = hyperc.settings.APPENDIX
         hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(self.filename)) + "_" + project_name
@@ -553,8 +552,15 @@ class ETable:
                     s_code += '\n'
             open(out_filename, "w+").write(s_code)
 
+    def run_plan(self, py_plan_filename):
+        """Run python plan"""
+        plan_code_str = open(py_plan_filename, "r").read()
+        f_code = compile(plan_code_str, py_plan_filename, 'exec')
+        exec(f_code, self.mod.__dict__)
+
     def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None, out_filename=None):
         """Dump plan as python code"""
+        self.plan_data_prefix=prefix
         if out_dir is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
         if out_filename is None:
@@ -573,14 +579,7 @@ class ETable:
         with open(self.plan_file, "w+") as f:
             f.write(code_str)
         if exec_plan:
-            f_code = compile(code_str, self.plan_file, 'exec')
-            exec(f_code, self.mod.__dict__)
-
-    def run_plan(self, py_plan_filename):
-        """Run python plan"""
-        plan_code_str = open(py_plan_filename, "r").read()
-        f_code = compile(plan_code_str, py_plan_filename, 'exec')
-        exec(f_code, self.mod.__dict__)
+            self.run_plan(py_plan_filename=self.plan_file)
 
     def save_dump(self, has_header=False, out_dir=None, out_filename=None):
         """Save objects into XLSX file"""

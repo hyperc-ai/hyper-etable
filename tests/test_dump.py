@@ -22,7 +22,7 @@ def test_header():
         input_py_filename='./tests/header_select/a.py',
         output_plan_filename='./tests/header_select/a_plan.py',
         output_xlsx_filename='./tests/header_select/result_has_header.xlsx',
-        output_classes_filename='./tests/dump/classes_aaa.py',
+        output_classes_filename='./tests/header_select/classes_a.py',
         has_header=True) 
 
 def test_cycle():
