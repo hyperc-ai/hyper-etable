@@ -507,9 +507,9 @@ class ETable:
                         letter = row.__header_back_map__[attr_name]
                     else:
                         letter = attr_name
-                    if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
+                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) is None:
                         continue
-                    old_value = self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value
+                    old_value = self.wb_values_only[sheet_name][f'{letter}{recid}'].value
                     setattr(row, attr_name, old_value)
         self.mod.DATA.GOAL = False
 
