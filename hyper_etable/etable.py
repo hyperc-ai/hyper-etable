@@ -156,7 +156,7 @@ class ETable:
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
         self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
+        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename, keep_vba=True)
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = None # will be initialized later in self.calulate() not in self.open_dump
@@ -331,7 +331,6 @@ class ETable:
         self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
         self.main_goal.operators[self.main_goal.name].append('pass')
         goal_code_source['main_goal'] = self.main_goal
-
         # Load used cell
         for wb_sheet in self.wb_values_only:
             sheet = wb_sheet.title
@@ -393,6 +392,7 @@ class ETable:
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
                         raise Exception(f"We don't support table with error cell {cell}")
                     if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
+                        setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
@@ -507,9 +507,9 @@ class ETable:
                         letter = row.__header_back_map__[attr_name]
                     else:
                         letter = attr_name
-                    if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
+                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) is None:
                         continue
-                    old_value = self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value
+                    old_value = self.wb_values_only[sheet_name][f'{letter}{recid}'].value
                     setattr(row, attr_name, old_value)
         self.mod.DATA.GOAL = False
 
@@ -602,6 +602,9 @@ class ETable:
                     new_value = getattr(row, attr_name)
                     if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
                         continue
+                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
+                        continue
+                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         if out_filename is None:
             out_filename = os.path.join(out_dir, f'{self.filename.name}')
