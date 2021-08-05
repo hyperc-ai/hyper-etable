@@ -15,7 +15,7 @@ def test_dump():
         has_header=False)
 
 def test_header():
-    xlsx_file=pathlib.Path('./tests/header_select/has_header.xlsx')
+    xlsx_file=pathlib.Path('./tests/header_select/has_header_sort_bad.xlsx')
     print(f"\ntest file {xlsx_file}", end='')
     hyper_etable.run_util.run(
         input_xlsx_filename=xlsx_file,
