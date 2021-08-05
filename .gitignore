@@ -4,3 +4,4 @@
 tmp
 *.xlsx_out*
 
+tests_with_data/*
