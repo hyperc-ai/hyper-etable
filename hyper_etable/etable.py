@@ -186,7 +186,14 @@ class ETable:
         self.metadata = {"plan_steps": [], "plan_exec": []}
         gg(self,self.methods_classes[self.main_goal.name],
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
-                        
+    def solver_call_plan_n_exec(self):
+        def gg(s, g, e):
+            hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
+                            addition_modules=[s.mod], metadata=s.metadata)
+        self.metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True}
+        gg(self,self.methods_classes[self.main_goal.name],
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+
     def solver_call_simple_with_exec(self):
         def gg(s, g, e):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
@@ -315,6 +322,11 @@ class ETable:
     def get_object_from_var(self, var):
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
+
+    # def add_row(row):
+
+
+
 
     def open_dump(self, has_header=None, addition_python_files=[]):
         if has_header is not None:
