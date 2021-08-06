@@ -427,6 +427,7 @@ class ETable:
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
         for clsv in self.classes.values():
+            # __init__ function
             var_global_addidx_name = f'{clsv.__table_name__}_addidx'
             self.mod.__dict__[var_global_addidx_name] = 0
             init_f_code = []
@@ -455,13 +456,24 @@ class ETable:
             full_f_code = '\n    '.join(init_f_code)
             full_f_pars = ",".join(init_pars)
             full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
+            
+            # add function
+            add_f_code = [  f'side_effect(lambda obj: HCT_OBJECTS["{clsv.__table_name__}"].append(obj))']
+            c=f'side_effect(lambda obj: setattr(DATA, f"{clsv.__table_name__}_'
+            add_f_code.append(c+'{obj.__class__.__top_index+obj.addidx}", obj))')
+            
+            full_code =f'{full_code}\n\n@hyperc.util.side_effect_decorator\n@staticmethod\ndef hct_f_add(obj: "{clsv.__name__}"):'
+            full_f_code = '\n    '.join(add_f_code)
+            full_code = f'{full_code}\n    {full_f_code}'
+
             fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
             open(fn, "w+").write(full_code)
             f_code = compile(full_code, fn, 'exec')
             exec(f_code, globals())
             clsv.__init__ = globals()["hct_f_init"]
             clsv.__init__.__name__ = "__init__"
-
+            clsv.add = globals()["hct_f_add"]
+            clsv.add.__name__ = "add"
 
         # Now generate init for static object
         self.mod.DATA.GOAL = False
