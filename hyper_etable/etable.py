@@ -355,13 +355,18 @@ class ETable:
                 is_header = True
             else:
                 is_header = False
+            ThisTable = TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
+            ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
+            ThisTable.__touched_annotations__ = set()
+            ThisTable.__annotations_type_set__ = defaultdict(set)
+            self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+            self.classes[py_table_name] = ThisTable
+            self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
+            self.mod.HCT_OBJECTS[py_table_name] = []
             for row in wb_sheet.iter_rows():
-                if py_table_name not in self.classes:
-                    ThisTable = self.get_new_table(py_table_name, sheet)
-                else:
-                    ThisTable = self.classes[py_table_name]
                 recid = list(row)[0].row
                 rec_obj = ThisTable()
+                rec_obj.addidx = -1
                 if self.has_header:
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
@@ -422,12 +427,17 @@ class ETable:
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
         for clsv in self.classes.values():
+            var_global_addidx_name = f'{clsv.__table_name__}_addidx'
+            self.mod.__dict__[var_global_addidx_name] = 0
             init_f_code = []
             init_pars = []
             if hyperc.settings.DEBUG:
                 print(f" {clsv} -  {clsv.__annotations__}")
+            init_f_code.append(f"global {var_global_addidx_name}")
+            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
+            init_f_code.append(f"{var_global_addidx_name} += 1")
             for par_name, par_type in clsv.__annotations__.items():
-                if par_name == '__table_name__':
+                if par_name in ['__table_name__', 'addidx']:
                     continue
                 # Skip None type cell
                 if par_type is None:
