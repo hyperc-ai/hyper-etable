@@ -421,24 +421,6 @@ class ETable:
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
-                    
-
-        # Dump defined table names
-        init_f_code = []
-        for attr_name, attr_type in self.mod.DefinedTables.__annotations__.items():
-            init_f_code.append(f"self.{attr_name} = DEFINED_TABLES.{attr_name}")  # if it does not ignore, fix it!
-        self.mod.DefinedTables.__annotations__['GOAL'] = bool
-        if init_f_code:
-            full_f_code = '\n    '.join(init_f_code)
-            full_code = f"def hct_dt_init(self):\n    {full_f_code}"
-            fn = f"{self.tempdir}/hpy_dt_init.py"
-            open(fn, "w+").write(full_code)
-            f_code = compile(full_code, fn, 'exec')
-            exec(f_code, self.mod.__dict__)
-            self.mod.DefinedTables.__init__ = self.mod.__dict__["hct_dt_init"]
-            self.mod.DefinedTables.__init__.__name__ = "__init__"
-
-
         for clsv in self.classes.values():
             init_f_code = []
             init_pars = []
