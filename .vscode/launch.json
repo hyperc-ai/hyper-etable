@@ -233,7 +233,7 @@
             "justMyCode": false
         },
         {
-            "name": " dentist",
+            "name": " new row",
             "type": "python",
             "request": "launch",
             "module": "pytest",
@@ -241,7 +241,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/test_dentist_cycle.py::test_dentist_cycled"
+                "tests/add_row/test_add_row.py::test_add_row"
             ],
             "console": "integratedTerminal",
             "env": {
