@@ -427,7 +427,7 @@ class ETable:
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
         for clsv in self.classes.values():
             var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
-            setattr(self.mod.DATA, var_global_addidx_name, 0)
+            setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
             self.mod.StaticObject.__annotations__[f'{clsv.__table_name__}_addidx'] = int
             init_f_code = []
             init_pars = []
