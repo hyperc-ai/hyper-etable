@@ -248,6 +248,7 @@
                 "PYTHON": "pypy3",
                 "HYPERC_SEARCH_CONFIG": "lmcount_alt5",
                 "HYPERC_SPLIT_OFF": "1",
+                "HYPERC_NEW_OBJECTS": "5",
                 "HYPERC_SOLVER_MAX_TIME": "999900",
                 "HYPERC_MAX_PROC": "1",
                 "HYPERC_USE_CACHE": "0",

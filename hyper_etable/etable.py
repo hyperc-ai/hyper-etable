@@ -151,6 +151,7 @@ class ETable:
         self.mod.StaticObject.__qualname__ = f"{self.session_name}.StaticObject"
         self.mod.DATA = self.mod.StaticObject()
         self.mod.DATA.GOAL = False
+        globals()[self.STATIC_STORAGE_NAME] = self.mod.DATA
         self.mod.HCT_OBJECTS = {}
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
@@ -327,7 +328,6 @@ class ETable:
 
 
 
-
     def open_dump(self, has_header=None, addition_python_files=[]):
         if has_header is not None:
             self.has_header = has_header
@@ -425,15 +425,15 @@ class ETable:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
-
         for clsv in self.classes.values():
-            var_global_addidx_name = f'{clsv.__table_name__}_addidx'
-            self.mod.__dict__[var_global_addidx_name] = 0
+            var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
+            setattr(self.mod.DATA, var_global_addidx_name, 0)
+            self.mod.StaticObject.__annotations__[f'{clsv.__table_name__}_addidx'] = int
             init_f_code = []
             init_pars = []
             if hyperc.settings.DEBUG:
                 print(f" {clsv} -  {clsv.__annotations__}")
-            init_f_code.append(f"global {var_global_addidx_name}")
+            # init_f_code.append(f"global DATA")
             init_f_code.append(f"self.addidx = {var_global_addidx_name}")
             init_f_code.append(f"{var_global_addidx_name} += 1")
             for par_name, par_type in clsv.__annotations__.items():
