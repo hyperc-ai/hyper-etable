@@ -156,7 +156,7 @@ class ETable:
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
         self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename, keep_vba=True)
+        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = None # will be initialized later in self.calulate() not in self.open_dump
