@@ -2,12 +2,18 @@
 name = "hyper-etable"
 version = "0.1.0"
 description = ""
-authors = ["Kuznetsov Andrey <andreykyz@gmail.com>"]
+authors = ["Kuznetsov Andrey <andreykyz@gmail.com>", "Andrew Gree <andrew@hyperc.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
+hyperc  = "*"
+openpyxl = "*"
 
 [tool.poetry.dev-dependencies]
+pytest-profiling = "^1.7"
+
+[tool.poetry.scripts]
+hcx = "hyper_etable.runpy:main"
 
 [build-system]
 requires = ["poetry>=0.12"]
