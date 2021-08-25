@@ -25,6 +25,16 @@ def test_header():
         output_classes_filename='./tests/header_select/classes_a.py',
         has_header=True) 
 
+def test_custom_class():
+    xlsx_file=pathlib.Path('./tests/header_select/has_header_sort_bad.xlsx')
+    print(f"\ntest file {xlsx_file}", end='')
+    hyper_etable.run_util.simple_run(
+        input_xlsx_filename=xlsx_file,
+        input_py_filename='./tests/header_select/a_custom_class.py',
+        output_xlsx_filename='./tests/header_select/result_has_header_a_custom_class.xlsx',
+        output_classes_filename='./tests/header_select/classes_a_custom_class.py',
+        has_header=True) 
+
 def test_cycle():
     cr = hyper_etable.run_util.CycleRun(
         input_xlsx_filename='./tests/dump/dump_me.xlsx',
