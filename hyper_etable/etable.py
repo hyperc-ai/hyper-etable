@@ -363,8 +363,11 @@ class ETable:
             self.classes[py_table_name] = ThisTable
             self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
+            ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():
                 recid = list(row)[0].row
+                if ThisTable.__recid_max__ < recid:
+                   ThisTable.__recid_max__ = recid
                 rec_obj = ThisTable()
                 rec_obj.addidx = -1
                 if self.has_header:
@@ -511,6 +514,14 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
+
+    def load_rows_in_table(self):
+        for obj in self.metadata['new_instances']:
+            if hasattr(obj, '__table_name__') and hasattr(obj, 'addidx') :
+                obj.__recid__ = obj.addidx + obj.__recid_max__ + 1
+                self.mod.HCT_OBJECTS[obj.__table_name__].append(obj)
+                setattr(self.mod.DATA,f'{obj.__table_name__}_{obj.__recid__}', obj)
+
 
     def reset_data(self):
         for table in self.mod.HCT_OBJECTS.values():
