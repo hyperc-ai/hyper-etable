@@ -1,7 +1,7 @@
 from collections import defaultdict
 from os import mkdir
 import string
-import glob
+import ast
 import formulas.excel
 import formulas
 import hyperc
@@ -514,6 +514,13 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
+
+    def load_external_classes(self, class_py_filename):
+        code_str= open(class_py_filename, "r").read()
+        code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
+        code_str = ast.dump(code_ast)
+        print(code_str)
+
 
     def load_rows_in_table(self):
         for obj in self.metadata['new_instances']:

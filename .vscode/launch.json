@@ -268,7 +268,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/add_row/test_add_row.py::test_add_row"
+                "tests/add_row/test_add_row.py::test_add_row_add"
             ],
             "console": "integratedTerminal",
             "env": {
