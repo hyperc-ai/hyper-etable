@@ -611,7 +611,14 @@ class ETable:
             pass 
         code = []
         for step in self.metadata["plan_exec"]:
-            args = ", ".join([f'{k}={prefix}{a.__py_sheet_name__}' for k, a in step[1].items()])
+            args = []
+            i=0
+            for k, a in step[1].items():
+                if hasattr(a,"__py_sheet_name__"):
+                    args.append(f'{k}={prefix}{a.__py_sheet_name__}')
+                else:
+                    args.append(f'{k}=unresolved_variable_{i}')
+            args = ", ".join(args)
             code.append(f'{step[0].__name__}({args})')
         code_str = "\n".join(code)
         with open(self.plan_file, "w+") as f:
