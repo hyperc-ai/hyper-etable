@@ -537,6 +537,17 @@ class ETable:
                         continue
                     old_value = self.wb_values_only[sheet_name][f'{letter}{recid}'].value
                     setattr(row, attr_name, old_value)
+        for obj in self.metadata['new_instances']:
+            if hasattr(obj, '__table_name__') and hasattr(obj, 'addidx') :
+                deleted = True
+                for table in self.mod.HCT_OBJECTS.values():
+                    if obj in table:
+                        table.remove(obj)
+                        break
+            
+                if deleted:
+                    delattr(self.mod.DATA,f'{obj.__table_name__}_{obj.__recid__}')    
+        self.metadata['new_instances'] = []
         self.mod.DATA.GOAL = False
 
     def generate_invariants(self):
