@@ -518,7 +518,11 @@ class ETable:
     def load_external_classes(self, class_py_filename):
         code_str= open(class_py_filename, "r").read()
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
-        code_str = ast.dump(code_ast)
+        code_ast_str = ast.dump(code_ast)
+        for cl in code_ast.body:
+            if class_in_mod := getattr(self.mod, cl.name, None):
+                if hasattr(class_in_mod, '__table_name__'):
+                    print(class_in_mod.__table_name__)
         print(code_str)
 
 

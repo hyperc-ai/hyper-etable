@@ -8,6 +8,7 @@ class SHEET1_Class:
     addidx: int
     HEADER1: str
     HEADER2: str
+    HEADER_USER: str
     def __init__(self):
         self.__table_name__ = "SHEET1"
         self.__xl_sheet_name__ = "Sheet1"

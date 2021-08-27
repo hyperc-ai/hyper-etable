@@ -14,7 +14,7 @@ def run(
     project_name = pathlib.Path(input_xlsx_filename).name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
     et.open_dump(has_header=has_header, addition_python_files=[input_py_filename])
-    et.load_external_classes(output_classes_filename)
+    # et.load_external_classes(output_classes_filename)
     et.dump_py(out_filename=output_classes_filename) # save classes in py file
     et.solver_call_plan_n_exec() # solve with execution in pddl.py
     et.load_rows_in_table()
