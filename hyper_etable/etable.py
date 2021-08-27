@@ -357,6 +357,7 @@ class ETable:
                 is_header = False
             ThisTable = TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
+            ThisTable.__user_defined_annotations__ = []
             ThisTable.__touched_annotations__ = set()
             ThisTable.__annotations_type_set__ = defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -517,13 +518,20 @@ class ETable:
 
     def load_external_classes(self, class_py_filename):
         code_str= open(class_py_filename, "r").read()
+        code_list = code_str.split("\n")
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
         code_ast_str = ast.dump(code_ast)
         for cl in code_ast.body:
+            if not isinstance(cl, ast.ClassDef):
+                continue
             if class_in_mod := getattr(self.mod, cl.name, None):
                 if hasattr(class_in_mod, '__table_name__'):
-                    print(class_in_mod.__table_name__)
-        print(code_str)
+                    for ann_assign in cl.body:
+                        if not isinstance(ann_assign, ast.AnnAssign):
+                            continue
+                        if '#hyper-etable auto generated line' not in code_list[ann_assign.lineno-1]:
+                            class_in_mod.__annotations__[ann_assign.target.id] = ann_assign.annotation.id
+                            class_in_mod.__user_defined_annotations__.append(ann_assign.target.id)
 
 
     def load_rows_in_table(self):

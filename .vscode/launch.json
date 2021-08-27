@@ -183,7 +183,7 @@
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_dump.py::test_custom_class"
+                "tests/test_dump.py::test_custom_class_edited"
             ],
             "console": "integratedTerminal",
             "env": {

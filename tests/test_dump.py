@@ -43,7 +43,7 @@ def test_custom_class_edited():
     input_py_filename='./tests/header_select/a_custom_class.py'
     output_xlsx_filename='./tests/header_select/result_has_header_a_custom_class.xlsx'
     output_plan_filename='./tests/header_select/a_plan_custom_class.py'
-    input_classes_filename='./tests/header_select/a_plan_custom_class_input.py'
+    input_classes_filename='./tests/header_select/classes_a_custom_class_input.py'
     output_classes_filename='./tests/header_select/classes_a_custom_class.py'
     has_header=True
     et = hyper_etable.etable.ETable(input_xlsx_filename, project_name='test_custom_class_edited')
