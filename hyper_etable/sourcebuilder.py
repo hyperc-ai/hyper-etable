@@ -150,7 +150,7 @@ class SourceBuilder(object):
         """
         if code:
             self.write(code)
-        self._out.write('\n')
+        self._out.write(' #hyper-etable auto generated line\n')
 
     def dedent(self):
         """
