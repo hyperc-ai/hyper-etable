@@ -358,6 +358,7 @@ class ETable:
                 is_header = False
             ThisTable = TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
+            ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__touched_annotations__ = set()
             ThisTable.__annotations_type_set__ = defaultdict(set)
@@ -539,9 +540,16 @@ class ETable:
         for obj in self.metadata['new_instances']:
             if hasattr(obj, '__table_name__') and hasattr(obj, 'addidx') :
                 obj.__recid__ = obj.addidx + obj.__recid_max__ + 1
+                if hasattr(obj.__class__, '__header_back_map__'):
+                    obj.__header_back_map__ = obj.__class__.__header_back_map__
                 self.mod.HCT_OBJECTS[obj.__table_name__].append(obj)
                 setattr(self.mod.DATA,f'{obj.__table_name__}_{obj.__recid__}', obj)
-
+                for ann in [o for o in obj.__annotations__ if not (o.startswith('__') and o.endswith('__'))]:
+                    if ann in getattr(obj.__class__,'__user_defined_annotations__', []):
+                        continue
+                    if ann == 'addidx':
+                        continue
+                    obj.__touched_annotations__.add(ann)
 
     def reset_data(self):
         for table in self.mod.HCT_OBJECTS.values():
@@ -664,8 +672,6 @@ class ETable:
                     else:
                         letter = attr_name
                     new_value = getattr(row, attr_name)
-                    if getattr(self.wb_with_formulas[sheet_name][f'{letter}{recid}'], "value", None) is None:
-                        continue
                     if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
                         continue
                     self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
