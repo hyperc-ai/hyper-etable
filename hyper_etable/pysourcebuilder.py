@@ -6,7 +6,7 @@ from hyper_etable.sourcebuilder import SourceBuilder
 INDENT = ' ' * 4
 TRIPLE_QUOTES = '"' * 3
 DOCSTRING_WIDTH = 72
-
+DEFAULT_COMMENT = 'hyper-etable auto generated line'
 
 class PySourceBuilder(SourceBuilder):
     """
@@ -77,12 +77,9 @@ class PySourceBuilder(SourceBuilder):
             self.writeln()
             self.writeln(delimiter)
 
-def build_source_from_class(class_instance, allow_attr):
+def build_source_from_class(class_instance, allow_attr, default_comment=None):
     sb = PySourceBuilder()
-    # if type in class_instance.__base__:
-    #     base_class = '(type)'
-    # else:
-    #     base_class = ""
+    comment = default_comment
     if hasattr(class_instance, '__base__') and class_instance.__base__ is not object:
         base_class = f'({class_instance.__base__.__name__})'
     else:
@@ -90,10 +87,15 @@ def build_source_from_class(class_instance, allow_attr):
     with sb.block(f'class {class_instance.__name__}{base_class}:'):
         pass_ok = True
         for a, t in getattr(class_instance, '__annotations__', {}).items():
-            sb.writeln(f'{a}: {t.__name__}')
             pass_ok = False
+            user_defined_annotations = getattr(class_instance, '__user_defined_annotations__', None)
+            if user_defined_annotations is not None:
+                if a in user_defined_annotations:
+                    sb.writeln(f'{a}: {t.__name__}')
+                    continue
+            sb.writeln(code=f'{a}: {t.__name__}', comment=comment)
         if pass_ok:
-            sb.writeln(f'pass')
+            sb.writeln(f'pass', comment=comment)
         with sb.block(f'def __init__(self):'):
             pass_ok = True
             for attr in class_instance.__dict__:
@@ -102,18 +104,19 @@ def build_source_from_class(class_instance, allow_attr):
                     continue
                 if isinstance(attr_val,str):
                      attr_val = f'"{attr_val}"'
-                sb.writeln(f'self.{attr} = {attr_val}')
+                sb.writeln(f'self.{attr} = {attr_val}', comment=comment)
                 pass_ok = False
             if pass_ok:
-                sb.writeln(f'pass')
+                sb.writeln(f'pass', comment=comment)
     return sb
 
-def build_source_from_object(instance, allow_attr, name = None):
+def build_source_from_object(instance, allow_attr, name = None, default_comment=None):
     sb = PySourceBuilder()
+    comment = default_comment
     if type(instance) in (int, str, bool, float):
         if isinstance(instance,str):
             instance = f'"{instance}"'
-        sb.writeln(f'{name} =  {instance}')
-    sb.writeln(f'{name} = {instance.__class__.__name__}()')
+        sb.writeln(f'{name} =  {instance}', comment=comment)
+    sb.writeln(f'{name} = {instance.__class__.__name__}()', comment=comment)
     
     return sb

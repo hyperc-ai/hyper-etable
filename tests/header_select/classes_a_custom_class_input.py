@@ -6,8 +6,6 @@ class TableElementMeta(type): #hyper-etable auto generated line
 class SHEET1_Class: #hyper-etable auto generated line
     __table_name__: str #hyper-etable auto generated line
     addidx: int #hyper-etable auto generated line
-    HEADER1: str #hyper-etable auto generated line
-    HEADER2: str #hyper-etable auto generated line
     HEADER_USER: str
     def __init__(self): #hyper-etable auto generated line
         self.__table_name__ = "SHEET1" #hyper-etable auto generated line
