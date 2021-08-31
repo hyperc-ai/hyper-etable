@@ -81,7 +81,7 @@
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_fast.py::test_fast_open"
+                "tests/test_fast.py::test_fast"
             ],
             "console": "integratedTerminal",
             "env": {
