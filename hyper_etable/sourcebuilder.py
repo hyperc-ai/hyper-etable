@@ -142,15 +142,20 @@ class SourceBuilder(object):
         self._out.write(str(self.indent))
         self._out.write(code)
 
-    def writeln(self, code=''):
+    def writeln(self, code='', comment=None):
         """
         Write a line at the current indentation level.
         If no code is given only a newline is written.
 
         """
+        if comment is None:
+            comment = ''
+        else:
+            comment = f'#{comment}'
         if code:
             self.write(code)
-        self._out.write('\n')
+        self._out.write(f' {comment}\n')
+        
 
     def dedent(self):
         """

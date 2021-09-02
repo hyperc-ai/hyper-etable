@@ -14,19 +14,17 @@ def run(
     project_name = pathlib.Path(input_xlsx_filename).name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
     et.open_dump(has_header=has_header, addition_python_files=[input_py_filename])
+    # et.load_external_classes(output_classes_filename)
     et.dump_py(out_filename=output_classes_filename) # save classes in py file
-    et.solver_call_simple_with_exec() # solve with execution in pddl.py
-    et.reset_data() # reset data to input_xlsx file
-    et.solver_call_simple_wo_exec()  # solve without execution
+    et.solver_call_plan_n_exec() # solve with execution in pddl.py
+    et.load_rows_in_table()
     et.save_plan(prefix='DATA.', out_filename=output_plan_filename) # save execution plan in py file
-    et.run_plan(output_plan_filename) # 
     et.save_dump(out_filename=output_xlsx_filename)
 
 def simple_run(
   input_xlsx_filename:     str,
   input_py_filename:       str,
   output_classes_filename: str,
-  output_plan_filename:    str,
   output_xlsx_filename:    str,
   has_header:bool=True
   ):
@@ -34,9 +32,8 @@ def simple_run(
     et = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
     et.open_dump(has_header=has_header, addition_python_files=[input_py_filename])
     et.dump_py(out_filename=output_classes_filename) # save classes in py file
-    et.solver_call_simple_wo_exec()  # solve without execution
-    et.save_plan(prefix='DATA.', out_filename=output_plan_filename) # save execution plan in py file
-    et.run_plan(output_plan_filename) # 
+    et.solver_call_plan_n_exec()  # solve with execution
+    et.load_rows_in_table()
     et.save_dump(out_filename=output_xlsx_filename)
 
 class CycleRun:
