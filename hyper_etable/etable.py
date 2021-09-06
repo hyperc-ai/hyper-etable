@@ -511,7 +511,9 @@ class ETable:
             exec(f_code, self.mod.__dict__)
             for f_name in f_code.co_names:
                 if "." in f_name: continue  # workaround for module names
-                self.methods_classes[f_name] = self.mod.__dict__[f_name]
+                t = self.mod.__dict__.get(f_name, None)
+                if isinstance(t, types.FunctionType) or isinstance(t, types.MethodType) or isinstance(t, type):
+                    self.methods_classes[f_name] = self.mod.__dict__[f_name]
         # for f in self.mod.__dict__:
         #     if isinstance(self.mod.__dict__[f], types.FunctionType):
         #         self.methods_classes[f] = self.mod.__dict__[f]
