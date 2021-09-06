@@ -329,7 +329,7 @@ class ETable:
 
 
 
-    def open_dump(self, has_header=None, addition_python_files=[]):
+    def open_dump(self, has_header=None, addition_python_files=[], external_classes_filename=None):
         if has_header is not None:
             self.has_header = has_header
         xl_mdl = formulas.excel.ExcelModel()
@@ -431,6 +431,9 @@ class ETable:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+
+        self.load_external_classes(external_classes_filename)
+        
         for clsv in self.classes.values():
             var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
             setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
