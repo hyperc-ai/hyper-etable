@@ -329,7 +329,7 @@ class ETable:
 
 
 
-    def open_dump(self, has_header=None, addition_python_files=[]):
+    def open_dump(self, has_header=None, addition_python_files=[], external_classes_filename=None):
         if has_header is not None:
             self.has_header = has_header
         xl_mdl = formulas.excel.ExcelModel()
@@ -431,6 +431,9 @@ class ETable:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+
+        self.load_external_classes(external_classes_filename)
+        
         for clsv in self.classes.values():
             var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
             setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
@@ -511,7 +514,9 @@ class ETable:
             exec(f_code, self.mod.__dict__)
             for f_name in f_code.co_names:
                 if "." in f_name: continue  # workaround for module names
-                self.methods_classes[f_name] = self.mod.__dict__[f_name]
+                t = self.mod.__dict__.get(f_name, None)
+                if isinstance(t, types.FunctionType) or isinstance(t, types.MethodType) or isinstance(t, type):
+                    self.methods_classes[f_name] = self.mod.__dict__[f_name]
         # for f in self.mod.__dict__:
         #     if isinstance(self.mod.__dict__[f], types.FunctionType):
         #         self.methods_classes[f] = self.mod.__dict__[f]
@@ -519,6 +524,8 @@ class ETable:
         self.methods_classes.update(self.classes)
 
     def load_external_classes(self, class_py_filename):
+        if class_py_filename is None:
+            return
         code_str= open(class_py_filename, "r").read()
         code_list = code_str.split("\n")
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
