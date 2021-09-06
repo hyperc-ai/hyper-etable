@@ -3,7 +3,7 @@ class MyClass:
     def __init__(self):
         self.a=1
 
- b=MyClass()
+b=MyClass()
 
 def aa(gg:SHEET1_Class):
     my_class = MyClass()

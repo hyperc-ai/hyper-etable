@@ -524,6 +524,8 @@ class ETable:
         self.methods_classes.update(self.classes)
 
     def load_external_classes(self, class_py_filename):
+        if class_py_filename is None:
+            return
         code_str= open(class_py_filename, "r").read()
         code_list = code_str.split("\n")
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
