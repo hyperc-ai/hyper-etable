@@ -106,6 +106,10 @@ def build_source_from_class(class_instance, allow_attr, default_comment=None):
                      attr_val = f'"{attr_val}"'
                 sb.writeln(f'self.{attr} = {attr_val}', comment=comment)
                 pass_ok = False
+            if hasattr(class_instance, '__default_init__'):
+                for attr, value in class_instance.__default_init__.items():
+                    sb.writeln(f'self.{attr} = {value}')
+                    pass_ok = False
             if pass_ok:
                 sb.writeln(f'pass', comment=comment)
     return sb

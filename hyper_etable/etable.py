@@ -360,6 +360,7 @@ class ETable:
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
+            ThisTable.__default_init__ = {}
             ThisTable.__touched_annotations__ = set()
             ThisTable.__annotations_type_set__ = defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -433,7 +434,16 @@ class ETable:
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
         self.load_external_classes(external_classes_filename)
-        
+        for py_table in self.mod.HCT_OBJECTS.values():
+            for row in py_table:
+                for attr, value in row.__default_init__.items():
+                    if value == 'set()':
+                       setattr(row, attr, set())
+                    elif isinstance(value, str):
+                        setattr(row, attr, value.strip('"'))
+                    else:
+                        setattr(row, attr, value)
+
         for clsv in self.classes.values():
             var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
             setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
@@ -456,9 +466,12 @@ class ETable:
                     f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
                 # init_f_code.append(
                     # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
-                if not par_type in hyperc.xtj.DEFAULT_VALS:
-                    raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
-                init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                if par_name in clsv.__default_init__:
+                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                else:
+                    if not par_type in hyperc.xtj.DEFAULT_VALS:
+                        raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
+                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
             if len(init_f_code) == 0:
                 continue
             full_f_code = '\n    '.join(init_f_code)
@@ -529,19 +542,33 @@ class ETable:
         code_str= open(class_py_filename, "r").read()
         code_list = code_str.split("\n")
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
-        code_ast_str = ast.dump(code_ast)
         for cl in code_ast.body:
             if not isinstance(cl, ast.ClassDef):
                 continue
             if class_in_mod := getattr(self.mod, cl.name, None):
                 if hasattr(class_in_mod, '__table_name__'):
-                    for ann_assign in cl.body:
-                        if not isinstance(ann_assign, ast.AnnAssign):
+                    for ast_obj in cl.body:
+                        if f'#{hyper_etable.pysourcebuilder.DEFAULT_COMMENT}' in code_list[ast_obj.lineno-1]:
                             continue
-                        if f'#{hyper_etable.pysourcebuilder.DEFAULT_COMMENT}' not in code_list[ann_assign.lineno-1]:
-                            class_in_mod.__annotations__[ann_assign.target.id] = pydoc.locate(ann_assign.annotation.id)
-                            class_in_mod.__user_defined_annotations__.append(ann_assign.target.id)
-
+                        if isinstance(ast_obj, ast.AnnAssign):                          
+                            class_in_mod.__annotations__[ast_obj.target.id] = pydoc.locate(ast_obj.annotation.id)
+                            class_in_mod.__user_defined_annotations__.append(ast_obj.target.id)
+                        elif isinstance(ast_obj, ast.FunctionDef) and ast_obj.name =='__init__':
+                            for init_line in ast_obj.body:
+                                if (f'#{hyper_etable.pysourcebuilder.DEFAULT_COMMENT}' not in code_list[init_line.lineno-1] 
+                                    and len(init_line.targets) == 1
+                                    and isinstance(init_line.targets[0], ast.Attribute)
+                                    and isinstance(init_line.targets[0].value,ast.Name)
+                                    and init_line.targets[0].value.id == 'self'):
+                                    if isinstance(init_line.value, ast.Constant):
+                                        if isinstance(init_line.value.value, str):
+                                            value = f'"{init_line.value.value}"'
+                                        else:
+                                            value = init_line.value.value
+                                        class_in_mod.__default_init__[init_line.targets[0].attr] = value
+                                    elif isinstance(init_line.value, ast.Call):
+                                        if init_line.value.func.id == 'set' and len(init_line.value.args) == 0 :
+                                            class_in_mod.__default_init__[init_line.targets[0].attr] = 'set()'  
 
     def load_rows_in_table(self):
         for obj in self.metadata['new_instances']:

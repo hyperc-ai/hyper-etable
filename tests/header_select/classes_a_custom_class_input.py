@@ -7,10 +7,11 @@ class SHEET1_Class: #hyper-etable auto generated line
     __table_name__: str #hyper-etable auto generated line
     addidx: int #hyper-etable auto generated line
     HEADER_USER: int
-    HEADER_USER_SET: set
+    HEADER_USER_SET:set=set()
     def __init__(self): #hyper-etable auto generated line
         self.__table_name__ = "SHEET1" #hyper-etable auto generated line
         self.__xl_sheet_name__ = "Sheet1" #hyper-etable auto generated line
+        self.HEADER_USER = 0 
 
 class StaticObject: #hyper-etable auto generated line
     SHEET1_1: SHEET1_Class #hyper-etable auto generated line

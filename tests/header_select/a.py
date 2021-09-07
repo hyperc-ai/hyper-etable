@@ -1,3 +1,7 @@
+
+new_line=SHEET1_Class()
+new_line.HEADER_USER_SET=set()
+
 def aa(gg:SHEET1_Class):
     assert gg.HEADER2 == 'bad'
     gg.HEADER1 = 1
