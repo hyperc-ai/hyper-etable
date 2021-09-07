@@ -298,7 +298,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/test_tms3_214.py::test_cycled"
+                "tests/test_tms3_213.py::test_cycled"
             ],
             "console": "integratedTerminal",
             "env": {
