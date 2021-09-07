@@ -58,7 +58,7 @@ class CycleRun:
         self.output_plan_filename_origin.parent.mkdir(parents=True, exist_ok=True)
         project_name = pathlib.Path(input_xlsx_filename).name.replace("/", "_").replace(".", "_")
         self.e_table = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
-        self.e_table.open_dump(has_header=has_header, addition_python_files=[input_py_filename])
+        self.e_table.open_dump(has_header=has_header, addition_python_files=[input_py_filename], external_classes_filename=output_classes_filename)
         self.e_table.dump_py(out_filename=output_classes_filename) # save classes in py file
         
 
