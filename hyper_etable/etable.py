@@ -434,7 +434,16 @@ class ETable:
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
         self.load_external_classes(external_classes_filename)
-        
+        for py_table in self.mod.HCT_OBJECTS.values():
+            for row in py_table:
+                for attr, value in row.__default_init__.items():
+                    if value == 'set()':
+                       setattr(row, attr, set())
+                    elif isinstance(value, str):
+                        setattr(row, attr, value.strip('"'))
+                    else:
+                        setattr(row, attr, value)
+
         for clsv in self.classes.values():
             var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
             setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
