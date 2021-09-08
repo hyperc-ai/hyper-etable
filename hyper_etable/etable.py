@@ -23,6 +23,8 @@ import openpyxl
 import hyper_etable.util
 import hyper_etable.pysourcebuilder
 import pydoc
+from typing import Set
+import typing
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -550,9 +552,21 @@ class ETable:
                     for ast_obj in cl.body:
                         if f'#{hyper_etable.pysourcebuilder.DEFAULT_COMMENT}' in code_list[ast_obj.lineno-1]:
                             continue
-                        if isinstance(ast_obj, ast.AnnAssign):                          
-                            class_in_mod.__annotations__[ast_obj.target.id] = pydoc.locate(ast_obj.annotation.id)
-                            class_in_mod.__user_defined_annotations__.append(ast_obj.target.id)
+                        if isinstance(ast_obj, ast.AnnAssign):
+                            if isinstance(ast_obj.annotation, ast.Name):
+                                class_in_mod.__annotations__[ast_obj.target.id] = pydoc.locate(ast_obj.annotation.id)
+                                class_in_mod.__user_defined_annotations__.append(ast_obj.target.id)
+                            elif isinstance(ast_obj.annotation, ast.Subscript):
+                                if isinstance(ast_obj.annotation.slice.value, ast.Name):
+                                    s = pydoc.locate(ast_obj.annotation.value.id)
+                                    t = pydoc.locate(ast_obj.annotation.slice.value.id)
+                                    class_in_mod.__annotations__[ast_obj.target.id] = s[t]
+                                    class_in_mod.__user_defined_annotations__.append(ast_obj.target.id)
+                                else:
+                                    raise NotImplementedError(f"Not Implemented Annotation type in modified class: {code_list[ast_obj.lineno-1]}")
+                            else: 
+                                raise NotImplementedError(f"Not Implemented Annotation type in modified class: {code_list[ast_obj.lineno-1]}")
+
                         elif isinstance(ast_obj, ast.FunctionDef) and ast_obj.name =='__init__':
                             for init_line in ast_obj.body:
                                 if (f'#{hyper_etable.pysourcebuilder.DEFAULT_COMMENT}' not in code_list[init_line.lineno-1] 

@@ -1,3 +1,5 @@
+from typing import Set
+
 class TableElementMeta(type): #hyper-etable auto generated line
     pass #hyper-etable auto generated line
     def __init__(self): #hyper-etable auto generated line
@@ -7,7 +9,7 @@ class SHEET1_Class: #hyper-etable auto generated line
     __table_name__: str #hyper-etable auto generated line
     addidx: int #hyper-etable auto generated line
     HEADER_USER: int
-    HEADER_USER_SET: set
+    HEADER_USER_SET: Set[int]
     def __init__(self): 
         self.__table_name__ = "SHEET1" #hyper-etable auto generated line
         self.__xl_sheet_name__ = "Sheet1" #hyper-etable auto generated line
