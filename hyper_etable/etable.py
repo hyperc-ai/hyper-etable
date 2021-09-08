@@ -138,6 +138,7 @@ class ETable:
         self.classes = {}
         self.objects = collections.defaultdict(dict)
         self.mod.side_effect = hyperc.side_effect
+        self.mod.__dict__['side_effect'] = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
         self.methods_classes = {}
 
@@ -530,6 +531,7 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
+        self.methods_classes['side_effect']=hyperc.side_effect
 
     def load_external_classes(self, class_py_filename):
         if class_py_filename is None:
