@@ -35,7 +35,9 @@ def test_custom_class():
         output_xlsx_filename='./tests/header_select/result_has_header_a_custom_class.xlsx',
         output_plan_filename='./tests/header_select/a_plan_custom_class.py',
         output_classes_filename='./tests/header_select/classes_a_custom_class.py',
-        has_header=True)
+        has_header=True,
+        input_classes_filename='./tests/header_select/classes_a_custom_class_input.py'
+        )
 
 def test_custom_class_edited():
     xlsx_file=pathlib.Path('./tests/header_select/has_header_sort_bad.xlsx')
@@ -48,7 +50,7 @@ def test_custom_class_edited():
     output_classes_filename='./tests/header_select/classes_a_custom_class.py'
     has_header=True
     et = hyper_etable.etable.ETable(input_xlsx_filename, project_name='test_custom_class_edited')
-    et.open_dump(has_header=has_header, addition_python_files=[input_py_filename])
+    et.open_dump(has_header=has_header, addition_python_files=[input_py_filename], external_classes_filename=input_classes_filename)
     et.dump_py(out_filename=output_classes_filename) # save classes in py file
     et.solver_call_plan_n_exec() # solve with execution in pddl.py
     et.load_rows_in_table()

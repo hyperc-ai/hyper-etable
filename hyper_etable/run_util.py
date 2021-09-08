@@ -9,11 +9,14 @@ def run(
   output_classes_filename: str,
   output_plan_filename:    str,
   output_xlsx_filename:    str,
-  has_header:bool=True
+  has_header:bool = True, 
+  input_classes_filename = None
   ):
+    if input_classes_filename is None:
+        input_classes_filename = output_classes_filename
     project_name = pathlib.Path(input_xlsx_filename).name.replace("/", "_").replace(".", "_")
     et = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
-    et.open_dump(has_header=has_header, addition_python_files=[input_py_filename], external_classes_filename=output_classes_filename)
+    et.open_dump(has_header=has_header, addition_python_files=[input_py_filename], external_classes_filename=input_classes_filename)
     et.dump_py(out_filename=output_classes_filename) # save classes in py file
     et.solver_call_plan_n_exec() # solve with execution in pddl.py
     et.load_rows_in_table()
