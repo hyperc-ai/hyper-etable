@@ -17,10 +17,11 @@ def real_good(gg:SHEET1_Class, mm:MyClass):
     mm.a += 1
     gg.HEADER1 = 2
     gg.HEADER2 = 'ooh'
-    gg.HEADER_USER += 1
+    gg.HEADER_USER += 2
     gg.HEADER_USER_SET.add(1)
 
 def real_good2(gg:SHEET1_Class, mm:MyClass):
     assert mm.a == 2
-    assert gg.HEADER_USER
+    assert gg.HEADER_USER == 3
+    assert 1 in gg.HEADER_USER_SET
     DATA.GOAL=True
