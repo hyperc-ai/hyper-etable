@@ -502,9 +502,6 @@ class ETable:
             exec(f_code, globals())
             clsv.__init__ = globals()["hct_f_init"]
             clsv.__init__.__name__ = "__init__"
-            clsv.add = globals()["hct_f_add"]
-            clsv.add.__name__ = "add"
-            clsv.add.__side_effect__ = True
 
         # Now generate init for static object
         self.mod.DATA.GOAL = False
