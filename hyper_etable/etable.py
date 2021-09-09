@@ -483,6 +483,10 @@ class ETable:
 
             if len(init_f_code) == 0:
                 continue
+            init_f_code.append(f'hyperc.side_effect(lambda: etable_mod.HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
+            init_f_code.append(f'hyperc.side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
+            c=f'hyperc.side_effect(lambda: setattr(etable_mod.DATA, f"{clsv.__table_name__}_'
+            init_f_code.append(c+'{self.__recid__}", self))')
             full_f_code = '\n    '.join(init_f_code)
             full_f_pars = ",".join(init_pars)
             full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
