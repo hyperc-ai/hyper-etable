@@ -489,7 +489,10 @@ class ETable:
             
             # add function
             add_f_code = [  f'hyperc.side_effect(lambda: etable_mod.HCT_OBJECTS["{clsv.__table_name__}"].append(obj))', 
-                            f'hyperc.side_effect(lambda: setattr(obj, "__recid__", obj.__class__.__recid_max__ + obj.addidx))']
+                            f'hyperc.side_effect(lambda: setattr(obj, "__recid__", obj.__class__.__recid_max__ + obj.addidx))',
+                            f'hyperc.side_effect(lambda: setattr(obj, "__header_back_map__",  obj.__class__.__header_back_map__))',
+                            f'hyperc.side_effect(lambda: setattr(obj, "__touched_annotations__",  set()))',
+                            f'hyperc.side_effect(lambda: [obj.__touched_annotations__.add(o) for o in obj.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(obj.__class__,"__user_defined_annotations__", [])) and o != "addidx")])']
             c=f'hyperc.side_effect(lambda: setattr(etable_mod.DATA, f"{clsv.__table_name__}_'
             add_f_code.append(c+'{obj.__recid__}", obj))')
 
