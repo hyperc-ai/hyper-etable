@@ -496,20 +496,6 @@ class ETable:
             full_f_pars = ",".join(init_pars)
             full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
             
-            # add function
-            add_f_code = [  f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(obj))', 
-                            f'side_effect(lambda: setattr(obj, "__recid__", obj.__class__.__recid_max__ + obj.addidx))',
-                            f'side_effect(lambda: setattr(obj, "__header_back_map__",  obj.__class__.__header_back_map__))',
-                            f'side_effect(lambda: setattr(obj, "__touched_annotations__",  set()))',
-                            f'side_effect(lambda: [obj.__touched_annotations__.add(o) for o in obj.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(obj.__class__,"__user_defined_annotations__", [])) and o != "addidx")])']
-            c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
-            add_f_code.append(c+'{obj.__recid__}", obj))')
-
-            
-            full_code =f'{full_code}\n\n@hyperc.util.side_effect_decorator\n@staticmethod\ndef hct_f_add(obj: "{clsv.__name__}"):'
-            full_f_code = '\n    '.join(add_f_code)
-            full_code = f'{full_code}\n    {full_f_code}'
-
             fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
             open(fn, "w+").write(full_code)
             f_code = compile(full_code, fn, 'exec')
