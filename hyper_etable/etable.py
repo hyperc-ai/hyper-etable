@@ -159,6 +159,8 @@ class ETable:
         self.mod.DATA.GOAL = False
         globals()[self.STATIC_STORAGE_NAME] = self.mod.DATA
         self.mod.HCT_OBJECTS = {}
+        globals()['HCT_OBJECTS'] = self.mod.HCT_OBJECTS
+        globals()['side_effect'] = hyperc.side_effect
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
         self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
@@ -495,12 +497,12 @@ class ETable:
             full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
             
             # add function
-            add_f_code = [  f'hyperc.side_effect(lambda: etable_mod.HCT_OBJECTS["{clsv.__table_name__}"].append(obj))', 
-                            f'hyperc.side_effect(lambda: setattr(obj, "__recid__", obj.__class__.__recid_max__ + obj.addidx))',
-                            f'hyperc.side_effect(lambda: setattr(obj, "__header_back_map__",  obj.__class__.__header_back_map__))',
-                            f'hyperc.side_effect(lambda: setattr(obj, "__touched_annotations__",  set()))',
-                            f'hyperc.side_effect(lambda: [obj.__touched_annotations__.add(o) for o in obj.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(obj.__class__,"__user_defined_annotations__", [])) and o != "addidx")])']
-            c=f'hyperc.side_effect(lambda: setattr(etable_mod.DATA, f"{clsv.__table_name__}_'
+            add_f_code = [  f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(obj))', 
+                            f'side_effect(lambda: setattr(obj, "__recid__", obj.__class__.__recid_max__ + obj.addidx))',
+                            f'side_effect(lambda: setattr(obj, "__header_back_map__",  obj.__class__.__header_back_map__))',
+                            f'side_effect(lambda: setattr(obj, "__touched_annotations__",  set()))',
+                            f'side_effect(lambda: [obj.__touched_annotations__.add(o) for o in obj.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(obj.__class__,"__user_defined_annotations__", [])) and o != "addidx")])']
+            c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
             add_f_code.append(c+'{obj.__recid__}", obj))')
 
             
