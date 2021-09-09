@@ -102,6 +102,8 @@ def STUB_WATCHTAKEIF(*args):
     return 0
 FUNCTIONS["WATCHTAKEIF"] = STUB_WATCHTAKEIF
 
+FUNCTIONS["side_effect"] = hyperc.side_effect
+
 class EventNameHolder:
     ename: str
     def __init__(self) -> None:
@@ -111,6 +113,9 @@ class EventNameHolder:
         if v.startswith('"') and v.endswith('"'):
             v = v[1:-1]
         return v
+
+DATA = None
+HCT_OBJECTS = None
 
 class ETable:
     def __init__(self, filenames, project_name="my_project", has_header=True) -> None:
@@ -483,9 +488,11 @@ class ETable:
             full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
             
             # add function
-            add_f_code = [  f'side_effect(lambda obj: HCT_OBJECTS["{clsv.__table_name__}"].append(obj))']
-            c=f'side_effect(lambda obj: setattr(DATA, f"{clsv.__table_name__}_'
-            add_f_code.append(c+'{obj.__class__.__top_index+obj.addidx}", obj))')
+            add_f_code = [  f'hyperc.side_effect(lambda: etable_mod.HCT_OBJECTS["{clsv.__table_name__}"].append(obj))', 
+                            f'hyperc.side_effect(lambda: setattr(obj, "__recid__", obj.__class__.__recid_max__ + obj.addidx))']
+            c=f'hyperc.side_effect(lambda: setattr(etable_mod.DATA, f"{clsv.__table_name__}_'
+            add_f_code.append(c+'{obj.__recid__}", obj))')
+
             
             full_code =f'{full_code}\n\n@hyperc.util.side_effect_decorator\n@staticmethod\ndef hct_f_add(obj: "{clsv.__name__}"):'
             full_f_code = '\n    '.join(add_f_code)
