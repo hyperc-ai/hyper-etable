@@ -16,7 +16,7 @@ class Connector:
 
 class XLSXConnector(Connector):
 
-    def open(self, path, has_header=True):
+    def __init__(self, path, has_header=True):
         super().__init__(self, path, has_header)()
         self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
@@ -41,6 +41,7 @@ class XLSXConnector(Connector):
             self.classes[py_table_name] = ThisTable
             self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
+            self.HCT_OBJECTS[py_table_name] = self.mod.HCT_OBJECTS[py_table_name]
             ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():
                 recid = list(row)[0].row
@@ -105,6 +106,7 @@ class XLSXConnector(Connector):
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+
 
     def __str__(self):
         return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'
