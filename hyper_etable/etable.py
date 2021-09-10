@@ -23,6 +23,7 @@ import openpyxl
 import hyper_etable.util
 import hyper_etable.pysourcebuilder
 import pydoc
+import hyper_etable.meta_table
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -47,14 +48,6 @@ def stack_code_gen_all(objects):
     {drop_content}"""
     return scode
 
-class TableElementMeta(type):
-    @hyperc.util.side_effect_decorator
-    def __str__(self):
-        return self.__table_name__
-    
-    @hyperc.util.side_effect_decorator
-    def __repr__(self):
-        return str(self)
 
 def operator_name_to_operator(op):
     expand = {">": "greaterThan", ">=": "greaterThanOrEqual", "<": "lessThan", "<=": "lessThanOrEqual",
@@ -318,7 +311,7 @@ class ETable:
 
 
     def get_new_table(self, table_name, sheet):
-        ThisTable = TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
         ThisTable.__touched_annotations__ = set()
         ThisTable.__annotations_type_set__ = defaultdict(set)
@@ -363,7 +356,7 @@ class ETable:
                 is_header = True
             else:
                 is_header = False
-            ThisTable = TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
+            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
@@ -637,7 +630,7 @@ class ETable:
             pass 
         
         # dump classes as python code
-        for c in itertools.chain([TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
+        for c in itertools.chain([hyper_etable.meta_table.TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__'], default_comment=hyper_etable.pysourcebuilder.DEFAULT_COMMENT).end())
 
         # dump object as python code
