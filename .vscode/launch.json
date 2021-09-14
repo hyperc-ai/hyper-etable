@@ -319,6 +319,37 @@
                 "DOWNWARD_TOTAL_PUSHES": "5000000000000"
             },
             "justMyCode": false
+        },
+        {
+             "name": " gsheet",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "-s",
+                "-o",
+                "log_cli=true",
+                "tests/test_gsheet.py"
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHON": "pypy3",
+                "HYPERC_SEARCH_CONFIG": "lmcount-alt5",
+                "HYPERC_ASE_OFF":"0",
+                "HYPERC_SPLIT_OFF": "0",
+                "HYPERC_SOLVER_MAX_TIME": "999900",
+                "HYPERC_STRICT_TYPING":"0",
+                "HYPERC_MAX_PROC": "1",
+                "HYPERC_USE_CACHE": "0",
+                "HYPERC_TEMPDIR": "./tmp",
+                // "HYPERC_DONT_REMOVE_ACTIONS": "1",
+                // "HYPERC_IGNORE_EQ_BRANCH": "1",
+                "HYPERC_LOGLEVEL": "info",
+                // "HYPERC_LIN_COUNT": "20",
+                // "HYPERC_FORCE_LIN_COUNT": "1",
+                "DOWNWARD_TOTAL_PUSHES": "5000000000000"
+            },
+            "justMyCode": false
         }
     ]
 }

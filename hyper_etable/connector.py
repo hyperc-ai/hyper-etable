@@ -3,6 +3,14 @@ import openpyxl
 import hyper_etable.meta_table
 import hyper_etable.ms_api
 import collections
+import io
+import googleapiclient.discovery
+import googleapiclient.http
+import os.path
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+import openpyxl
 
 class Connector:
     def __init__(self, path, mod, has_header=True):
@@ -17,8 +25,8 @@ class Connector:
 
 class XLSXConnector(Connector):
 
-    def __init__(self, path, has_header=True):
-        super().__init__(self, path, has_header)
+    def __init__(self, path, mod, has_header=True):
+        super().__init__(path, mod, has_header)
         self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
@@ -40,7 +48,7 @@ class XLSXConnector(Connector):
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
-            self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
+            self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
             self.HCT_OBJECTS[py_table_name] = self.mod.HCT_OBJECTS[py_table_name]
             ThisTable.__recid_max__ = 0
@@ -117,7 +125,47 @@ class CSVConnector(Connector):
     def __str__(self):
         return f'CSV_FILE_{hyperc.xtj.str_to_py(self.path)}'
 
-class GSheetConnector(Connector):
+class GSheetConnector(XLSXConnector):
+
+
+    def __init__(self, path, mod, has_header=False):
+        file_id = path
+        SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/drive.metadata','https://www.googleapis.com/auth/spreadsheets']
+
+        creds = None
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if os.path.exists('./token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'credentials.json2', SCOPES)
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+
+
+        drive_service = googleapiclient.discovery.build('drive', 'v3', credentials=creds)
+
+        # request = drive_service.files().get_media(fileId=file_id)
+        request = drive_service.files().export_media(fileId=file_id, mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        # request = drive_service.files().export_media(fileId=file_id, mimeType='text/csv')
+
+        fh = io.BytesIO()
+
+        downloader = googleapiclient.http.MediaIoBaseDownload(fh, request)
+        done = False
+        while done is False:
+            status, done = downloader.next_chunk()
+            print("Download %d%%." % int(status.progress() * 100))
+
+        super().__init__(fh, mod, has_header)
 
     def __str__(self):
         return f'GSHEET_{hyperc.xtj.str_to_py(self.path)}'

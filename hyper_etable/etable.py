@@ -10,6 +10,7 @@ import hyperc.settings
 import hyper_etable.etable_transpiler
 import hyper_etable.spiletrancer
 import hyper_etable.cell_resolver
+import hyper_etable.connector
 import hyperc.xtj
 import itertools
 import sys
@@ -111,17 +112,22 @@ DATA = None
 HCT_OBJECTS = None
 
 class ETable:
-    def __init__(self, filenames, project_name="my_project", has_header=True) -> None:
+    def __init__(self, filenames=None, project_name="my_project", has_header=True) -> None:
         self.has_header = has_header
-        if isinstance(filenames,list):
-            filenames = [pathlib.Path(f) for f in filenames]
-            self.filename = filenames[0] #TODO currently only one file support
-        else:
-            self.filename = pathlib.Path(filenames)
-        if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
+        if filenames is not None:
+            if isinstance(filenames,list):
+                filenames = [pathlib.Path(f) for f in filenames]
+                self.filename = filenames[0] #TODO currently only one file support
+            else:
+                self.filename = pathlib.Path(filenames)
+            if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
+                self.enable_precalculation = False
+            else:
+                self.enable_precalculation = True
+        else: 
+            self.filename = filenames
             self.enable_precalculation = False
-        else:
-            self.enable_precalculation = True
+
         self.STATIC_STORAGE_NAME = 'DATA'
         self.plan_data_prefix = 'DATA.'
         self.out_filename = ""
@@ -156,8 +162,6 @@ class ETable:
         globals()['side_effect'] = hyperc.side_effect
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
-        self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = None # will be initialized later in self.calulate() not in self.open_dump
@@ -336,9 +340,16 @@ class ETable:
         self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
         self.main_goal.operators[self.main_goal.name].append('pass')
         goal_code_source['main_goal'] = self.main_goal
-
-        if proto.lower() == 'excel':
-            conn = hyper_etable.connector.MSAPIConnector(path, has_header=has_header)
+        conn = None
+        if proto.lower() == 'msapi':
+            conn = hyper_etable.connector.MSAPIConnector(path, self.mod, has_header=has_header)
+        elif proto.lower() == 'gsheet':
+            conn = hyper_etable.connector.GSheetConnector(path, self.mod, has_header=has_header)
+        elif proto.lower() == 'xlsx':
+            conn = hyper_etable.connector.XLSXConnector(path, self.mod, has_header=has_header)
+        if conn is None:
+            raise ValueError(f'{proto} is not support')
+        self.objects.update(conn.objects)
 
         self.load_external_classes(external_classes_filename)
         for py_table in self.mod.HCT_OBJECTS.values():
