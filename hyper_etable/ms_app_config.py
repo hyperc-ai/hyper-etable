@@ -1,7 +1,7 @@
 import os
 
-CLIENT_ID = "1453bd78-dc7f-47c9-b537-37b01aef589d"
-CLIENT_SECRET = "z~F.kQ~V2QSFaCA0vvIBs7_4Ks3-hiekiL"
+CLIENT_ID = '17dafb10-e707-4f11-a724-1cce515b84c9'
+CLIENT_SECRET = "9-J_n9BJM.iklJ6OgYn-jfU0.Gy0dmIW62"
 
 AUTHORITY = "https://login.microsoftonline.com/common"
 SCOPE = ["Files.Read", "Files.Read.All", "Files.ReadWrite", "Files.ReadWrite.All", "User.ReadBasic.All"]

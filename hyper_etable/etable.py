@@ -327,6 +327,120 @@ class ETable:
 
     # def add_row(row):
 
+    def open_from(self, path, has_header=None, addition_python_files=[], external_classes_filename=None, proto='xlsx'):
+        if has_header is not None:
+            self.has_header = has_header
+        goal_code_source = {}
+
+        self.main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
+        self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
+        self.main_goal.operators[self.main_goal.name].append('pass')
+        goal_code_source['main_goal'] = self.main_goal
+
+        if proto.lower() == 'excel':
+            conn = hyper_etable.connector.MSAPIConnector(path, has_header=has_header)
+
+        self.load_external_classes(external_classes_filename)
+        for py_table in self.mod.HCT_OBJECTS.values():
+            for row in py_table:
+                for attr, value in row.__default_init__.items():
+                    if value == 'set()':
+                       setattr(row, attr, set())
+                    elif isinstance(value, str):
+                        setattr(row, attr, value.strip('"'))
+                    else:
+                        setattr(row, attr, value)
+
+        for clsv in self.classes.values():
+            var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
+            setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
+            self.mod.StaticObject.__annotations__[f'{clsv.__table_name__}_addidx'] = int
+            init_f_code = []
+            init_pars = []
+            if hyperc.settings.DEBUG:
+                print(f" {clsv} -  {clsv.__annotations__}")
+            # init_f_code.append(f"global DATA")
+            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
+            init_f_code.append(f"{var_global_addidx_name} += 1")
+            for par_name, par_type in clsv.__annotations__.items():
+                if par_name in ['__table_name__', 'addidx']:
+                    continue
+                # Skip None type cell
+                if par_type is None:
+                    par_type = str
+                    clsv.__annotations__[par_name] = str
+                # init_f_code.append(
+                    # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
+                if par_name in clsv.__default_init__:
+                    if clsv.__default_init__[par_name] == 'set()':
+                        init_f_code.append(f'self.{par_name} = set() # set init "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                    else:
+                        init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                        init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                else:
+                    if not par_type in hyperc.xtj.DEFAULT_VALS:
+                        raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
+                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                    init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+
+            if len(init_f_code) == 0:
+                continue
+            init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
+            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
+            c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
+            init_f_code.append(c+'{self.__recid__}", self))')
+            full_f_code = '\n    '.join(init_f_code)
+            full_f_pars = ",".join(init_pars)
+            full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
+            
+            fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, globals())
+            clsv.__init__ = globals()["hct_f_init"]
+            clsv.__init__.__name__ = "__init__"
+
+        # Now generate init for static object
+        self.mod.DATA.GOAL = False
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
+        init_f_code = []
+        for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = DATA.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
+        if init_f_code:
+
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_stf_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
+            self.mod.StaticObject.__init__.__name__ = "__init__"
+
+        # dump goals and actions
+        self.dump_functions(goal_code_source, 'hpy_goals.py')
+
+        # addition python code
+        for code_file in addition_python_files:
+            addition_code = open(code_file, "r").read()
+            if addition_code.startswith("from"):  # workaround for module imports
+                addition_code = "#"+addition_code
+            f_code = compile(addition_code, code_file, 'exec')
+            exec(f_code, self.mod.__dict__)
+            for f_name in f_code.co_names:
+                if "." in f_name: continue  # workaround for module names
+                t = self.mod.__dict__.get(f_name, None)
+                if isinstance(t, types.FunctionType) or isinstance(t, types.MethodType) or isinstance(t, type):
+                    self.methods_classes[f_name] = self.mod.__dict__[f_name]
+        # for f in self.mod.__dict__:
+        #     if isinstance(self.mod.__dict__[f], types.FunctionType):
+        #         self.methods_classes[f] = self.mod.__dict__[f]
+
+        self.methods_classes.update(self.classes)
 
 
     def open_dump(self, has_header=None, addition_python_files=[], external_classes_filename=None):

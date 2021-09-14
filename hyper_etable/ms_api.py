@@ -8,15 +8,12 @@ import os
 import webbrowser
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
-import threading
-from gspread.models import Cell
+from threading import Thread
+import gspread.models
 import itertools
-import time
 
 ms_session = {"state": "", "user": ""}
 # Start MS API
-run_ms_app_lock = threading.Lock()
-run_ms_app_lock.acquire(0)
 
 MICROSOFT_AUTHORIZED_USER_FILENAME = 'authorized_user_ms.json'
 
@@ -26,54 +23,55 @@ def sing_out():
     except FileNotFoundError:
         pass
 
-# def run_ms_app():
-#     ms_app = Flask(f'{__name__}-{ms_session["state"]}')
-#     #ms_app.config.from_object(hyper_etable.ms_app_config)
+def run_ms_app():
+    ms_app = Flask(f'{__name__}-{ms_session["state"]}')
+    #ms_app.config.from_object(hyper_etable.ms_app_config)
 
-#     # a simple page that says hello
-#    # ms_app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    # a simple page that says hello
+   # ms_app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-    # @ms_app.route('/getAToken')  # Its absolute URL must match your app's redirect_uri set in AAD
-def authorized():
-    # if request.args.get('state') != ms_session.get("state"):
-    #     logger.info(f"{request.args.get('state')} != {ms_session.get('state')}")
-    #     raise RuntimeError(f"{request.args.get('state')} != {ms_session.get('state')}")
-    # if "error" in request.args:  # Authentication/Authorization failure
-    #     return render_template("auth_error.html", result=request.args)
-    print(f"code is {request.args.get('code')}")
-    if request.args.get('code'):
-        cache = _load_cache()
-        result = _build_msal_app(cache=cache).acquire_token_by_authorization_code(
-            request.args['code'],
-            scopes=hyper_etable.ms_app_config.SCOPE,  # Misspelled scope would cause an HTTP 400 error here
-            redirect_uri=url_for("authorized", _external=True))
-        if "error" in result:
-            raise RuntimeError(f'auth_error {result}')
-        ms_session["user"] = result.get("id_token_claims")
-        _save_cache(cache)
-    run_ms_app_lock.release()
-    return "Please close tab"
+    @ms_app.route('/getAToken')  # Its absolute URL must match your app's redirect_uri set in AAD
+    def authorized():
+        # if request.args.get('state') != ms_session.get("state"):
+        #     logger.info(f"{request.args.get('state')} != {ms_session.get('state')}")
+        #     raise RuntimeError(f"{request.args.get('state')} != {ms_session.get('state')}")
+        # if "error" in request.args:  # Authentication/Authorization failure
+        #     return render_template("auth_error.html", result=request.args)
+        print(f"code is {request.args.get('code')}")
+        if request.args.get('code'):
+            cache = _load_cache()
+            result = _build_msal_app(cache=cache).acquire_token_by_authorization_code(
+                request.args['code'],
+                scopes=hyper_etable.ms_app_config.SCOPE,  # Misspelled scope would cause an HTTP 400 error here
+                redirect_uri=url_for("authorized", _external=True))
+            if "error" in result:
+                raise RuntimeError(f'auth_error {result}')
+            ms_session["user"] = result.get("id_token_claims")
+            _save_cache(cache)
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+        return "Please close tab"
 
-    # try:
-    #     ms_app.run(port=5001)
-    # except RuntimeError as msg:
-    #     print("Exit autoriser")
-    #     if str(msg) == "Server going down":
-    #         pass  # or whatever you want to do when the server goes down
-    #     else:
-    #         pass
+    try:
+        ms_app.run(port=5000)
+    except RuntimeError as msg:
+        print("Exit autoriser")
+        if str(msg) == "Server going down":
+            pass  # or whatever you want to do when the server goes down
+        else:
+            pass
 
 
 def ms_login():
     ms_session["state"] = str(uuid.uuid4())
-    # thread = threading.Thread(target=run_ms_app)
-    # thread.start()
+    thread = Thread(target=run_ms_app)
+    thread.start()
     webbrowser.open(_build_auth_url(scopes=hyper_etable.ms_app_config.SCOPE, state=ms_session["state"]), new=2)
-    run_ms_app_lock.acquire()
-    time.sleep(1)
-    # thread.abort()
-    run_ms_app_lock.release()
+    thread.join()
 
+#https://onedrive.live.com/edit.aspx?cid=cfe36fe507a85213&page=view&resid=CFE36FE507A85213!113&parId=CFE36FE507A85213!101&app=Excel
 #https://graph.microsoft.com/v1.0/me/drive/items/CFE36FE507A85213!105/workbook/createSession
 #https://graph.microsoft.com/v1.0/me/drive/items/CFE36FE507A85213!105/workbook/worksheets('Sheet1')/usedRange
 
@@ -264,7 +262,7 @@ class MSSheet:
         else:
             self.col_amount = len(self.table[0])
 
-    def update_cells(self, cells: [Cell]):
+    def update_cells(self, cells: [gspread.models.Cell]):
         col_amount_was = self.col_amount
         for cell in cells:
             if self.row_amount < cell.row:
