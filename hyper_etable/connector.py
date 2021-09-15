@@ -51,6 +51,7 @@ class XLSXConnector(Connector):
             self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
             self.HCT_OBJECTS[py_table_name] = self.mod.HCT_OBJECTS[py_table_name]
+            self.objects[py_table_name]={}
             ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():
                 recid = list(row)[0].row

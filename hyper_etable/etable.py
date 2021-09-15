@@ -140,7 +140,7 @@ class ETable:
         globals()[self.session_name] = self.mod
         sys.modules[self.session_name] = self.mod
         self.classes = {}
-        self.objects = collections.defaultdict(dict)
+        self.objects = {}
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
         self.methods_classes = {}
