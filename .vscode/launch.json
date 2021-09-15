@@ -183,7 +183,7 @@
             "module": "pytest",
             "args": [
                 "-s",
-                "tests/test_dump.py::test_custom_class_edited"
+                "tests/test_dump.py::test_custom_class"
             ],
             "console": "integratedTerminal",
             "env": {
@@ -268,7 +268,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/add_row/test_add_row.py::test_add_row"
+                "tests/test_add_row.py::test_add_row_model_test"
             ],
             "console": "integratedTerminal",
             "env": {

@@ -102,6 +102,8 @@ def STUB_WATCHTAKEIF(*args):
     return 0
 FUNCTIONS["WATCHTAKEIF"] = STUB_WATCHTAKEIF
 
+FUNCTIONS["side_effect"] = hyperc.side_effect
+
 class EventNameHolder:
     ename: str
     def __init__(self) -> None:
@@ -111,6 +113,9 @@ class EventNameHolder:
         if v.startswith('"') and v.endswith('"'):
             v = v[1:-1]
         return v
+
+DATA = None
+HCT_OBJECTS = None
 
 class ETable:
     def __init__(self, filenames, project_name="my_project", has_header=True) -> None:
@@ -154,6 +159,8 @@ class ETable:
         self.mod.DATA.GOAL = False
         globals()[self.STATIC_STORAGE_NAME] = self.mod.DATA
         self.mod.HCT_OBJECTS = {}
+        globals()['HCT_OBJECTS'] = self.mod.HCT_OBJECTS
+        globals()['side_effect'] = hyperc.side_effect
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
         self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
@@ -462,40 +469,39 @@ class ETable:
                 if par_type is None:
                     par_type = str
                     clsv.__annotations__[par_name] = str
-                init_f_code.append(
-                    f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
                 # init_f_code.append(
                     # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
                 if par_name in clsv.__default_init__:
-                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                    if clsv.__default_init__[par_name] == 'set()':
+                        init_f_code.append(f'self.{par_name} = set() # set init "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                    else:
+                        init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                        init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
                 else:
                     if not par_type in hyperc.xtj.DEFAULT_VALS:
                         raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
                     init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                    init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+
             if len(init_f_code) == 0:
                 continue
+            init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
+            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
+            c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
+            init_f_code.append(c+'{self.__recid__}", self))')
             full_f_code = '\n    '.join(init_f_code)
             full_f_pars = ",".join(init_pars)
             full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
             
-            # add function
-            add_f_code = [  f'side_effect(lambda obj: HCT_OBJECTS["{clsv.__table_name__}"].append(obj))']
-            c=f'side_effect(lambda obj: setattr(DATA, f"{clsv.__table_name__}_'
-            add_f_code.append(c+'{obj.__class__.__top_index+obj.addidx}", obj))')
-            
-            full_code =f'{full_code}\n\n@hyperc.util.side_effect_decorator\n@staticmethod\ndef hct_f_add(obj: "{clsv.__name__}"):'
-            full_f_code = '\n    '.join(add_f_code)
-            full_code = f'{full_code}\n    {full_f_code}'
-
             fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
             open(fn, "w+").write(full_code)
             f_code = compile(full_code, fn, 'exec')
             exec(f_code, globals())
             clsv.__init__ = globals()["hct_f_init"]
             clsv.__init__.__name__ = "__init__"
-            clsv.add = globals()["hct_f_add"]
-            clsv.add.__name__ = "add"
-            clsv.add.__side_effect__ = True
 
         # Now generate init for static object
         self.mod.DATA.GOAL = False
