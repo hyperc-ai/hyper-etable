@@ -11,6 +11,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 import openpyxl
+import airtable
+import requests
 
 class Connector:
     def __init__(self, path, mod, has_header=True):
@@ -46,6 +48,7 @@ class XLSXConnector(Connector):
             ThisTable.__default_init__ = {}
             ThisTable.__touched_annotations__ = set()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
+            ThisTable.__connector__ = self
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
             self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
@@ -145,7 +148,7 @@ class GSheetConnector(XLSXConnector):
                 creds.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json2', SCOPES)
+                    'credentials.json', SCOPES)
                 creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
             with open('token.json', 'w') as token:
@@ -194,11 +197,13 @@ class MSAPIConnector(Connector):
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
             ThisTable.__touched_annotations__ = set()
-            ThisTable.__annotations_type_set__ = defaultdict(set)
+            ThisTable.__annotations_type_set__ = collections.defaultdict(set)
+            ThisTable.__connector__ = self
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
             self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
+            self.objects[py_table_name]={}
             ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():
                 recid = list(row)[0].row
@@ -270,3 +275,57 @@ class MSAPIConnector(Connector):
     def __str__(self):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
 
+class AirtableConnector(Connector):
+    def load(self):
+        BASE_ID, API_KEY, TABLE = self.path
+
+        # response = requests.get(f'https://api.airtable.com/v0/meta/bases/{BASE_ID}/tables?api_key={API_KEY}',).json()
+        response = requests.get(f'https://api.airtable.com/v0/{BASE_ID}/{TABLE}?api_key={API_KEY}').json()
+        assert 'error' not in response, f"Airtable error {response}"
+        # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+        py_table_name = hyperc.xtj.str_to_py(f'{TABLE}') # warning only sheet in 
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': TABLE})
+        ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
+        ThisTable.__user_defined_annotations__ = []
+        ThisTable.__default_init__ = {}
+        ThisTable.__touched_annotations__ = set()
+        ThisTable.__annotations_type_set__ = collections.defaultdict(set)
+        ThisTable.__connector__ = self
+        self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+        self.classes[py_table_name] = ThisTable
+        self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
+        self.mod.HCT_OBJECTS[py_table_name] = []
+        self.objects[py_table_name]={}
+        ThisTable.__recid_max__ = 0
+        recid = 0
+        for row in response['records']:
+            recid += 1
+            if ThisTable.__recid_max__ < recid:
+                ThisTable.__recid_max__ = recid
+            rec_obj = ThisTable()
+            rec_obj.addidx = -1
+            rec_obj.__recid__ = recid
+            rec_obj.__table_name__ += f'[{BASE_ID}]{TABLE}_{recid}'
+            rec_obj.__touched_annotations__ = set()
+            rec_obj.__xl_sheet_name__ = TABLE
+            self.objects[py_table_name][recid] = rec_obj
+            self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+            sheet_name = hyperc.xtj.str_to_py(f"{TABLE}") + f'_{recid}'
+            if not hasattr(self.mod.DATA, sheet_name):
+                setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
+                self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+            
+            rec_obj.__py_sheet_name__ = sheet_name
+
+            for column_name, value in row['fields'].items():
+
+                self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                if (type(value) == bool or type(value) == int or type(value) == str):
+                    setattr(self.objects[py_table_name][recid], column_name, value)
+                    setattr(self.objects[py_table_name][recid], column_name, value)
+                    self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
+                else:
+                    setattr(self.objects[py_table_name][recid], column_name, '')
+                    self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)

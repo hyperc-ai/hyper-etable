@@ -347,6 +347,9 @@ class ETable:
             conn = hyper_etable.connector.GSheetConnector(path, self.mod, has_header=has_header)
         elif proto.lower() == 'xlsx':
             conn = hyper_etable.connector.XLSXConnector(path, self.mod, has_header=has_header)
+        elif proto.lower() == 'airtable':
+            conn = hyper_etable.connector.AirtableConnector(path, self.mod, has_header=has_header)
+            conn.load()
         if conn is None:
             raise ValueError(f'{proto} is not support')
         self.objects.update(conn.objects)

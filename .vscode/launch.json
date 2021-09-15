@@ -321,7 +321,7 @@
             "justMyCode": false
         },
         {
-             "name": " gsheet",
+             "name": "test_airtable",
             "type": "python",
             "request": "launch",
             "module": "pytest",
@@ -329,7 +329,7 @@
                 "-s",
                 "-o",
                 "log_cli=true",
-                "tests/test_gsheet.py"
+                "tests/test_airtable.py"
             ],
             "console": "integratedTerminal",
             "env": {
