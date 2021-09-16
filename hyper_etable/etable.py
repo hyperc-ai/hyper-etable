@@ -113,6 +113,7 @@ HCT_OBJECTS = None
 
 class ETable:
     def __init__(self, filenames=None, project_name="my_project", has_header=True) -> None:
+        self.connectors = []
         self.has_header = has_header
         if filenames is not None:
             if isinstance(filenames,list):
@@ -329,7 +330,9 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    # def add_row(row):
+    def save_all(self):
+        for conn in self.connectors:
+            conn.save()
 
     def open_from(self, path, has_header=None, addition_python_files=[], external_classes_filename=None, proto='xlsx'):
         if has_header is not None:
@@ -351,6 +354,7 @@ class ETable:
             conn = hyper_etable.connector.AirtableConnector(path, self.mod, has_header=has_header)
         if conn is None:
             raise ValueError(f'{proto} is not support')
+        self.connectors.append(conn)
         conn.load()
         self.objects.update(conn.objects)
 

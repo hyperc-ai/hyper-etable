@@ -37,7 +37,9 @@ class XLSXConnector(Connector):
         for wb_sheet in self.wb_values_only:
             sheet = wb_sheet.title
             self.tables[sheet] = {}
-            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in 
+            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in
+            if py_table_name in self.mod.HCT_OBJECTS:
+                raise ValueError(f'Error sheet {sheet} already exist')
             header_map = {}
             header_back_map = {}
             header_name_map = {} # map python name to true name
@@ -163,6 +165,31 @@ class XLSXConnector(Connector):
                             if getattr(self.wb_with_formulas[sheet_name][f'{letter}1'], "value", None) != row.__header_name_map__[attr_name]:
                                 self.wb_with_formulas[sheet_name][f'{letter}1'].value = row.__header_name_map__[attr_name]
 
+                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
+        self.wb_with_formulas.save(out_file)
+
+    def save(self, out_file=None):
+        if out_file is None:
+            out_file = self.path
+        for table in self.mod.HCT_OBJECTS.values():
+            for row in table:
+                if row.__connector__ is not self:
+                    continue
+                sheet_name = row.__xl_sheet_name__
+                recid = row.__recid__
+                for attr_name in row.__touched_annotations__:
+                    if self.has_header:
+                        letter = row.__header_back_map__[attr_name]
+                    else:
+                        letter = attr_name
+                    new_value = getattr(row, attr_name)
+                    # TODO seems useless code (check it)
+                    # if sheet_name not in self.wb_values_only:
+                    #     self.wb_values_only.create_sheet(sheet_name)
+                    #     self.wb_with_formulas.create_sheet(sheet_name)
+                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
+                        continue
+                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         self.wb_with_formulas.save(out_file)
 
@@ -328,6 +355,8 @@ class AirtableConnector(Connector):
         assert 'error' not in response, f"Airtable error {response}"
         # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
         py_table_name = hyperc.xtj.str_to_py(f'{TABLE}') # warning only sheet in 
+        if py_table_name in self.mod.HCT_OBJECTS:
+            raise ValueError(f'Error sheet {TABLE} already exist')
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': TABLE})
         ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
         ThisTable.__user_defined_annotations__ = []
