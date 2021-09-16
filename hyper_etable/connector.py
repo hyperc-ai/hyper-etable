@@ -178,7 +178,7 @@ class MSAPIConnector(Connector):
     def __init__(self, path, has_header=True):
         super().__init__(self, path, has_header)
         self.ms_table = hyper_etable.ms_api.get_excel(path)
-
+        # TODO fix code before
         # Load used cell
         for sheet in self.ms_table:
             wb_sheet=self.ms_table[sheet]

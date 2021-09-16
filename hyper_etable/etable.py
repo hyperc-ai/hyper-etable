@@ -788,12 +788,13 @@ class ETable:
     def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None, out_filename=None):
         """Dump plan as python code"""
         self.plan_data_prefix=prefix
-        if out_dir is None:
+        if out_dir is None and out_filename is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
         if out_filename is None:
             self.plan_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
         else:
             self.plan_file = out_filename
+            out_dir = pathlib.Path(out_filename).parent
         try:
             os.mkdir(out_dir)
         except FileExistsError:
@@ -817,8 +818,12 @@ class ETable:
 
     def save_dump(self, has_header=False, out_dir=None, out_filename=None):
         """Save objects into XLSX file"""
-        if out_dir is None:
+        if out_dir is None and out_filename is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
+        if out_filename is None:
+            out_filename = os.path.join(out_dir, f'{self.filename.name}')
+        else:
+            out_dir = pathlib.Path(out_filename).parent
         try:
             os.mkdir(out_dir)
         except FileExistsError:
@@ -837,8 +842,6 @@ class ETable:
                         continue
                     self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        if out_filename is None:
-            out_filename = os.path.join(out_dir, f'{self.filename.name}')
         self.wb_with_formulas.save(out_filename)
         return out_filename
 
