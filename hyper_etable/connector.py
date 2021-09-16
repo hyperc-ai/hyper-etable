@@ -26,9 +26,8 @@ class Connector:
 
 
 class XLSXConnector(Connector):
-
-    def __init__(self, path, mod, has_header=True):
-        super().__init__(path, mod, has_header)
+ 
+    def load(self):
         self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
@@ -120,6 +119,8 @@ class XLSXConnector(Connector):
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
+    def save(self):
+        pass
 
     def __str__(self):
         return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'
@@ -131,9 +132,9 @@ class CSVConnector(Connector):
 
 class GSheetConnector(XLSXConnector):
 
+    def load(self):
 
-    def __init__(self, path, mod, has_header=False):
-        file_id = path
+        file_id = self.path
         SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/drive.metadata','https://www.googleapis.com/auth/spreadsheets']
 
         creds = None
@@ -169,7 +170,8 @@ class GSheetConnector(XLSXConnector):
             status, done = downloader.next_chunk()
             print("Download %d%%." % int(status.progress() * 100))
 
-        super().__init__(fh, mod, has_header)
+        self.path = fh
+        super().load()
 
     def __str__(self):
         return f'GSHEET_{hyperc.xtj.str_to_py(self.path)}'
@@ -269,8 +271,6 @@ class MSAPIConnector(Connector):
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
-
-
 
     def __str__(self):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
