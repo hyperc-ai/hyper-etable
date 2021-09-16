@@ -79,7 +79,7 @@ class CycleRun:
             self.output_xlsx_filename = pathlib.Path(os.path.join(self.output_xlsx_filename_origin.parent, f'{self.run_counter}_{self.output_xlsx_filename_origin.name}'))
             self.output_plan_filename = pathlib.Path(os.path.join(self.output_plan_filename_origin.parent, f'{self.run_counter}_{self.output_plan_filename_origin.name}'))
             self.run_counter += 1
-        self.e_table.solver_call_simple_wo_exec()  # solve without execution
+        self.e_table.solver_call_plan_n_exec()  # solve with execution
+        self.e_table.load_rows_in_table()
         self.e_table.save_plan(prefix='DATA.', out_filename=self.output_plan_filename) # save execution plan in py file
-        # self.e_table.run_plan(self.output_plan_filename)
         self.e_table.save_dump(out_filename=self.output_xlsx_filename)
