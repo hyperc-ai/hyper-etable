@@ -127,7 +127,7 @@ class XLSXConnector(Connector):
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
-    def save(self, out_file=None):
+    def save_all(self, out_file=None):
         """Save objects into XLSX file"""
         if out_file is None:
             out_file = self.path
