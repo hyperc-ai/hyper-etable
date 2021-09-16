@@ -11,7 +11,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 import openpyxl
-import airtable
+import pathlib
 import requests
 
 class Connector:
@@ -27,15 +27,19 @@ class Connector:
 
 class XLSXConnector(Connector):
  
+    def __init__(self, path, mod, has_header=True):
+        super().__init__(path, mod, has_header)
+        self.wb_values_only = None
+
     def load(self):
         self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
             sheet = wb_sheet.title
             self.tables[sheet] = {}
             py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in 
             header_map = {}
             header_back_map = {}
+            header_name_map = {} # map python name to true name
             if self.has_header:
                 is_header = True
             else:
@@ -43,6 +47,7 @@ class XLSXConnector(Connector):
             ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
+            ThisTable.__header_name_map__ = header_name_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
             ThisTable.__touched_annotations__ = set()
@@ -63,6 +68,7 @@ class XLSXConnector(Connector):
                 rec_obj.addidx = -1
                 if self.has_header:
                     rec_obj.__header_back_map__ = header_back_map
+                    rec_obj.__header_name_map__ = header_name_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{self.path}]{sheet}_{recid}'
                 rec_obj.__touched_annotations__ = set()
@@ -85,6 +91,7 @@ class XLSXConnector(Connector):
                         #     continue
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
+                        header_name_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = xl_orig_calculated_value
                         continue
                     if self.has_header:
                         column_name = header_map.get(letter, None)
@@ -119,8 +126,47 @@ class XLSXConnector(Connector):
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
-    def save(self):
-        pass
+    def save(self, out_file=None):
+        """Save objects into XLSX file"""
+        if out_file is None:
+            out_file = self.path
+        if self.wb_values_only is None:
+            if os.path.isfile(out_file):
+                self.wb_with_formulas = openpyxl.load_workbook(filename=out_file)
+            else:
+                self.wb_with_formulas = openpyxl.Workbook()
+
+        out_dir = pathlib.Path(out_file).parent
+        try:
+            os.mkdir(out_dir)
+        except FileExistsError:
+            pass
+        for table in self.mod.HCT_OBJECTS.values():
+            for row in table:
+                sheet_name = row.__xl_sheet_name__
+                recid = row.__recid__
+                for attr_name in row.__touched_annotations__:
+                    if self.has_header:
+                        letter = row.__header_back_map__[attr_name]
+                    else:
+                        letter = attr_name
+                    new_value = getattr(row, attr_name)
+                    if self.wb_values_only is not None:
+                        if sheet_name not in self.wb_values_only:
+                            self.wb_values_only.create_sheet(sheet_name)
+                            self.wb_with_formulas.create_sheet(sheet_name)
+                        elif getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
+                            continue
+                        self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
+                    else:
+                        if sheet_name not in self.wb_with_formulas:
+                            self.wb_with_formulas.create_sheet(sheet_name)
+                        if self.has_header:
+                            if getattr(self.wb_with_formulas[sheet_name][f'{letter}1'], "value", None) != row.__header_name_map__[attr_name]:
+                                self.wb_with_formulas[sheet_name][f'{letter}1'].value = row.__header_name_map__[attr_name]
+
+                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
+        self.wb_with_formulas.save(out_file)
 
     def __str__(self):
         return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'

@@ -455,7 +455,7 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
-
+        return conn
 
     def open_dump(self, has_header=None, addition_python_files=[], external_classes_filename=None):
         if has_header is not None:
@@ -815,35 +815,6 @@ class ETable:
             f.write(code_str)
         if exec_plan:
             self.run_plan(py_plan_filename=self.plan_file)
-
-    def save_dump(self, has_header=False, out_dir=None, out_filename=None):
-        """Save objects into XLSX file"""
-        if out_dir is None and out_filename is None:
-            out_dir =  os.path.join(self.filename.parent, 'out')
-        if out_filename is None:
-            out_filename = os.path.join(out_dir, f'{self.filename.name}')
-        else:
-            out_dir = pathlib.Path(out_filename).parent
-        try:
-            os.mkdir(out_dir)
-        except FileExistsError:
-            pass
-        for table in self.mod.HCT_OBJECTS.values():
-            for row in table:
-                sheet_name = row.__xl_sheet_name__
-                recid = row.__recid__
-                for attr_name in row.__touched_annotations__:
-                    if self.has_header:
-                        letter = row.__header_back_map__[attr_name]
-                    else:
-                        letter = attr_name
-                    new_value = getattr(row, attr_name)
-                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
-                        continue
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
-                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        self.wb_with_formulas.save(out_filename)
-        return out_filename
 
     def calculate(self):
 
