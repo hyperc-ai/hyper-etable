@@ -33,6 +33,7 @@ class XLSXConnector(Connector):
 
     def load(self):
         self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
+        self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
             sheet = wb_sheet.title
             self.tables[sheet] = {}
@@ -131,10 +132,7 @@ class XLSXConnector(Connector):
         if out_file is None:
             out_file = self.path
         if self.wb_values_only is None:
-            if os.path.isfile(out_file):
-                self.wb_with_formulas = openpyxl.load_workbook(filename=out_file)
-            else:
-                self.wb_with_formulas = openpyxl.Workbook()
+            self.wb_with_formulas = openpyxl.Workbook()
 
         out_dir = pathlib.Path(out_file).parent
         try:
