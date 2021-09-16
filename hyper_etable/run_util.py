@@ -81,5 +81,5 @@ class CycleRun:
             self.run_counter += 1
         self.e_table.solver_call_simple_wo_exec()  # solve without execution
         self.e_table.save_plan(prefix='DATA.', out_filename=self.output_plan_filename) # save execution plan in py file
-        self.e_table.run_plan(self.output_plan_filename)
+        # self.e_table.run_plan(self.output_plan_filename)
         self.e_table.save_dump(out_filename=self.output_xlsx_filename)
