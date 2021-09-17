@@ -319,10 +319,12 @@ class GSheetConnector(XLSXConnector):
 
 
         sheet_service = googleapiclient.discovery.build('sheets', 'v4', credentials=creds)
+        # batch update
+        # https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate
 
         # Call the Sheets API
         sheet = sheet_service.spreadsheets()
-        result = sheet.values().post(spreadsheetId=self.path,
+        result = sheet.values().batchUpdate(spreadsheetId=self.path,
                                     range=SAMPLE_RANGE_NAME).execute()
 
 
