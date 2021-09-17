@@ -2,6 +2,7 @@ import hyperc.xtj
 import openpyxl
 import hyper_etable.meta_table
 import hyper_etable.ms_api
+import hyperc.utils
 import collections
 import io
 import googleapiclient.discovery
@@ -172,9 +173,9 @@ class XLSXConnector(Connector):
         if out_file is None:
             out_file = self.path
         for table in self.mod.HCT_OBJECTS.values():
+            if self.classes[table].__connector__ is not self:
+                continue
             for row in table:
-                if row.__connector__ is not self:
-                    continue
                 sheet_name = row.__xl_sheet_name__
                 recid = row.__recid__
                 for attr_name in row.__touched_annotations__:
@@ -243,6 +244,87 @@ class GSheetConnector(XLSXConnector):
 
         self.path = fh
         super().load()
+
+    def save(self, out_file=None):
+
+    # Batch update example
+    # {
+    #   "range": "Sheet1!B1:D2",
+    #   "majorDimension": "ROWS",
+    #   "values": [
+    #     ["Cost", "Stocked", "Ship Date"],
+    #     ["$20.50", "4", "3/1/2016"]
+    #   ]
+    # }
+
+
+        batch_update = []
+
+        if out_file is None:
+            out_file = self.path
+        letter_counter = hyperc.util.letter_index_next()
+        for table in self.mod.HCT_OBJECTS.values():
+            if self.classes[table].__connector__ is not self:
+                continue
+            row_values = []
+            for row in table:
+                sheet_name = row.__xl_sheet_name__
+                recid = row.__recid__
+                letter_counter=''
+                for attr_name in row.__touched_annotations__:
+                    letter_counter = hyperc.util.letter_index_next(letter_counter)
+                    if self.has_header:
+                        letter = row.__header_back_map__[attr_name]
+                    else:
+                        letter = attr_name
+
+                    while letter_counter != letter:
+                        row_values.append(None)
+
+                    new_value = getattr(row, attr_name)
+                    # TODO seems useless code (check it)
+                    # if sheet_name not in self.wb_values_only:
+                    #     self.wb_values_only.create_sheet(sheet_name)
+                    #     self.wb_with_formulas.create_sheet(sheet_name)
+                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
+                        continue
+                    row_values.append(new_value)
+                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
+                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
+                batch_update.append({
+                    "range": f"{self.classes[table].__xl_sheet_name__}!A1:{letter_counter}{recid}",
+                    "majorDimension": "ROWS",
+                    "values": row_values
+                    })
+
+        SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/drive.metadata','https://www.googleapis.com/auth/spreadsheets']
+
+        creds = None
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if os.path.exists('./token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'credentials.json', SCOPES)
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+
+
+        sheet_service = googleapiclient.discovery.build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        sheet = sheet_service.spreadsheets()
+        result = sheet.values().post(spreadsheetId=self.path,
+                                    range=SAMPLE_RANGE_NAME).execute()
+
 
     def __str__(self):
         return f'GSHEET_{hyperc.xtj.str_to_py(self.path)}'
