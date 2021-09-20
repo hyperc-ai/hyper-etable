@@ -2,7 +2,7 @@ import hyperc.xtj
 import openpyxl
 import hyper_etable.meta_table
 import hyper_etable.ms_api
-import hyperc.util
+import hyperc.utils
 import collections
 import io
 import googleapiclient.discovery
@@ -54,7 +54,7 @@ class XLSXConnector(Connector):
             ThisTable.__header_name_map__ = header_name_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = list()
+            ThisTable.__touched_annotations__ = set()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             ThisTable.__connector__ = self
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -75,7 +75,7 @@ class XLSXConnector(Connector):
                     rec_obj.__header_name_map__ = header_name_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{self.path}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = list()
+                rec_obj.__touched_annotations__ = set()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -107,7 +107,7 @@ class XLSXConnector(Connector):
                     if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
 
-                    self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
                         raise Exception(f"We don't support table with error cell ")
@@ -115,11 +115,11 @@ class XLSXConnector(Connector):
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name) 
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
                     else:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                 if is_header:
                     is_header = False
                     continue
@@ -128,7 +128,7 @@ class XLSXConnector(Connector):
                     if not hasattr(rec_obj, column_name):
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
     def save_all(self, out_file=None):
         """Save objects into XLSX file"""
@@ -263,8 +263,8 @@ class GSheetConnector(XLSXConnector):
         if out_file is None:
             out_file = self.path
         letter_counter = hyperc.util.letter_index_next()
-        for table_name, table in self.mod.HCT_OBJECTS.items():
-            if self.classes[table_name].__connector__ is not self:
+        for table in self.mod.HCT_OBJECTS.values():
+            if self.classes[table].__connector__ is not self:
                 continue
             row_values = []
             for row in table:
@@ -279,7 +279,6 @@ class GSheetConnector(XLSXConnector):
                         letter = attr_name
 
                     while letter_counter != letter:
-                        letter_counter = hyperc.util.letter_index_next(letter_counter)
                         row_values.append(None)
 
                     new_value = getattr(row, attr_name)
@@ -293,7 +292,7 @@ class GSheetConnector(XLSXConnector):
                     self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
                 batch_update.append({
-                    "range": f"{self.classes[table_name].__xl_sheet_name__}!A1:{letter_counter}{recid}",
+                    "range": f"{self.classes[table].__xl_sheet_name__}!A1:{letter_counter}{recid}",
                     "majorDimension": "ROWS",
                     "values": row_values
                     })
@@ -354,7 +353,7 @@ class MSAPIConnector(Connector):
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = list()
+            ThisTable.__touched_annotations__ = set()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             ThisTable.__connector__ = self
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -373,7 +372,7 @@ class MSAPIConnector(Connector):
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = list()
+                rec_obj.__touched_annotations__ = set()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -405,7 +404,7 @@ class MSAPIConnector(Connector):
                     if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
 
-                    self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
                         raise Exception(f"We don't support table with error cell {cell}")
@@ -413,11 +412,11 @@ class MSAPIConnector(Connector):
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name) 
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
                     else:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                 if is_header:
                     is_header = False
                     continue
@@ -426,7 +425,7 @@ class MSAPIConnector(Connector):
                     if not hasattr(rec_obj, column_name):
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
     def __str__(self):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
@@ -446,7 +445,7 @@ class AirtableConnector(Connector):
         ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
         ThisTable.__user_defined_annotations__ = []
         ThisTable.__default_init__ = {}
-        ThisTable.__touched_annotations__ = list()
+        ThisTable.__touched_annotations__ = set()
         ThisTable.__annotations_type_set__ = collections.defaultdict(set)
         ThisTable.__connector__ = self
         self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -464,7 +463,7 @@ class AirtableConnector(Connector):
             rec_obj.addidx = -1
             rec_obj.__recid__ = recid
             rec_obj.__table_name__ += f'[{BASE_ID}]{TABLE}_{recid}'
-            rec_obj.__touched_annotations__ = list()
+            rec_obj.__touched_annotations__ = set()
             rec_obj.__xl_sheet_name__ = TABLE
             self.objects[py_table_name][recid] = rec_obj
             self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
@@ -477,13 +476,13 @@ class AirtableConnector(Connector):
 
             for column_name, value in row['fields'].items():
 
-                self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                 if (type(value) == bool or type(value) == int or type(value) == str):
                     setattr(self.objects[py_table_name][recid], column_name, value)
                     setattr(self.objects[py_table_name][recid], column_name, value)
                     self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                    self.objects[py_table_name][recid].__touched_annotations__.append(column_name) 
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
                 else:
                     setattr(self.objects[py_table_name][recid], column_name, '')
                     self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                    self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
