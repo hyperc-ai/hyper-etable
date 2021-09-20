@@ -318,7 +318,7 @@ class ETable:
     def get_new_table(self, table_name, sheet):
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
-        ThisTable.__touched_annotations__ = set()
+        ThisTable.__touched_annotations__ = list()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[f'{table_name}_Class'] = ThisTable
         self.classes[table_name] = ThisTable
@@ -406,8 +406,8 @@ class ETable:
             init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
-            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
-            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  list()))')
+            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.append(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
             c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
             init_f_code.append(c+'{self.__recid__}", self))')
             full_f_code = '\n    '.join(init_f_code)
@@ -493,7 +493,7 @@ class ETable:
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = set()
+            ThisTable.__touched_annotations__ = list()
             ThisTable.__annotations_type_set__ = defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
@@ -510,7 +510,7 @@ class ETable:
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
+                rec_obj.__touched_annotations__ = list()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -542,7 +542,7 @@ class ETable:
                     if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
 
-                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                    self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
 
                     if xl_orig_calculated_value in ['#NAME?', '#VALUE!']:
                         raise Exception(f"We don't support table with error cell {cell}")
@@ -550,11 +550,11 @@ class ETable:
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
+                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name) 
                     else:
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
                 if is_header:
                     is_header = False
                     continue
@@ -563,7 +563,7 @@ class ETable:
                     if not hasattr(rec_obj, column_name):
                         setattr(self.objects[py_table_name][recid], column_name, '')
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                        self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                        self.objects[py_table_name][recid].__touched_annotations__.append(column_name)
 
         self.load_external_classes(external_classes_filename)
         for py_table in self.mod.HCT_OBJECTS.values():
@@ -613,8 +613,8 @@ class ETable:
             init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
-            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
-            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  list()))')
+            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.append(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
             c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
             init_f_code.append(c+'{self.__recid__}", self))')
             full_f_code = '\n    '.join(init_f_code)
@@ -714,7 +714,7 @@ class ETable:
                         continue
                     if ann == 'addidx':
                         continue
-                    obj.__touched_annotations__.add(ann)
+                    obj.__touched_annotations__.append(ann)
 
     def reset_data(self):
         for table in self.mod.HCT_OBJECTS.values():
@@ -1121,7 +1121,7 @@ class ETable:
                         rec_obj = ThisTable()
                         # rec_obj.__row_record__ = copy.copy(cell)
                         rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                        rec_obj.__touched_annotations__ = set()
+                        rec_obj.__touched_annotations__ = list()
                         # ThisTable.__annotations_type_set__ = defaultdict(set)
                         self.objects[py_table_name][recid] = rec_obj
                         self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
@@ -1136,7 +1136,7 @@ class ETable:
                                 setattr(self.mod.DEFINED_TABLES, dtn, set())
                             getattr(self.mod.DEFINED_TABLES, dtn).add(self.objects[py_table_name][recid])
 
-                    self.objects[py_table_name][recid].__touched_annotations__.add(letter)
+                    self.objects[py_table_name][recid].__touched_annotations__.append(letter)
                     self.objects[py_table_name][recid].__annotations__[(f'{letter}_not_hasattr')] = bool
                     #TODO add type detector
                     # self.classes[py_table_name].__annotations__[letter] = int
