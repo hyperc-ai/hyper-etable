@@ -2,6 +2,45 @@ import hyper_etable.etable
 import pathlib
 import shutil
 import os
+from typing import List
+
+def run_gui(files:List):
+    """files is list of triples (path, protocol)"""
+    
+    assert len(files) > 0 , "must have at least one file"
+
+    #detect header
+    et = hyper_etable.etable.ETable(project_name = "run_gui")
+    for conn_args in [files]:
+        path, proto = conn_args
+        conn = hyper_etable.connector.new_connector(path, proto, et.mod)
+        raw_table = conn.get_raw_table()
+        for table in raw_table.values():
+            assert 1 in table, "table must have Header"
+
+
+    if len(files)==1:
+        path, proto = files[0]
+        print("run ", path, proto)
+    if len(files)>1:
+        et = hyper_etable.etable.ETable(project_name = "run_gui")
+        for conn_args in [files[0], files[-1]]:
+            path, proto = conn_args
+            if proto.lower() == 'msapi':
+                conn = hyper_etable.connector.MSAPIConnector(path, et.mod, has_header=True)
+            elif proto.lower() == 'gsheet':
+                conn = hyper_etable.connector.GSheetConnector(path, et.mod, has_header=True)
+            elif proto.lower() == 'xlsx':
+                conn = hyper_etable.connector.XLSXConnector(path, et.mod, has_header=True)
+            elif proto.lower() == 'airtable':
+                conn = hyper_etable.connector.AirtableConnector(path, et.mod, has_header=True)
+            if conn is None:
+                raise ValueError(f'{proto} is not support')
+        
+            
+        
+
+
 
 def run(
   input_xlsx_filename:     str,
