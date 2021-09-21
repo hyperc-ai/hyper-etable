@@ -26,6 +26,16 @@ class Connector:
         self.HCT_OBJECTS = {}
         self.mod = mod
 
+    def get_as_cell_table(self):
+        tables = {}
+        for table_name, table in self.HCT_OBJECTS.items():
+            if self.classes[table_name].__connector__ is not self:
+                continue
+            tables[table_name] = {}
+            for row in table:
+                for column_name in row.__touched_annotations__:
+                     tables[table_name][column_name] = getattr(row, column_name)
+        return tables
 
 class XLSXConnector(Connector):
  
