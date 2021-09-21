@@ -111,15 +111,15 @@ class XLSXConnector(Connector):
 
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
-                    if xl_orig_calculated_value is None:
-                        continue
+
                     letter = _cell.column_letter
                     if is_header:
-                        # if xl_orig_calculated_value is None:
-                        #     continue
+                        assert xl_orig_calculated_value is not None, "first row can't have empty cell'"
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
                         header_name_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = xl_orig_calculated_value
+                        continue
+                    elif xl_orig_calculated_value is None:
                         continue
                     if self.has_header:
                         column_name = header_map.get(letter, None)
