@@ -30,3 +30,23 @@ def letter_index_next(letter=''):
     else:
         return letter_index_next(letter[:-1]) + 'A'
 
+class OrderedSet:
+    def __init__(self):
+        self.__index = 0
+        self.orderedSet = {}
+
+    def add(self, value):
+        self.orderedSet[value] = None
+
+    def __iter__(self):
+        self.__index = 0
+        return self
+
+    def __next__(self):
+        if self.__index >= len(self.orderedSet):
+            raise StopIteration
+
+        # return the next
+        ret = list(self.orderedSet.keys())[self.__index]
+        self.__index += 1
+        return ret

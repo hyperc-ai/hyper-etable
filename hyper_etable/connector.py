@@ -2,7 +2,7 @@ import hyperc.xtj
 import openpyxl
 import hyper_etable.meta_table
 import hyper_etable.ms_api
-import hyperc.utils
+import hyperc.util
 import collections
 import io
 import googleapiclient.discovery
@@ -14,6 +14,7 @@ from google.oauth2.credentials import Credentials
 import openpyxl
 import pathlib
 import requests
+from hyper_etable.util import OrderedSet
 
 class Connector:
     def __init__(self, path, mod, has_header=True):
@@ -54,7 +55,7 @@ class XLSXConnector(Connector):
             ThisTable.__header_name_map__ = header_name_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = set()
+            ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             ThisTable.__connector__ = self
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -75,7 +76,7 @@ class XLSXConnector(Connector):
                     rec_obj.__header_name_map__ = header_name_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{self.path}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
+                rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -353,7 +354,7 @@ class MSAPIConnector(Connector):
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = set()
+            ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             ThisTable.__connector__ = self
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -372,7 +373,7 @@ class MSAPIConnector(Connector):
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
+                rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -445,7 +446,7 @@ class AirtableConnector(Connector):
         ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
         ThisTable.__user_defined_annotations__ = []
         ThisTable.__default_init__ = {}
-        ThisTable.__touched_annotations__ = set()
+        ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = collections.defaultdict(set)
         ThisTable.__connector__ = self
         self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
@@ -463,7 +464,7 @@ class AirtableConnector(Connector):
             rec_obj.addidx = -1
             rec_obj.__recid__ = recid
             rec_obj.__table_name__ += f'[{BASE_ID}]{TABLE}_{recid}'
-            rec_obj.__touched_annotations__ = set()
+            rec_obj.__touched_annotations__ = OrderedSet()
             rec_obj.__xl_sheet_name__ = TABLE
             self.objects[py_table_name][recid] = rec_obj
             self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)

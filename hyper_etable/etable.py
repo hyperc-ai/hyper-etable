@@ -1,4 +1,5 @@
 from collections import defaultdict
+from hyper_etable.util  import OrderedSet
 from os import mkdir
 import string
 import ast
@@ -318,7 +319,7 @@ class ETable:
     def get_new_table(self, table_name, sheet):
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
-        ThisTable.__touched_annotations__ = set()
+        ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[f'{table_name}_Class'] = ThisTable
         self.classes[table_name] = ThisTable
@@ -406,7 +407,7 @@ class ETable:
             init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
-            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  OrderedSet()))')
             init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
             c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
             init_f_code.append(c+'{self.__recid__}", self))')
@@ -493,7 +494,7 @@ class ETable:
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = set()
+            ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
@@ -510,7 +511,7 @@ class ETable:
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
+                rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
