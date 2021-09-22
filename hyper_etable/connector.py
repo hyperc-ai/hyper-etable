@@ -16,15 +16,15 @@ import pathlib
 import requests
 from hyper_etable.util import OrderedSet
 
-def new_connector(path, proto, mod):
+def new_connector(path, proto, mod, has_header=True):
     if proto.lower() == 'msapi':
-        conn = hyper_etable.connector.MSAPIConnector(path, mod)
+        conn = hyper_etable.connector.MSAPIConnector(path, mod, has_header)
     elif proto.lower() == 'gsheet':
-        conn = hyper_etable.connector.GSheetConnector(path, mod)
+        conn = hyper_etable.connector.GSheetConnector(path, mod, has_header)
     elif proto.lower() == 'xlsx':
-        conn = hyper_etable.connector.XLSXConnector(path, mod)
+        conn = hyper_etable.connector.XLSXConnector(path, mod, has_header)
     elif proto.lower() == 'airtable':
-        conn = hyper_etable.connector.AirtableConnector(path, emod)
+        conn = hyper_etable.connector.AirtableConnector(path, mod, has_header)
     if conn is None:
         raise ValueError(f'{proto} is not support')
     return conn
@@ -49,6 +49,17 @@ class Connector:
                 for column_name in row.__touched_annotations__:
                      tables[table_name][row.__recid__][column_name] = getattr(row, column_name)
         return tables
+    
+    def calculate_columns(self):
+        tables = {}
+        for table_name in self.HCT_OBJECTS.keys():
+            if self.classes[table_name].__connector__ is not self:
+                continue
+            tables[table_name] = self.classes[table_name].__header_back_map__
+
+        return tables
+
+
 
 class XLSXConnector(Connector):
  

@@ -9,38 +9,36 @@ def run_gui(files:List):
     
     assert len(files) > 0 , "must have at least one file"
 
-    #detect header
-    et = hyper_etable.etable.ETable(project_name = "run_gui")
-    for conn_args in [files]:
-        path, proto = conn_args
-        conn = hyper_etable.connector.new_connector(path, proto, et.mod)
-        raw_table = conn.get_raw_table()
-        for table in raw_table.values():
-            assert 1 in table, "table must have Header"
-
+    #header detect 
 
     if len(files)==1:
         path, proto = files[0]
         print("run ", path, proto)
+        et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
+        et.open_from(path=path, has_header=True, proto=proto, addition_python_files=[])
+        et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
+        et.save_all()
+        return
+    conns = list()
     if len(files)>1:
         et = hyper_etable.etable.ETable(project_name = "run_gui")
         for conn_args in [files[0], files[-1]]:
             path, proto = conn_args
-            if proto.lower() == 'msapi':
-                conn = hyper_etable.connector.MSAPIConnector(path, et.mod, has_header=True)
-            elif proto.lower() == 'gsheet':
-                conn = hyper_etable.connector.GSheetConnector(path, et.mod, has_header=True)
-            elif proto.lower() == 'xlsx':
-                conn = hyper_etable.connector.XLSXConnector(path, et.mod, has_header=True)
-            elif proto.lower() == 'airtable':
-                conn = hyper_etable.connector.AirtableConnector(path, et.mod, has_header=True)
-            if conn is None:
-                raise ValueError(f'{proto} is not support')
-        
-            
-        
+            conn = hyper_etable.connector.new_connector(path=path, mod=et.mod, has_header=True)
+            conn.load()
+            conns.append(conn.calculate_columns())
+        for table_name in conns[0].keys():
+            if table_name in conns[1]:
+                assert list(conns[0][table_name]) == list(conns[1][table_name])
 
 
+        et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
+        et.open_from(path=files[0][0], has_header=True, proto=files[0][1], addition_python_files=[])
+        output_conn = hyper_etable.connector.new_connector(mod=et.mod, path=files[-1][0], has_header=True, proto=files[-1][1])
+        et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
+        output_conn.save_all()
 
 def run(
   input_xlsx_filename:     str,
