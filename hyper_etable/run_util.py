@@ -16,27 +16,27 @@ def run_gui(files:List):
         print("run ", path, proto)
         et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
         et.open_from(path=path, has_header=True, proto=proto, addition_python_files=[])
-        et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        # et.solver_call_plan_n_exec() # solve with execution in pddl.py
         # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
         et.save_all()
         return
     conns = list()
     if len(files)>1:
-        et = hyper_etable.etable.ETable(project_name = "run_gui")
         for conn_args in [files[0], files[-1]]:
             path, proto = conn_args
-            conn = hyper_etable.connector.new_connector(path=path, mod=et.mod, has_header=True)
+            et = hyper_etable.etable.ETable(project_name = "run_gui")
+            conn = hyper_etable.connector.new_connector(path=path, mod=et.mod,proto=proto, has_header=True)
             conn.load()
             conns.append(conn.calculate_columns())
         for table_name in conns[0].keys():
             if table_name in conns[1]:
-                assert list(conns[0][table_name]) == list(conns[1][table_name])
+                assert list(conns[0][table_name]) == list(conns[1][table_name]), "tables is not compatible"
 
 
         et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
         et.open_from(path=files[0][0], has_header=True, proto=files[0][1], addition_python_files=[])
         output_conn = hyper_etable.connector.new_connector(mod=et.mod, path=files[-1][0], has_header=True, proto=files[-1][1])
-        et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        # et.solver_call_plan_n_exec() # solve with execution in pddl.py
         # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
         output_conn.save_all()
 
