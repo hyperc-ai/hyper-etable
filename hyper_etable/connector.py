@@ -80,7 +80,7 @@ class Connector:
         self.load_raw()
         table_name_set = set(list(self.raw_tables.keys())) - tables_was
         for table_name in table_name_set:
-            self.load_table(self, table_name)
+            self.load_table(table_name)
 
     def load_table(self, table_name):
 
@@ -524,12 +524,8 @@ class MySQLConnector(Connector):
     def load_raw(self):
         import mysql.connector
         user, password, host, database, tables = self.path
+        cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
         for table in tables:
-        # from mysql.connector import errorcode
-
-
-        # try:
-            cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
             cursor = cnx.cursor()
 
             query = (f"SELECT * FROM {table} ")
@@ -548,15 +544,7 @@ class MySQLConnector(Connector):
                         self.raw_tables[table][recid][column] = row[column_num]
 
             cursor.close()
-            # except mysql.connector.Error as err:
-            #     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            #         print("Something is wrong with your user name or password")
-            #     elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            #         print("Database does not exist")
-            #     else:
-            #         print(err)
-
-            cnx.close()
+        cnx.close()
 
 
 class AirtableConnector(Connector):
