@@ -26,14 +26,25 @@ def new_connector(path, proto, mod, has_header=True):
         conn = hyper_etable.connector.XLSXConnector(path, mod, has_header)
     elif proto.lower() == 'airtable':
         conn = hyper_etable.connector.AirtableConnector(path, mod, has_header)
+    elif proto.lower() == 'mysql':
+        conn = hyper_etable.connector.MySQLConnector(path, mod, has_header)
     if conn is None:
         raise ValueError(f'{proto} is not support')
     return conn
+
+class NameMap:
+    name: str
+    hidden_name: str
+    def __init__(self, name, hidden_name):
+        self.column_name = name
+        self.hidden_name = hidden_name
+
 class Connector:
     def __init__(self, path, mod, has_header=True):
         self.path = path
         self.has_header = has_header
         self.tables = {}
+        self.raw_tables = {}
         self.objects = {}
         self.classes = {}
         self.HCT_OBJECTS = {}
@@ -59,7 +70,67 @@ class Connector:
             tables[table_name] = self.classes[table_name].__header_back_map__
 
         return tables
+        
+    def reload(self):
+        self.raw_tables = {}
+        self.load()
 
+    def load(self):
+        tables_was = set(list(self.raw_tables.keys()))
+        self.load_raw()
+        table_name_set = set(list(self.raw_tables.keys())) - tables_was
+        for table_name in table_name_set:
+            self.load_table(self, table_name)
+
+    def load_table(self, table_name):
+
+        py_table_name = hyperc.xtj.str_to_py(f'{table_name}') # warning only sheet in 
+        if py_table_name in self.mod.HCT_OBJECTS:
+            raise ValueError(f'Error sheet {table_name} already exist')
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': table_name})
+        ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
+        ThisTable.__user_defined_annotations__ = []
+        ThisTable.__default_init__ = {}
+        ThisTable.__touched_annotations__ = OrderedSet()
+        ThisTable.__annotations_type_set__ = collections.defaultdict(set)
+        ThisTable.__connector__ = self
+        self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+        self.classes[py_table_name] = ThisTable
+        self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
+        self.mod.HCT_OBJECTS[py_table_name] = []
+        self.objects[py_table_name]={}
+        ThisTable.__recid_max__ = 0
+        recid = 0
+        for recid, row in self.raw_tables[table_name].items():
+            if ThisTable.__recid_max__ < recid:
+                ThisTable.__recid_max__ = recid
+            rec_obj = ThisTable()
+            rec_obj.addidx = -1
+            rec_obj.__recid__ = recid
+            rec_obj.__table_name__ += f'[mysql]{table_name}_{recid}'
+            rec_obj.__touched_annotations__ = OrderedSet()
+            rec_obj.__xl_sheet_name__ = table_name
+            self.objects[py_table_name][recid] = rec_obj
+            self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
+            sheet_name = hyperc.xtj.str_to_py(f"{table_name}") + f'_{recid}'
+            if not hasattr(self.mod.DATA, sheet_name):
+                setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
+                self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
+            
+            rec_obj.__py_sheet_name__ = sheet_name
+
+            for column_name, value in self.raw_tables[table_name][recid].items():
+
+                self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                if (type(value) == bool or type(value) == int or type(value) == str):
+                    setattr(self.objects[py_table_name][recid], column_name, value)
+                    setattr(self.objects[py_table_name][recid], column_name, value)
+                    self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
+                else:
+                    setattr(self.objects[py_table_name][recid], column_name, '')
+                    self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
+                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
 
 class XLSXConnector(Connector):
@@ -448,6 +519,45 @@ class MSAPIConnector(Connector):
 
     def __str__(self):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
+
+class MySQLConnector(Connector):
+    def load_raw(self):
+        import mysql.connector
+        user, password, host, database, tables = self.path
+        for table in tables:
+        # from mysql.connector import errorcode
+
+
+        # try:
+            cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
+            cursor = cnx.cursor()
+
+            query = (f"SELECT * FROM {table} ")
+
+            cursor.execute(query)
+            
+            self.raw_tables[table] = {}
+            for row in cursor:
+                recid = row[0]
+                assert type(recid) is int, "First column should be integer for reqid"
+                self.raw_tables[table][recid]={}
+                for column_num, column in enumerate(cursor.column_names[1:]):
+                    if type(row[column_num]) == bytes :
+                        self.raw_tables[table][recid][column] = row[column_num].decode("utf-8") 
+                    else:
+                        self.raw_tables[table][recid][column] = row[column_num]
+
+            cursor.close()
+            # except mysql.connector.Error as err:
+            #     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            #         print("Something is wrong with your user name or password")
+            #     elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            #         print("Database does not exist")
+            #     else:
+            #         print(err)
+
+            cnx.close()
+
 
 class AirtableConnector(Connector):
     def load(self):
