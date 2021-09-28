@@ -53,14 +53,22 @@ class Connector:
     def get_raw_table(self):
         tables = {}
         for table_name, table in self.HCT_OBJECTS.items():
-            if self.classes[table_name].__connector__ is not self:
-                continue
+            if self.classes[table_name].__connector__ is self:
+                tables[table_name] = {}
+                for row in table:
+                    tables[table_name][row.__recid__] = {}
+                    for column_name in row.__touched_annotations__:
+                        tables[table_name][row.__recid__][column_name] = getattr(row, column_name)
+        return tables
+
+    def get_all_raw_table(self):
+        tables = {}
+        for table_name, table in self.HCT_OBJECTS.items():
             tables[table_name] = {}
             for row in table:
                 tables[table_name][row.__recid__] = {}
                 for column_name in row.__touched_annotations__:
-                     tables[table_name][row.__recid__][column_name] = getattr(row, column_name)
-        return tables
+                    tables[table_name][row.__recid__][column_name] = getattr(row, column_name)
     
     def calculate_columns(self):
         tables = {}
@@ -77,7 +85,8 @@ class Connector:
 
     def load(self):
         tables_was = set(list(self.raw_tables.keys()))
-        self.load_raw()
+        raw_tables = self.load_raw()
+        self.raw_tables.update(raw_tables)
         table_name_set = set(list(self.raw_tables.keys())) - tables_was
         for table_name in table_name_set:
             self.load_table(table_name)
@@ -131,6 +140,21 @@ class Connector:
                     setattr(self.objects[py_table_name][recid], column_name, '')
                     self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                     self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+    def save(self):
+        raw_tables_to_save = self.get_raw_table()
+        raw_tables_in_base = self.load_raw()
+        raw_tables_to_update = collections.defaultdict(dict)
+        raw_tables_to_append = collections.defaultdict(dict)
+        for table_name, table in raw_tables_to_save.items():
+            if table_name in raw_tables_in_base: # save tables available in table
+                for recid in sorted(table.keys()):
+                    if recid in raw_tables_in_base[table_name]:
+                        if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
+                            raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
+                    else:
+                        raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
+        self.raw_append(raw_tables_to_append)
+        self.raw_update(raw_tables_to_update)
 
 
 class XLSXConnector(Connector):
@@ -522,28 +546,69 @@ class MSAPIConnector(Connector):
 
 class MySQLConnector(Connector):
     def load_raw(self):
+        raw_tables = {}
         import mysql.connector
         user, password, host, database, tables = self.path
         cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
         for table in tables:
             cursor = cnx.cursor()
 
-            query = (f"SELECT * FROM {table} ")
+            query = f"SELECT * FROM {table} "
 
             cursor.execute(query)
             
-            self.raw_tables[table] = {}
+            raw_tables[table] = {}
             for row in cursor:
                 recid = row[0]
                 assert type(recid) is int, "First column should be integer for reqid"
-                self.raw_tables[table][recid]={}
+                raw_tables[table][recid]={}
                 for column_num, column in enumerate(cursor.column_names[1:]):
                     if type(row[column_num]) == bytes :
-                        self.raw_tables[table][recid][column] = row[column_num].decode("utf-8") 
+                        raw_tables[table][recid][column] = row[column_num].decode("utf-8") 
                     else:
-                        self.raw_tables[table][recid][column] = row[column_num]
+                        raw_tables[table][recid][column] = row[column_num]
 
             cursor.close()
+        cnx.close()
+        return raw_tables
+
+    def raw_update(self, tables):
+        import mysql.connector
+        user, password, host, database, _ = self.path
+        cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
+        cursor = cnx.cursor()
+        for table in tables:
+            if len(tables[table]) == 0 :
+                continue
+            query = (f"DESCRIBE {table} ")
+            cursor.execute(query)
+            recid_column_name = list(cursor)[0][0]
+            query = []
+            for recid, row in tables[table].items():
+                set_column = ", ".join([f'{col} = "{val}"' for col, val in row.items()])
+                query.append(f"UPDATE {table} SET {set_column} WHERE {recid_column_name} = {recid};")
+            cursor.execute(query)
+        cursor.close()
+        cnx.close()
+
+    def raw_append(self, tables):
+        import mysql.connector
+        user, password, host, database, _ = self.path
+        cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
+        cursor = cnx.cursor()
+        for table in tables:
+            if len(tables[table]) == 0 :
+                continue
+            query = (f"DESCRIBE {table} ")
+            cursor.execute(query)
+            recid_column_name = list(cursor)[0][0]
+            query = []
+            for recid, row in tables[table].items():
+                val = ", ".join([f'{"val"}' for col, val in row.items()])
+                col_name = ", ".join([f'{col}' for col, val in row.items()])
+                query.append(f"INSERT INTO {table} SET {recid_column_name}, {col_name} VALUES ({recid}, {val});")
+            cursor.execute(query)
+        cursor.close()
         cnx.close()
 
 
