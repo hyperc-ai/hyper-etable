@@ -28,6 +28,8 @@ def new_connector(path, proto, mod, has_header=True):
         conn = hyper_etable.connector.AirtableConnector(path, mod, has_header)
     elif proto.lower() == 'mysql':
         conn = hyper_etable.connector.MySQLConnector(path, mod, has_header)
+    elif proto.lower() == 'dal':
+        conn = hyper_etable.connector.DALConnector(path, mod, has_header)
     if conn is None:
         raise ValueError(f'{proto} is not support')
     return conn
@@ -543,6 +545,34 @@ class MSAPIConnector(Connector):
 
     def __str__(self):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
+
+class DALConnector(Connector):
+    def load_raw(self):
+        raw_tables = {}
+        import mysql.connector
+        user, password, host, database, tables = self.path
+        cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
+        for table in tables:
+            cursor = cnx.cursor()
+
+            query = f"SELECT * FROM {table} "
+
+            cursor.execute(query)
+            
+            raw_tables[table] = {}
+            for row in cursor:
+                recid = row[0]
+                assert type(recid) is int, "First column should be integer for reqid"
+                raw_tables[table][recid]={}
+                for column_num, column in enumerate(cursor.column_names[1:]):
+                    if type(row[column_num]) == bytes :
+                        raw_tables[table][recid][column] = row[column_num].decode("utf-8") 
+                    else:
+                        raw_tables[table][recid][column] = row[column_num]
+
+            cursor.close()
+        cnx.close()
+        return raw_tables
 
 class MySQLConnector(Connector):
     def load_raw(self):
