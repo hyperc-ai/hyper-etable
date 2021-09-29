@@ -49,23 +49,21 @@ class Connector:
         self.raw_tables = {}
         self.objects = {}
         self.classes = {}
-        self.HCT_OBJECTS = {}
         self.mod = mod
 
     def get_raw_table(self):
-        tables = {}
-        for table_name, table in self.HCT_OBJECTS.items():
+        tables = collections.defaultdict(dict)
+        for table_name, table in self.mod.HCT_OBJECTS.items():
             if self.classes[table_name].__connector__ is self:
-                tables[table_name] = {}
                 for row in table:
-                    tables[table_name][row.__recid__] = {}
+                    tables[row.__xl_sheet_name__][row.__recid__] = {}
                     for column_name in row.__touched_annotations__:
-                        tables[table_name][row.__recid__][column_name] = getattr(row, column_name)
-        return tables
+                        tables[row.__xl_sheet_name__][row.__recid__][column_name] = getattr(row, column_name)
+        return dict(tables)
 
     def get_all_raw_table(self):
         tables = {}
-        for table_name, table in self.HCT_OBJECTS.items():
+        for table_name, table in self.mod.HCT_OBJECTS.items():
             tables[table_name] = {}
             for row in table:
                 tables[table_name][row.__recid__] = {}
@@ -592,7 +590,9 @@ class MySQLConnector(Connector):
                 recid = row[0]
                 assert type(recid) is int, "First column should be integer for reqid"
                 raw_tables[table][recid]={}
-                for column_num, column in enumerate(cursor.column_names[1:]):
+                for column_num, column in enumerate(cursor.column_names):
+                    if column_num == 0:
+                        continue
                     if type(row[column_num]) == bytes :
                         raw_tables[table][recid][column] = row[column_num].decode("utf-8") 
                     else:
@@ -616,10 +616,13 @@ class MySQLConnector(Connector):
             query = []
             for recid, row in tables[table].items():
                 set_column = ", ".join([f'{col} = "{val}"' for col, val in row.items()])
-                query.append(f"UPDATE {table} SET {set_column} WHERE {recid_column_name} = {recid};")
-            cursor.execute(query)
+                query = f'UPDATE {table} SET {set_column} WHERE {recid_column_name} = "{recid}"'
+                cursor.execute((query))
+        cnx.commit()
         cursor.close()
         cnx.close()
+        print("ok")
+
 
     def raw_append(self, tables):
         import mysql.connector
@@ -634,10 +637,11 @@ class MySQLConnector(Connector):
             recid_column_name = list(cursor)[0][0]
             query = []
             for recid, row in tables[table].items():
-                val = ", ".join([f'{"val"}' for col, val in row.items()])
+                val = ", ".join([f'"{val}"' for col, val in row.items()])
                 col_name = ", ".join([f'{col}' for col, val in row.items()])
-                query.append(f"INSERT INTO {table} SET {recid_column_name}, {col_name} VALUES ({recid}, {val});")
-            cursor.execute(query)
+                query = f"INSERT INTO {table}({recid_column_name}, {col_name}) VALUES ({recid}, {val})"
+                cursor.execute(query)
+        cnx.commit()
         cursor.close()
         cnx.close()
 
