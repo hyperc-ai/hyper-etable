@@ -28,8 +28,8 @@ def new_connector(path, proto, mod, has_header=True):
         conn = hyper_etable.connector.AirtableConnector(path, mod, has_header)
     elif proto.lower() == 'mysql':
         conn = hyper_etable.connector.MySQLConnector(path, mod, has_header)
-    elif proto.lower() == 'dal':
-        conn = hyper_etable.connector.DALConnector(path, mod, has_header)
+    elif proto.lower() == 'sqlalchemy':
+        conn = hyper_etable.connector.SQLAlchemyConnector(path, mod, has_header)
     if conn is None:
         raise ValueError(f'{proto} is not support')
     return conn
@@ -132,7 +132,6 @@ class Connector:
 
                 self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                 if (type(value) == bool or type(value) == int or type(value) == str):
-                    setattr(self.objects[py_table_name][recid], column_name, value)
                     setattr(self.objects[py_table_name][recid], column_name, value)
                     self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                     self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
@@ -544,32 +543,30 @@ class MSAPIConnector(Connector):
     def __str__(self):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
 
-class DALConnector(Connector):
+class SQLAlchemyConnector(Connector):
     def load_raw(self):
         raw_tables = {}
-        import mysql.connector
-        user, password, host, database, tables = self.path
-        cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
-        for table in tables:
-            cursor = cnx.cursor()
+        path, tables = self.path
+        import sqlalchemy
+        engine = sqlalchemy.create_engine("mysql+pymysql://phpmyadmin:123@localhost/hyperc_db")
+        with engine.connect() as connection:
+            for table in tables:
 
-            query = f"SELECT * FROM {table} "
+                raw_tables[table] = {}
 
-            cursor.execute(query)
-            
-            raw_tables[table] = {}
-            for row in cursor:
-                recid = row[0]
-                assert type(recid) is int, "First column should be integer for reqid"
-                raw_tables[table][recid]={}
-                for column_num, column in enumerate(cursor.column_names[1:]):
-                    if type(row[column_num]) == bytes :
-                        raw_tables[table][recid][column] = row[column_num].decode("utf-8") 
-                    else:
-                        raw_tables[table][recid][column] = row[column_num]
+                result = connection.execute(sqlalchemy.text(f"select * from {table}"))
+                for row in result:
+                    recid = row[0]
+                    assert type(recid) is int, "First column should be integer for reqid"
+                    raw_tables[table][recid]={}
+                    for column_num, column in enumerate(row):
+                        if column_num == 0:
+                            continue
+                        if type(row[column_num]) == bytes :
+                            raw_tables[table][recid][row._fields[column_num]] = row[column_num].decode("utf-8") 
+                        else:
+                            raw_tables[table][recid][row._fields[column_num]] = row[column_num]
 
-            cursor.close()
-        cnx.close()
         return raw_tables
 
 class MySQLConnector(Connector):
