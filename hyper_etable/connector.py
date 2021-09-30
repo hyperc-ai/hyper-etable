@@ -152,8 +152,8 @@ class Connector:
                             raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
                     else:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
-        self.raw_append(raw_tables_to_append)
         self.raw_update(raw_tables_to_update)
+        self.raw_append(raw_tables_to_append)
 
 
 class XLSXConnector(Connector):
@@ -544,16 +544,15 @@ class MSAPIConnector(Connector):
         return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
 
 class SQLAlchemyConnector(Connector):
+
     def load_raw(self):
         raw_tables = {}
         path, tables = self.path
         import sqlalchemy
-        engine = sqlalchemy.create_engine("mysql+pymysql://phpmyadmin:123@localhost/hyperc_db")
+        engine = sqlalchemy.create_engine(path)
         with engine.connect() as connection:
             for table in tables:
-
                 raw_tables[table] = {}
-
                 result = connection.execute(sqlalchemy.text(f"select * from {table}"))
                 for row in result:
                     recid = row[0]
@@ -566,8 +565,26 @@ class SQLAlchemyConnector(Connector):
                             raw_tables[table][recid][row._fields[column_num]] = row[column_num].decode("utf-8") 
                         else:
                             raw_tables[table][recid][row._fields[column_num]] = row[column_num]
-
         return raw_tables
+
+    def raw_update(self, tables):
+        path, _ = self.path
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(path)
+
+        with engine.connect() as connection:
+            inspector = sqlalchemy.inspect(connection)
+            inspector.get_table_names() #returns "dow"
+            for table in tables:
+                if len(tables[table]) == 0 :
+                    continue
+                columns = inspector.get_columns(table)
+                recid_column_name = list(columns)[0]['name']
+                for recid, row in tables[table].items():
+                    set_column = ", ".join([f'{col} = "{val}"' for col, val in row.items()])
+                    query = f'UPDATE {table} SET {set_column} WHERE {recid_column_name} = "{recid}"'
+                    connection.execute((query))
+
 
 class MySQLConnector(Connector):
     def load_raw(self):
@@ -618,7 +635,6 @@ class MySQLConnector(Connector):
         cnx.commit()
         cursor.close()
         cnx.close()
-        print("ok")
 
 
     def raw_append(self, tables):
