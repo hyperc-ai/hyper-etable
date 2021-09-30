@@ -585,6 +585,24 @@ class SQLAlchemyConnector(Connector):
                     query = f'UPDATE {table} SET {set_column} WHERE {recid_column_name} = "{recid}"'
                     connection.execute((query))
 
+    def raw_append(self, tables):
+        path, _ = self.path
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(path)
+
+        with engine.connect() as connection:
+            inspector = sqlalchemy.inspect(connection)
+            inspector.get_table_names() #returns "dow"
+            for table in tables:
+                if len(tables[table]) == 0 :
+                    continue
+                columns = inspector.get_columns(table)
+                recid_column_name = list(columns)[0]['name']
+                for recid, row in tables[table].items():
+                    val = ", ".join([f'"{val}"' for _, val in row.items()])
+                    col_name = ", ".join([f'{col}' for col, _ in row.items()])
+                    query = f"INSERT INTO {table}({recid_column_name}, {col_name}) VALUES ({recid}, {val})"
+                    connection.execute((query))
 
 class MySQLConnector(Connector):
     def load_raw(self):
