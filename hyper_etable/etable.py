@@ -344,21 +344,11 @@ class ETable:
         self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
         self.main_goal.operators[self.main_goal.name].append('pass')
         goal_code_source['main_goal'] = self.main_goal
-        conn = None
-        if proto.lower() == 'msapi':
-            conn = hyper_etable.connector.MSAPIConnector(path, self.mod, has_header=has_header)
-        elif proto.lower() == 'gsheet':
-            conn = hyper_etable.connector.GSheetConnector(path, self.mod, has_header=has_header)
-        elif proto.lower() == 'xlsx':
-            conn = hyper_etable.connector.XLSXConnector(path, self.mod, has_header=has_header)
-        elif proto.lower() == 'airtable':
-            conn = hyper_etable.connector.AirtableConnector(path, self.mod, has_header=has_header)
-        if conn is None:
-            raise ValueError(f'{proto} is not support')
+        conn = hyper_etable.connector.new_connector(path, proto, self.mod, has_header=has_header)
         self.connectors.append(conn)
         conn.load()
         self.objects.update(conn.objects)
-
+        self.classes.update(conn.classes)
         self.load_external_classes(external_classes_filename)
         for py_table in self.mod.HCT_OBJECTS.values():
             for row in py_table:
@@ -755,13 +745,11 @@ class ETable:
 
     def dump_py(self, dir=None, out_filename=None):
         """"Dump classes as python code"""
-        if dir is None:
-            dir =  self.filename.parent
-        try:
-            os.mkdir(dir)
-        except FileExistsError:
-            pass 
-        
+
+        assert dir is not None or out_filename is not None, "All output is empty"
+        if out_filename is not None:
+            out_filename = pathlib.Path(out_filename)
+            out_filename.parent.mkdir(parents=True, exist_ok=True)
         # dump classes as python code
         for c in itertools.chain([hyper_etable.meta_table.TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__'], default_comment=hyper_etable.pysourcebuilder.DEFAULT_COMMENT).end())

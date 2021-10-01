@@ -58,17 +58,22 @@ class Connector:
                 for row in table:
                     tables[row.__xl_sheet_name__][row.__recid__] = {}
                     for column_name in row.__touched_annotations__:
-                        tables[row.__xl_sheet_name__][row.__recid__][column_name] = getattr(row, column_name)
+                        if hasattr(row.__class__, '__column_to_py_map__'):
+                            tables[row.__xl_sheet_name__][row.__recid__][row.__class__.__column_to_py_map__[column_name]] = getattr(row, column_name)
+                        else:
+                            tables[row.__xl_sheet_name__][row.__recid__][column_name] = getattr(row, column_name)
         return dict(tables)
 
     def get_all_raw_table(self):
-        tables = {}
+        tables = collections.defaultdict(dict)
         for table_name, table in self.mod.HCT_OBJECTS.items():
-            tables[table_name] = {}
             for row in table:
-                tables[table_name][row.__recid__] = {}
+                tables[row.__xl_sheet_name__][row.__recid__] = {}
                 for column_name in row.__touched_annotations__:
-                    tables[table_name][row.__recid__][column_name] = getattr(row, column_name)
+                    if hasattr(row.__class__, '__column_to_py_map__'):
+                        tables[row.__xl_sheet_name__][row.__recid__][row.__class__.__column_to_py_map__[column_name]] = getattr(row, column_name)
+                    else:
+                        tables[row.__xl_sheet_name__][row.__recid__][column_name] = getattr(row, column_name)
     
     def calculate_columns(self):
         tables = {}
@@ -103,6 +108,7 @@ class Connector:
         ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = collections.defaultdict(set)
         ThisTable.__connector__ = self
+        ThisTable.__column_to_py_map__ = {}
         self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
         self.classes[py_table_name] = ThisTable
         self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
@@ -129,16 +135,17 @@ class Connector:
             rec_obj.__py_sheet_name__ = sheet_name
 
             for column_name, value in self.raw_tables[table_name][recid].items():
-
-                self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                py_column_name = hyperc.xtj.str_to_py(f'{column_name}')
+                ThisTable.__column_to_py_map__[py_column_name] = column_name
+                self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name)
                 if (type(value) == bool or type(value) == int or type(value) == str):
-                    setattr(self.objects[py_table_name][recid], column_name, value)
-                    self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
+                    setattr(self.objects[py_table_name][recid], py_column_name, value)
+                    self.objects[py_table_name][recid].__class__.__annotations__[py_column_name] = str
+                    self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name) 
                 else:
-                    setattr(self.objects[py_table_name][recid], column_name, '')
-                    self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
-                    self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
+                    setattr(self.objects[py_table_name][recid], py_column_name, '')
+                    self.objects[py_table_name][recid].__class__.__annotations__[py_column_name] = str
+                    self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name)
     def save(self):
         raw_tables_to_save = self.get_raw_table()
         raw_tables_in_base = self.load_raw()
@@ -553,7 +560,7 @@ class SQLAlchemyConnector(Connector):
         with engine.connect() as connection:
             for table in tables:
                 raw_tables[table] = {}
-                result = connection.execute(sqlalchemy.text(f"select * from {table}"))
+                result = connection.execute(sqlalchemy.text(f'select * from "{table}"'))
                 for row in result:
                     recid = row[0]
                     assert type(recid) is int, "First column should be integer for reqid"

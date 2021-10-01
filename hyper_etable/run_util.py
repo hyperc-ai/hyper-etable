@@ -4,9 +4,13 @@ import shutil
 import os
 from typing import List
 
-def run_gui(files:List):
-    """files is list of triples (path, protocol)"""
+def run_gui(task):
+    """files is list of triples (path, protocol)
+        py_files is list of python files
+    """
     
+    py_files, files = task
+
     assert len(files) > 0 , "must have at least one file"
 
     #header detect 
@@ -16,7 +20,7 @@ def run_gui(files:List):
         print("run ", path, proto)
         et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
         et.open_from(path=path, has_header=True, proto=proto, addition_python_files=[])
-        # et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        et.solver_call_plan_n_exec() # solve with execution in pddl.py
         # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
         et.save_all()
         return
@@ -36,7 +40,7 @@ def run_gui(files:List):
         et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
         et.open_from(path=files[0][0], has_header=True, proto=files[0][1], addition_python_files=[])
         output_conn = hyper_etable.connector.new_connector(mod=et.mod, path=files[-1][0], has_header=True, proto=files[-1][1])
-        # et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        et.solver_call_plan_n_exec() # solve with execution in pddl.py
         # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
         output_conn.save_all()
 
