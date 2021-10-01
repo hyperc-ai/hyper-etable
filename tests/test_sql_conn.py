@@ -36,10 +36,13 @@ def test_con_trucks():
     output_xlsx_filename='./tests/trucks_db/trucks_output.xlsx'
     input_db=('sqlite://///home/andrey/sandbox/ch/hyper-etable/tests/trucks_db/trucks.db',('Transport', 'Location Adjacency'))
     output_classes_filename='./tests/trucks_db/trucks_class.py'
+    output_plan_file = './tests/trucks_db/trucks_plan.py'
     et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
     db_connector = et.open_from(path=input_db, has_header=True, proto='sqlalchemy', addition_python_files=[input_py_filename])
     et.dump_py(out_filename=output_classes_filename) # save classes in py file
     et.solver_call_plan_n_exec() # solve with execution in pddl.py
+    et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_file) # save execution plan in py file
+
     db_connector.save()
 
     # save all data to file
