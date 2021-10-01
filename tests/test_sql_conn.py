@@ -43,7 +43,7 @@ def test_con_trucks():
     et.solver_call_plan_n_exec() # solve with execution in pddl.py
     et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_file) # save execution plan in py file
 
-    db_connector.save()
+    # db_connector.save()
 
     # save all data to file
     xlsx_connector = hyper_etable.connector.XLSXConnector(path=output_xlsx_filename, mod=et.mod, has_header=True)

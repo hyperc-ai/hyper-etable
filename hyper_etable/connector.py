@@ -36,10 +36,10 @@ def new_connector(path, proto, mod, has_header=True):
 
 class NameMap:
     name: str
-    hidden_name: str
-    def __init__(self, name, hidden_name):
+    letter: str
+    def __init__(self, name, letter):
         self.column_name = name
-        self.hidden_name = hidden_name
+        self.letter = letter
 
 class Connector:
     def __init__(self, path, mod, has_header=True):
@@ -60,6 +60,8 @@ class Connector:
                     for column_name in row.__touched_annotations__:
                         if hasattr(row.__class__, '__column_to_py_map__'):
                             tables[row.__xl_sheet_name__][row.__recid__][row.__class__.__column_to_py_map__[column_name]] = getattr(row, column_name)
+                        elif hasattr(row.__class__, '__header_back_map__') and self.has_header:
+                            tables[row.__xl_sheet_name__][row.__recid__][row.__header_back_map__[column_name]] = getattr(row, column_name)
                         else:
                             tables[row.__xl_sheet_name__][row.__recid__][column_name] = getattr(row, column_name)
         return dict(tables)
@@ -71,9 +73,14 @@ class Connector:
                 tables[row.__xl_sheet_name__][row.__recid__] = {}
                 for column_name in row.__touched_annotations__:
                     if hasattr(row.__class__, '__column_to_py_map__'):
-                        tables[row.__xl_sheet_name__][row.__recid__][row.__class__.__column_to_py_map__[column_name]] = getattr(row, column_name)
+                        column_name_wrap = NameMap(row.__class__.__column_to_py_map__[column_name], )
+                        tables[row.__xl_sheet_name__][row.__recid__][column_name_wrap] = getattr(row, column_name)
+
+                    elif hasattr(row.__class__, '__header_back_map__') and self.has_header:
+                        tables[row.__xl_sheet_name__][row.__recid__][row.__header_back_map__[column_name]] = getattr(row, column_name)
                     else:
                         tables[row.__xl_sheet_name__][row.__recid__][column_name] = getattr(row, column_name)
+        return tables
     
     def calculate_columns(self):
         tables = {}
@@ -162,6 +169,22 @@ class Connector:
         self.raw_update(raw_tables_to_update)
         self.raw_append(raw_tables_to_append)
 
+    def save_all(self, raw_tables_in_base = None):
+        raw_tables_to_save = self.get_all_raw_table()
+        if raw_tables_in_base is not None:
+            raw_tables_in_base = self.load()
+        raw_tables_to_update = collections.defaultdict(dict)
+        raw_tables_to_append = collections.defaultdict(dict)
+        for table_name, table in raw_tables_to_save.items():
+            if table_name in raw_tables_in_base: # save tables available in table
+                for recid in sorted(table.keys()):
+                    if recid in raw_tables_in_base[table_name]:
+                        if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
+                            raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
+                    else:
+                        raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
+        self.raw_update(raw_tables_to_update)
+        self.raw_append(raw_tables_to_append)   
 
 class XLSXConnector(Connector):
  
@@ -267,7 +290,8 @@ class XLSXConnector(Connector):
                         self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
-    def save_all(self, out_file=None):
+
+    def save_all_deprecated(self, out_file=None):
         """Save objects into XLSX file"""
         if out_file is None:
             out_file = self.path
@@ -306,30 +330,20 @@ class XLSXConnector(Connector):
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         self.wb_with_formulas.save(out_file)
 
-    def save(self, out_file=None):
+    def raw_update(self, tables, out_file=None, force_create=True):
         if out_file is None:
             out_file = self.path
-        for table in self.mod.HCT_OBJECTS.values():
-            if self.classes[table].__connector__ is not self:
-                continue
-            for row in table:
-                sheet_name = row.__xl_sheet_name__
-                recid = row.__recid__
-                for attr_name in row.__touched_annotations__:
-                    if self.has_header:
-                        letter = row.__header_back_map__[attr_name]
-                    else:
-                        letter = attr_name
-                    new_value = getattr(row, attr_name)
-                    # TODO seems useless code (check it)
-                    # if sheet_name not in self.wb_values_only:
-                    #     self.wb_values_only.create_sheet(sheet_name)
-                    #     self.wb_with_formulas.create_sheet(sheet_name)
-                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
-                        continue
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
+        if self.wb_values_only is None:
+            self.wb_with_formulas = openpyxl.Workbook()
+
+        for sheet_name, table in tables.items():
+            for recid, row in table.items():
+                for letter, new_value in row.items():
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         self.wb_with_formulas.save(out_file)
+
+    def raw_append(self, tables, out_file=None):
+        self.raw_update(tables, out_file)
 
     def __str__(self):
         return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'
