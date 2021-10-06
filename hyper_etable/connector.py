@@ -30,17 +30,25 @@ def new_connector(path, proto, mod, has_header=True):
         conn = hyper_etable.connector.MySQLConnector(path, mod, has_header)
     elif proto.lower() == 'sqlalchemy':
         conn = hyper_etable.connector.SQLAlchemyConnector(path, mod, has_header)
+    elif proto.lower() == 'raw':
+        conn = hyper_etable.connector.RAWConnector(path, mod, has_header)
     if conn is None:
         raise ValueError(f'{proto} is not support')
     return conn
 
 class NameMap:
-    name: str
-    letter: str
-    def __init__(self, name, letter):
-        self.column_name = name
-        self.letter = letter
+    name_internal: str
+    name_external: str
+    def __init__(self, name_internal, name_external):
+        self.name_internal = name_internal
+        self.name_external = name_external
 
+    def __str__(self):
+        return self.name_external
+    
+    def get_internal(self):
+        return self.name_internal
+        
 class Connector:
     def __init__(self, path, mod, has_header=True):
         self.path = path
@@ -185,6 +193,17 @@ class Connector:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
         self.raw_update(raw_tables_to_update)
         self.raw_append(raw_tables_to_append)   
+
+class RAWConnector(Connector):
+    def load_raw(self):
+        return self.raw
+    
+    def raw_update(self, raw_tables_to_update):
+        for table_name in raw_tables_to_update:
+            self.path[table_name] = raw_tables_to_update[table_name]
+    
+    def raw_append(self, raw_tables_to_append):
+        self.raw_update(raw_tables_to_append)
 
 class XLSXConnector(Connector):
  
