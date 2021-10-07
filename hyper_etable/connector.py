@@ -176,6 +176,29 @@ class Connector:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
         self.raw_update(raw_tables_to_update)
         self.raw_append(raw_tables_to_append)
+    
+    def get_update(self):
+        raw_tables_to_save = self.get_raw_table()
+        raw_tables_in_base = self.load_raw()
+        raw_tables_to_update = collections.defaultdict(dict)
+        for table_name, table in raw_tables_to_save.items():
+            if table_name in raw_tables_in_base: # save tables available in table
+                for recid in sorted(table.keys()):
+                    if recid in raw_tables_in_base[table_name]:
+                        if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
+                            raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
+        return raw_tables_to_update
+
+    def get_append(self):
+        raw_tables_to_save = self.get_raw_table()
+        raw_tables_in_base = self.load_raw()
+        raw_tables_to_append = collections.defaultdict(dict)
+        for table_name, table in raw_tables_to_save.items():
+            if table_name in raw_tables_in_base: # save tables available in table
+                for recid in sorted(table.keys()):
+                    if recid not in raw_tables_in_base[table_name]:
+                        raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
+        return raw_tables_to_append
 
     def save_all(self, raw_tables_in_base = None):
         raw_tables_to_save = self.get_all_raw_table()
@@ -196,7 +219,7 @@ class Connector:
 
 class RAWConnector(Connector):
     def load_raw(self):
-        return self.raw
+        return self.path
     
     def raw_update(self, raw_tables_to_update):
         for table_name in raw_tables_to_update:

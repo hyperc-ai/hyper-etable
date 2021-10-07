@@ -50,3 +50,14 @@ def test_con_trucks():
     xlsx_connector.save_all()
 
 
+def test_raw_base():
+
+    base = {}
+    base['table1'] ={}
+    base['table1'][1]={}
+    base['table1'][1]['col1']='name'
+
+    et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
+    db_connector = et.open_from(path=base, has_header=True, proto='raw', addition_python_files=[])
+    db_connector.load()
+
