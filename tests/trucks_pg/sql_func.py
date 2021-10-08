@@ -15,7 +15,7 @@ try:
         print('enf', file=f)
         # todo save all sources here
         source = plpy.execute(
-            "SELECT routine_definition FROM information_schema.routines WHERE specific_schema LIKE 'public';")
+            "SELECT routine_definition FROM information_schema.routines WHERE specific_schema LIKE 'public' AND routine_name LIKE 'actions';")
         source = source[0]['routine_definition']
         print("Source code:")
         print(source, file=f)
