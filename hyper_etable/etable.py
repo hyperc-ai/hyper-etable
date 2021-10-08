@@ -1,4 +1,5 @@
 from collections import defaultdict
+from hyper_etable.util  import OrderedSet
 from os import mkdir
 import string
 import ast
@@ -113,6 +114,7 @@ HCT_OBJECTS = None
 
 class ETable:
     def __init__(self, filenames=None, project_name="my_project", has_header=True) -> None:
+        self.connectors = []
         self.has_header = has_header
         if filenames is not None:
             if isinstance(filenames,list):
@@ -317,7 +319,7 @@ class ETable:
     def get_new_table(self, table_name, sheet):
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
-        ThisTable.__touched_annotations__ = set()
+        ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[f'{table_name}_Class'] = ThisTable
         self.classes[table_name] = ThisTable
@@ -329,7 +331,9 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    # def add_row(row):
+    def save_all(self):
+        for conn in self.connectors:
+            conn.save()
 
     def open_from(self, path, has_header=None, addition_python_files=[], external_classes_filename=None, proto='xlsx'):
         if has_header is not None:
@@ -340,20 +344,11 @@ class ETable:
         self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
         self.main_goal.operators[self.main_goal.name].append('pass')
         goal_code_source['main_goal'] = self.main_goal
-        conn = None
-        if proto.lower() == 'msapi':
-            conn = hyper_etable.connector.MSAPIConnector(path, self.mod, has_header=has_header)
-        elif proto.lower() == 'gsheet':
-            conn = hyper_etable.connector.GSheetConnector(path, self.mod, has_header=has_header)
-        elif proto.lower() == 'xlsx':
-            conn = hyper_etable.connector.XLSXConnector(path, self.mod, has_header=has_header)
-        elif proto.lower() == 'airtable':
-            conn = hyper_etable.connector.AirtableConnector(path, self.mod, has_header=has_header)
-            conn.load()
-        if conn is None:
-            raise ValueError(f'{proto} is not support')
+        conn = hyper_etable.connector.new_connector(path, proto, self.mod, has_header=has_header)
+        self.connectors.append(conn)
+        conn.load()
         self.objects.update(conn.objects)
-
+        self.classes.update(conn.classes)
         self.load_external_classes(external_classes_filename)
         for py_table in self.mod.HCT_OBJECTS.values():
             for row in py_table:
@@ -402,7 +397,7 @@ class ETable:
             init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
-            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  OrderedSet()))')
             init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
             c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
             init_f_code.append(c+'{self.__recid__}", self))')
@@ -455,7 +450,7 @@ class ETable:
         #         self.methods_classes[f] = self.mod.__dict__[f]
 
         self.methods_classes.update(self.classes)
-
+        return conn
 
     def open_dump(self, has_header=None, addition_python_files=[], external_classes_filename=None):
         if has_header is not None:
@@ -489,7 +484,7 @@ class ETable:
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = set()
+            ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
@@ -506,7 +501,7 @@ class ETable:
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
+                rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -750,13 +745,11 @@ class ETable:
 
     def dump_py(self, dir=None, out_filename=None):
         """"Dump classes as python code"""
-        if dir is None:
-            dir =  self.filename.parent
-        try:
-            os.mkdir(dir)
-        except FileExistsError:
-            pass 
-        
+
+        assert dir is not None or out_filename is not None, "All output is empty"
+        if out_filename is not None:
+            out_filename = pathlib.Path(out_filename)
+            out_filename.parent.mkdir(parents=True, exist_ok=True)
         # dump classes as python code
         for c in itertools.chain([hyper_etable.meta_table.TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__'], default_comment=hyper_etable.pysourcebuilder.DEFAULT_COMMENT).end())
@@ -788,12 +781,13 @@ class ETable:
     def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None, out_filename=None):
         """Dump plan as python code"""
         self.plan_data_prefix=prefix
-        if out_dir is None:
+        if out_dir is None and out_filename is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
         if out_filename is None:
             self.plan_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
         else:
             self.plan_file = out_filename
+            out_dir = pathlib.Path(out_filename).parent
         try:
             os.mkdir(out_dir)
         except FileExistsError:
@@ -814,33 +808,6 @@ class ETable:
             f.write(code_str)
         if exec_plan:
             self.run_plan(py_plan_filename=self.plan_file)
-
-    def save_dump(self, has_header=False, out_dir=None, out_filename=None):
-        """Save objects into XLSX file"""
-        if out_dir is None:
-            out_dir =  os.path.join(self.filename.parent, 'out')
-        try:
-            os.mkdir(out_dir)
-        except FileExistsError:
-            pass
-        for table in self.mod.HCT_OBJECTS.values():
-            for row in table:
-                sheet_name = row.__xl_sheet_name__
-                recid = row.__recid__
-                for attr_name in row.__touched_annotations__:
-                    if self.has_header:
-                        letter = row.__header_back_map__[attr_name]
-                    else:
-                        letter = attr_name
-                    new_value = getattr(row, attr_name)
-                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
-                        continue
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
-                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        if out_filename is None:
-            out_filename = os.path.join(out_dir, f'{self.filename.name}')
-        self.wb_with_formulas.save(out_filename)
-        return out_filename
 
     def calculate(self):
 

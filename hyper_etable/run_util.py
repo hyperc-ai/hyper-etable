@@ -2,6 +2,47 @@ import hyper_etable.etable
 import pathlib
 import shutil
 import os
+from typing import List
+
+def run_gui(task):
+    """files is list of triples (path, protocol)
+        py_files is list of python files
+    """
+    
+    py_files, files = task
+
+    assert len(files) > 0 , "must have at least one file"
+
+    #header detect 
+
+    if len(files)==1:
+        path, proto = files[0]
+        print("run ", path, proto)
+        et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
+        et.open_from(path=path, has_header=True, proto=proto, addition_python_files=[])
+        et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
+        et.save_all()
+        return
+    conns = list()
+    if len(files)>1:
+        for conn_args in [files[0], files[-1]]:
+            path, proto = conn_args
+            et = hyper_etable.etable.ETable(project_name = "run_gui")
+            conn = hyper_etable.connector.new_connector(path=path, mod=et.mod,proto=proto, has_header=True)
+            conn.load()
+            conns.append(conn.calculate_columns())
+        for table_name in conns[0].keys():
+            if table_name in conns[1]:
+                assert list(conns[0][table_name]) == list(conns[1][table_name]), "tables is not compatible"
+
+
+        et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
+        et.open_from(path=files[0][0], has_header=True, proto=files[0][1], addition_python_files=[])
+        output_conn = hyper_etable.connector.new_connector(mod=et.mod, path=files[-1][0], has_header=True, proto=files[-1][1])
+        et.solver_call_plan_n_exec() # solve with execution in pddl.py
+        # et.save_plan(prefix='et.mod.DATA.', out_filename=output_plan_filename) # save execution plan in py file
+        output_conn.save_all()
 
 def run(
   input_xlsx_filename:     str,
@@ -79,7 +120,7 @@ class CycleRun:
             self.output_xlsx_filename = pathlib.Path(os.path.join(self.output_xlsx_filename_origin.parent, f'{self.run_counter}_{self.output_xlsx_filename_origin.name}'))
             self.output_plan_filename = pathlib.Path(os.path.join(self.output_plan_filename_origin.parent, f'{self.run_counter}_{self.output_plan_filename_origin.name}'))
             self.run_counter += 1
-        self.e_table.solver_call_simple_wo_exec()  # solve without execution
+        self.e_table.solver_call_plan_n_exec()  # solve with execution
+        self.e_table.load_rows_in_table()
         self.e_table.save_plan(prefix='DATA.', out_filename=self.output_plan_filename) # save execution plan in py file
-        self.e_table.run_plan(self.output_plan_filename)
         self.e_table.save_dump(out_filename=self.output_xlsx_filename)

@@ -321,15 +321,12 @@
             "justMyCode": false
         },
         {
-             "name": "test_airtable",
+             "name": "test_sql",
             "type": "python",
             "request": "launch",
             "module": "pytest",
             "args": [
-                "-s",
-                "-o",
-                "log_cli=true",
-                "tests/test_airtable.py"
+                 "tests/test_sql_conn.py::test_raw_base"
             ],
             "console": "integratedTerminal",
             "env": {
