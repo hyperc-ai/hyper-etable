@@ -2,6 +2,7 @@
 
 
 import string
+import unidecode
 
 
 def get_char_from_index(idx):
@@ -29,6 +30,17 @@ def letter_index_next(letter=''):
         return char_index[:-1] + next_char
     else:
         return letter_index_next(letter[:-1]) + 'A'
+
+def str_to_py(sheet_name: str):
+    trans_name = unidecode.unidecode(sheet_name).replace(' ', '_').upper()
+    trans_name = list(trans_name)
+    for i, character in enumerate(trans_name):
+        if character not in (string.ascii_uppercase + string.digits + "_"):
+            trans_name[i] = "_"
+    return f"{''.join(trans_name)}".strip('_')
+
+def sheet_to_py(sheet_name: str):
+    return f"tbl_{str_to_py(sheet_name)}"
 
 class OrderedSet:
     def __init__(self):
