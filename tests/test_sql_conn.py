@@ -60,4 +60,13 @@ def test_raw_base():
     et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
     db_connector = et.open_from(path=base, has_header=True, proto='raw', addition_python_files=[])
     db_connector.load()
+    et.mod.HCT_OBJECTS['TABLE1'][0].COL1 = 'nnnnn'
+    et.mod.HCT_OBJECTS['TABLE1'][0].__class__()
+    et.mod.HCT_OBJECTS['TABLE1'][1].COL1 = 'gggg'
+    et.mod.HCT_OBJECTS['TABLE1'][1].__recid__ = 5
+    a = db_connector.get_append()
+    u = db_connector.get_update()
+    print(a)
+    print(u)
+
 

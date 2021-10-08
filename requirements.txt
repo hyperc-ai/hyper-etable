@@ -1,2 +1,5 @@
 openpyxl
 flask
+formulas
+schedula
+sqlalchemy
