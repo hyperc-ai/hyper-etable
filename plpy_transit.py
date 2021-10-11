@@ -1,8 +1,6 @@
-"""
-CREATE OR REPLACE PROCEDURE public.hyperc_transit(IN sql_command character varying)
-    LANGUAGE 'plpython3u'
-AS $BODY$
-"""
+# CREATE OR REPLACE PROCEDURE public.hyperc_transit(IN sql_command character varying)
+#     LANGUAGE 'plpython3u'
+# AS $BDY$
 
 import logzero 
 from logzero import logger 
@@ -75,7 +73,27 @@ exec_sql = ""
 all_executed_commands = []
 tables_names = [] 
 
-if any(x in sql_command_l.upper() for x in autotransit_commands):
+write_enabled = True
+write_only_to = []
+
+if any(x in sql_command_l.upper() for x in autotransit_commands) or sql_command_l.upper().startswith("EXPLAIN TO") or sql_command_l.upper().startswith("EXPLAIN TRANSIT"):
+    if sql_command_l.upper().startswith("EXPLAIN ") and not sql_command_l.upper().startswith("EXPLAIN TO "):
+        sql_command_l = sql_command_l.replace("EXPLAIN ", "", 1).replace("explain ", "", 1)
+        write_enabled = False
+    elif sql_command_l.upper().startswith("EXPLAIN TO "):
+        sql_command_l = sql_command_l.replace("EXPLAIN TO ", "", 1).replace("explain to ", "", 1)
+        if " update " in sql_command_l.lower() and not "'" in sql_command_l.lower().split(" update ")[0]:
+            tables_to_explain_to, rest_of_command = sql_command_l.lower().split(" transit update ", 1)
+        elif " insert " in sql_command_l.lower() and not "'" in sql_command_l.lower().split(" transit insert ")[0]:
+            tables_to_explain_to, rest_of_command = sql_command_l.lower().split(" insert ", 1)
+
+        old_sql_command_l = sql_command_l
+        sql_command_l = sql_command_l.replace(tables_to_explain_to, "", 1)
+        if sql_command_l == old_sql_command_l:
+            plpy.error("Can not parse TRANSIT query. Table names uppercase not supported.")
+        sql_command_l = sql_command_l.strip()
+        write_only_to = [tn.strip() for tn in tables_to_explain_to.split(",")]
+
     txid1 = plpy.execute("SELECT txid_current();")[0]["txid_current"]
     txid2 = plpy.execute("SELECT txid_current();")[0]["txid_current"]
     if txid1 != txid2:
@@ -86,12 +104,12 @@ if any(x in sql_command_l.upper() for x in autotransit_commands):
         table_names = [x.strip() for x in sql_command_l.lower().split(" from ")[1].split(",")]
     elif "TRANSIT UPDATE" in sql_command_l.upper():
         tables_names = [ sql_command_l.lower().split("transit update")[1].split()[0] ]
-        exec_sql = sql_command_l.replace("TRANSIT UPDATE", "UPDATE")
-        exec_sql = exec_sql.replace("TRANSIT UPDATE".lower(), "UPDATE")
+        exec_sql = sql_command_l.replace("TRANSIT UPDATE", "UPDATE", 1)
+        exec_sql = exec_sql.replace("TRANSIT UPDATE".lower(), "UPDATE", 1)
     elif "TRANSIT INSERT INTO" in sql_command_l.upper():
         tables_names = [ sql_command_l.lower().split("transit insert into")[1].split()[0] ]
-        exec_sql = sql_command_l.replace("TRANSIT INSERT INTO", "INSERT INTO")
-        exec_sql = exec_sql.replace("TRANSIT INSERT INTO".lower(), "INSERT INTO")
+        exec_sql = sql_command_l.replace("TRANSIT INSERT INTO", "INSERT INTO", 1)
+        exec_sql = exec_sql.replace("TRANSIT INSERT INTO".lower(), "INSERT INTO", 1)
     else:
         raise RuntimeError("Wrong TRANSIT parse")
 
@@ -106,6 +124,15 @@ else:
 
 all_tables_names = [x["table_name"] for x in plpy.execute("SELECT * FROM information_schema.tables WHERE table_schema = 'public';")]
 
+write_only_to_tables = [] 
+write_only_to_tables_cols = defaultdict(list)
+for tblcol in write_only_to:
+    if "." in tblcol:
+        tablename, colname = tblcol.split(".")
+        write_only_to_tables_cols[tablename].append(colname)
+    else:
+        tablename = tblcol
+    write_only_to_tables.append(tablename)
 
 EQ_CMP_OPS = [" == ", " != ", " < ", " > ", " <= ", " >= "]
 
@@ -174,49 +201,54 @@ et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
 db_connector = et.open_from(path=base, has_header=True, proto='raw', addition_python_files=[input_py])
 et.dump_py(out_filename='/tmp/classes.py')
 et.solver_call_plan_n_exec()
-tables = db_connector.get_update()
-logger.debug(f"Update: {tables}")
-for tablename, rows in tables.items():
-    if len(rows) == 0:
-        continue
-    pks = {x["column_name"]:x["data_type"] for x in plpy.execute(SQL_GET_PRIMARYKEYS.format(table_name=tablename))}
-    all_columns = {x["column_name"]:x["data_type"] for x in plpy.execute(SQL_GET_ALLCOLUMNS.format(table_name=tablename))}
-    for _, row in rows.items():
-        update_where_q = []
-        update_set_q = []
-        for colname, val in row.items():
-            if colname in pks:
-                update_where_q.append(f"{colname} = {repr(val)}")
-            else:
-                if type(val) == str and not "char" in all_columns[colname] and not "text" in all_columns[colname] and len(val) == 0:
-                    logger.warning(f"Skipping update of unsupported type {all_columns[colname]} for {tablename}.{colname} with value {repr(val)}")
-                    continue
-                update_set_q.append(f"{colname} = {repr(val)}")
-        if len(update_set_q) == 0: 
-            logger.warning(f"Skipping empty update for {tablename}: {row}")
-            continue  # should never happen!
-        if len(update_where_q) == 0: 
-            logger.warning(f"Skipping update for table without primary key {tablename}: {row}")
-            continue 
-        set_subq = ", ".join(update_set_q)
-        where_subq = " AND ".join(update_where_q)
-        query = f'UPDATE {tablename} SET {set_subq} WHERE {where_subq};'
-        logger.debug(f"Executing, {query}")
-        plpy.execute(query)
-    
 
-tables = db_connector.get_append()
-logger.debug(f"Append: {tables}")
-for tablename, rows in tables.items():
-    if len(rows) == 0:
-        continue
-    for _, row in rows.items():
-        val = ", ".join([f'\'{repr(val)}\'' for _, val in row.items()])
-        col_name = ", ".join([f'"{col}"' for col, _ in row.items()])
-        query = f"INSERT INTO {tablename} ({col_name}) VALUES ({val});"
-        logger.debug(f"Executing, {query}")
-        plpy.execute(query)
+if write_enabled:
+    tables = db_connector.get_update()
+    logger.debug(f"Update: {tables}")
+    for tablename, rows in tables.items():
+        if len(rows) == 0:
+            continue
+        if write_only_to_tables and tablename not in write_only_to_tables: continue
+        pks = {x["column_name"]:x["data_type"] for x in plpy.execute(SQL_GET_PRIMARYKEYS.format(table_name=tablename))}
+        all_columns = {x["column_name"]:x["data_type"] for x in plpy.execute(SQL_GET_ALLCOLUMNS.format(table_name=tablename))}
+        for _, row in rows.items():
+            update_where_q = []
+            update_set_q = []
+            for colname, val in row.items():
+                if colname in pks:
+                    update_where_q.append(f"{colname} = {repr(val)}")
+                else:
+                    if type(val) == str and not "char" in all_columns[colname] and not "text" in all_columns[colname] and len(val) == 0:
+                        logger.warning(f"Skipping update of unsupported type {all_columns[colname]} for {tablename}.{colname} with value {repr(val)}")
+                        continue
+                    if len(write_only_to_tables_cols[tablename]) > 0 and colname not in write_only_to_tables_cols[tablename]:
+                        logger.debug(f"Skipping update of column {colname} as {tablename} has explicit column inclusions and {colname} is not included")
+                        continue
+                    update_set_q.append(f"{colname} = {repr(val)}")
+            if len(update_set_q) == 0: 
+                logger.warning(f"Skipping empty update for {tablename}: {row}")
+                continue  # should never happen!
+            if len(update_where_q) == 0: 
+                logger.warning(f"Skipping update for table without primary key {tablename}: {row}")
+                continue 
+            set_subq = ", ".join(update_set_q)
+            where_subq = " AND ".join(update_where_q)
+            query = f'UPDATE {tablename} SET {set_subq} WHERE {where_subq};'
+            logger.debug(f"Executing, {query}")
+            plpy.execute(query)
+        
 
-""" 
-$BODY$;
-"""
+    tables = db_connector.get_append()
+    logger.debug(f"Append: {tables}")
+    for tablename, rows in tables.items():
+        if len(rows) == 0:
+            continue
+        if write_only_to_tables and tablename not in write_only_to_tables: continue
+        for _, row in rows.items():
+            val = ", ".join([f'\'{repr(val)}\'' for _, val in row.items()])
+            col_name = ", ".join([f'"{col}"' for col, _ in row.items()])
+            query = f"INSERT INTO {tablename} ({col_name}) VALUES ({val});"
+            logger.debug(f"Executing, {query}")
+            plpy.execute(query)
+
+# $BDY$;
