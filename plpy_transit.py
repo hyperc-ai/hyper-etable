@@ -73,6 +73,7 @@ goal_func = ""
 exec_sql = ""
 
 all_executed_commands = []
+tables_names = [] 
 
 if any(x in sql_command_l.upper() for x in autotransit_commands):
     txid1 = plpy.execute("SELECT txid_current();")[0]["txid_current"]
@@ -105,13 +106,13 @@ else:
 
 all_tables_names = [x["table_name"] for x in plpy.execute("SELECT * FROM information_schema.tables WHERE table_schema = 'public';")]
 
-tables_names = all_tables_names
 
 EQ_CMP_OPS = [" == ", " != ", " < ", " > ", " <= ", " >= "]
 
 sources_list = []
 for src in plpy.execute(SQL_PROCEDURES):
     args = ", ".join([f"{argpair.strip().split()[0]}: {argpair.strip().split()[1].upper()}_Class" for argpair in src['function_arguments'].split(",")])
+    tables_names.extend([f"{argpair.strip().split()[1]}" for argpair in src['function_arguments'].split(",")])
     fun_src = f"""def {src['function_name']}({args}):"""
     for src_line in src["source"].split("\n"):
         fun_src += "    "+src_line+"\n"
