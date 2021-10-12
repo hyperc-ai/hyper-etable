@@ -12,6 +12,7 @@ from logzero import logger
 
 
 import hyperc
+import json
 from collections import defaultdict
 import hyper_etable.etable
 from itertools import combinations
@@ -54,6 +55,12 @@ WHERE
 """
 
 logger.debug(sql_command)  
+
+if not plan_id:
+    import uuid
+    local_plan_id = str(uuid.uuid4())
+else:
+    local_plan_id = plan_id
  
 sql_command_l = sql_command
 supported_commands = ["INSERT", "UPDATE"]
@@ -136,10 +143,13 @@ for tblcol in write_only_to:
 
 EQ_CMP_OPS = [" == ", " != ", " < ", " > ", " <= ", " >= "]
 
+input_parameters_classes = {}
+
 sources_list = []
 for src in plpy.execute(SQL_PROCEDURES):
     args = ", ".join([f"{argpair.strip().split()[0]}: {argpair.strip().split()[1].upper()}_Class" for argpair in src['function_arguments'].split(",")])
     tables_names.extend([f"{argpair.strip().split()[1]}" for argpair in src['function_arguments'].split(",")])
+    input_parameters_classes[src['function_name']] = {f"{argpair.strip().split()[0]}":f"{argpair.strip().split()[1]}" for argpair in src['function_arguments'].split(",")}
     fun_src = f"""def {src['function_name']}({args}):"""
     for src_line in src["source"].split("\n"):
         fun_src += "    "+src_line+"\n"
@@ -202,6 +212,11 @@ db_connector = et.open_from(path=base, has_header=True, proto='raw', addition_py
 et.dump_py(out_filename='/tmp/classes.py')
 et.solver_call_plan_n_exec()
 
+updates = defaultdict(list)
+inserts = defaultdict(list)
+
+updated_columns = defaultdict(list)
+
 if write_enabled:
     tables = db_connector.get_update()
     logger.debug(f"Update: {tables}")
@@ -214,6 +229,7 @@ if write_enabled:
         for _, row in rows.items():
             update_where_q = []
             update_set_q = []
+            updates[tablename].append(row)
             for colname, val in row.items():
                 if colname in pks:
                     update_where_q.append(f"{colname} = {repr(val)}")
@@ -224,6 +240,7 @@ if write_enabled:
                     if len(write_only_to_tables_cols[tablename]) > 0 and colname not in write_only_to_tables_cols[tablename]:
                         logger.debug(f"Skipping update of column {colname} as {tablename} has explicit column inclusions and {colname} is not included")
                         continue
+                    updated_columns[tablename].append(colname)
                     update_set_q.append(f"{colname} = {repr(val)}")
             if len(update_set_q) == 0: 
                 logger.warning(f"Skipping empty update for {tablename}: {row}")
@@ -245,10 +262,37 @@ if write_enabled:
             continue
         if write_only_to_tables and tablename not in write_only_to_tables: continue
         for _, row in rows.items():
+            inserts[tablename].append(row)
             val = ", ".join([f'\'{repr(val)}\'' for _, val in row.items()])
             col_name = ", ".join([f'"{col}"' for col, _ in row.items()])
             query = f"INSERT INTO {tablename} ({col_name}) VALUES ({val});"
             logger.debug(f"Executing, {query}")
             plpy.execute(query)
+
+istep = 0
+
+logger.debug(f"Plan: {et.metadata['store_simple']}")
+
+for step in et.metadata["store_simple"]:
+    func_object = step[0]
+    if not func_object.__name__ in input_parameters_classes: continue
+    func_kwargs_before = step[1]
+    func_kwargs_after = step[2]
+    step_data = {
+        "proc_name": func_object.__name__,
+        "parameters_classes": input_parameters_classes[func_object.__name__],
+        "input_parameters": func_kwargs_before,
+        "output_parameters": func_kwargs_after,
+    }
+    l_summary = []
+    for k, values in func_kwargs_before.items():
+        val_s = ",".join([str(x) for x in values.values()])
+        l_summary.append(f"{k}={val_s}")
+    summary = "/".join(l_summary)
+    query_ins = f"INSERT INTO hc_plan (plan_id, step_num, proc_name, summary, data) VALUES ('{local_plan_id}', {istep}, '{func_object.__name__}', '{summary}', '{json.dumps(step_data)}');"
+    logger.debug(query_ins)
+    plpy.execute(query_ins)
+    istep += 1
+
 
 # $BDY$;
