@@ -221,12 +221,11 @@ base = {}
 for t_n in tables_names:
     base[t_n] = dict(enumerate(list(plpy.execute(f"SELECT * FROM {t_n}", 1000))))
     row_check = next(iter(base[t_n].values()))
-    for v in row_check.values():
-        if v is None:
-            plpy.error("NULL and None values in tables for HyperC procedures are not supported")
-
-
     logger.debug(base[t_n])
+    for col, v in row_check.items():
+        if v is None:
+            plpy.error(f"NULL and None values in tables for HyperC procedures are not supported (table `{t_n}` column `{col}`)")
+
 
 et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
 db_connector = et.open_from(path=base, has_header=True, proto='raw', addition_python_files=[input_py])
