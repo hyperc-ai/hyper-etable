@@ -521,6 +521,7 @@ class ETable:
                         #     continue
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
+                        ThisTable.__annotations__[header_map.get(letter, None)] = str
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if self.has_header:
@@ -530,6 +531,7 @@ class ETable:
                             continue
                     else:
                         column_name = letter
+                        ThisTable.__annotations__[column_name] = str
                     if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
 
@@ -540,13 +542,12 @@ class ETable:
                     if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
-                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
                     else:
                         setattr(self.objects[py_table_name][recid], column_name, '')
-                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                 if is_header:
+                    self.mod.HCT_OBJECTS[py_table_name].remove(rec_obj)
                     is_header = False
                     continue
 
