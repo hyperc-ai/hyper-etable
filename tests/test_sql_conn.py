@@ -2,6 +2,8 @@
 import hyper_etable.etable
 import hyper_etable.connector
 import copy
+import shutil
+import os
 
 def test_mysql():
     et = hyper_etable.etable.ETable(project_name='test_custom_class_edited')
@@ -34,7 +36,15 @@ def test_mysql_sqlalchemy():
 def test_con_trucks():
     input_py_filename='./tests/trucks_db/trucks.py'
     output_xlsx_filename='./tests/trucks_db/trucks_output.xlsx'
-    input_db=('sqlite://///home/andrey/sandbox/ch/hyper-etable/tests/trucks_db/trucks.db',('Transport', 'Location Adjacency'))
+    try:
+        os.remove('/home/andrey/sandbox/ch/hyper-etable/tests/trucks_db/trucks_copy.db')
+    except FileNotFoundError: 
+        pass
+    shutil.copy('/home/andrey/sandbox/ch/hyper-etable/tests/trucks_db/trucks.db',
+                '/home/andrey/sandbox/ch/hyper-etable/tests/trucks_db/trucks_copy.db')
+    input_db = (
+        'sqlite://///home/andrey/sandbox/ch/hyper-etable/tests/trucks_db/trucks_copy.db',
+        ('Transport', 'Location Adjacency'))
     output_classes_filename='./tests/trucks_db/trucks_class.py'
     output_plan_file = './tests/trucks_db/trucks_plan.py'
     et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
@@ -55,13 +65,16 @@ def test_raw_base():
     base = {}
     base['table1'] ={}
     base['table1'][1]={}
-    base['table1'][1]['col1']='name'
-
+    base['table1'][1]['col1']='name1'
+    base['table1'][1]['col2'] = 'name2'
+    base['table1'][2] = {}
+    base['table1'][2]['col1'] = 'name222'
+    base['table1'][2]['col2'] = 'name2222'
     et = hyper_etable.etable.ETable(project_name='test_connnection_trucks')
     db_connector = et.open_from(path=base, has_header=True, proto='raw', addition_python_files=[])
     db_connector.load()
     et.mod.HCT_OBJECTS['TABLE1'][0].COL1 = 'nnnnn'
-    et.mod.HCT_OBJECTS['TABLE1'][0].__class__()
+    # et.mod.HCT_OBJECTS['TABLE1'][0].__class__()
     # et.mod.HCT_OBJECTS['TABLE1'][1].COL1 = 'gggg'
     # et.mod.HCT_OBJECTS['TABLE1'][1].__recid__ = 5
     a = db_connector.get_append()
