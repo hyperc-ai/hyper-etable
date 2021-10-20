@@ -198,7 +198,7 @@ class ETable:
         def gg(s, g, e):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
                             addition_modules=[s.mod], metadata=s.metadata)
-        self.metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True}
+        self.metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True, "store_simple": []}
         gg(self,self.methods_classes[self.main_goal.name],
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
 

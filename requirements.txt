@@ -6,4 +6,5 @@ sqlalchemy
 gspread
 google-api-python-client
 google_auth_oauthlib
-flask msal
+flask 
+msal
