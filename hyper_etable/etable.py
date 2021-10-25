@@ -577,8 +577,8 @@ class ETable:
             if hyperc.settings.DEBUG:
                 print(f" {clsv} -  {clsv.__annotations__}")
             # init_f_code.append(f"global DATA")
-            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
             init_f_code.append(f"{var_global_addidx_name} += 1")
+            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
             for par_name, par_type in clsv.__annotations__.items():
                 if par_name in ['__table_name__', 'addidx']:
                     continue
@@ -662,7 +662,11 @@ class ETable:
     def load_external_classes(self, class_py_filename):
         if class_py_filename is None:
             return
-        code_str= open(class_py_filename, "r").read()
+        code_str = None
+        try:
+            code_str= open(class_py_filename, "r").read()
+        except FileNotFoundError:
+            return
         code_list = code_str.split("\n")
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
         for cl in code_ast.body:
