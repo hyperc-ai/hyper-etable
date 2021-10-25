@@ -1,4 +1,5 @@
 from collections import defaultdict
+from hyper_etable.util  import OrderedSet
 from os import mkdir
 import string
 import ast
@@ -10,6 +11,7 @@ import hyperc.settings
 import hyper_etable.etable_transpiler
 import hyper_etable.spiletrancer
 import hyper_etable.cell_resolver
+import hyper_etable.connector
 import hyperc.xtj
 import itertools
 import sys
@@ -23,6 +25,7 @@ import openpyxl
 import hyper_etable.util
 import hyper_etable.pysourcebuilder
 import pydoc
+import hyper_etable.meta_table
 
 hyperc.settings.IGNORE_MISSING_ATTR_BRANCH = 1
 
@@ -47,14 +50,6 @@ def stack_code_gen_all(objects):
     {drop_content}"""
     return scode
 
-class TableElementMeta(type):
-    @hyperc.util.side_effect_decorator
-    def __str__(self):
-        return self.__table_name__
-    
-    @hyperc.util.side_effect_decorator
-    def __repr__(self):
-        return str(self)
 
 def operator_name_to_operator(op):
     expand = {">": "greaterThan", ">=": "greaterThanOrEqual", "<": "lessThan", "<=": "lessThanOrEqual",
@@ -118,17 +113,23 @@ DATA = None
 HCT_OBJECTS = None
 
 class ETable:
-    def __init__(self, filenames, project_name="my_project", has_header=True) -> None:
+    def __init__(self, filenames=None, project_name="my_project", has_header=True) -> None:
+        self.connectors = []
         self.has_header = has_header
-        if isinstance(filenames,list):
-            filenames = [pathlib.Path(f) for f in filenames]
-            self.filename = filenames[0] #TODO currently only one file support
-        else:
-            self.filename = pathlib.Path(filenames)
-        if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
+        if filenames is not None:
+            if isinstance(filenames,list):
+                filenames = [pathlib.Path(f) for f in filenames]
+                self.filename = filenames[0] #TODO currently only one file support
+            else:
+                self.filename = pathlib.Path(filenames)
+            if 'xlsx' == os.path.splitext(self.filename)[1][1:].lower():
+                self.enable_precalculation = False
+            else:
+                self.enable_precalculation = True
+        else: 
+            self.filename = filenames
             self.enable_precalculation = False
-        else:
-            self.enable_precalculation = True
+
         self.STATIC_STORAGE_NAME = 'DATA'
         self.plan_data_prefix = 'DATA.'
         self.out_filename = ""
@@ -141,7 +142,7 @@ class ETable:
         globals()[self.session_name] = self.mod
         sys.modules[self.session_name] = self.mod
         self.classes = {}
-        self.objects = collections.defaultdict(dict)
+        self.objects = {}
         self.mod.side_effect = hyperc.side_effect
         self.mod.ensure_ne = hyperc.ensure_ne
         self.methods_classes = {}
@@ -163,8 +164,6 @@ class ETable:
         globals()['side_effect'] = hyperc.side_effect
         self.methods_classes["StaticObject"] = self.mod.StaticObject
 
-        self.wb_values_only = openpyxl.load_workbook(filename=self.filename, data_only=True)
-        self.wb_with_formulas = openpyxl.load_workbook(filename=self.filename)
         self.plan_log = []
         self.cells_value = {}
         self.range_resolver = None # will be initialized later in self.calulate() not in self.open_dump
@@ -199,7 +198,7 @@ class ETable:
         def gg(s, g, e):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
                             addition_modules=[s.mod], metadata=s.metadata)
-        self.metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True}
+        self.metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True, "store_simple": []}
         gg(self,self.methods_classes[self.main_goal.name],
                                               list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
 
@@ -318,9 +317,9 @@ class ETable:
 
 
     def get_new_table(self, table_name, sheet):
-        ThisTable = TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
-        ThisTable.__touched_annotations__ = set()
+        ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = defaultdict(set)
         self.mod.__dict__[f'{table_name}_Class'] = ThisTable
         self.classes[table_name] = ThisTable
@@ -332,9 +331,126 @@ class ETable:
         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
-    # def add_row(row):
+    def save_all(self):
+        for conn in self.connectors:
+            conn.save()
 
+    def open_from(self, path, has_header=None, addition_python_files=[], external_classes_filename=None, proto='xlsx'):
+        if has_header is not None:
+            self.has_header = has_header
+        goal_code_source = {}
 
+        self.main_goal = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_main_goal', is_goal=True)
+        self.main_goal.operators[self.main_goal.name].append('assert DATA.GOAL == True')
+        self.main_goal.operators[self.main_goal.name].append('pass')
+        goal_code_source['main_goal'] = self.main_goal
+        conn = hyper_etable.connector.new_connector(path, proto, self.mod, has_header=has_header)
+        self.connectors.append(conn)
+        conn.load()
+        self.objects.update(conn.objects)
+        self.classes.update(conn.classes)
+        self.load_external_classes(external_classes_filename)
+        for py_table in self.mod.HCT_OBJECTS.values():
+            for row in py_table:
+                for attr, value in row.__default_init__.items():
+                    if value == 'set()':
+                       setattr(row, attr, set())
+                    elif isinstance(value, str):
+                        setattr(row, attr, value.strip('"'))
+                    else:
+                        setattr(row, attr, value)
+
+        for clsv in self.classes.values():
+            var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
+            setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
+            self.mod.StaticObject.__annotations__[f'{clsv.__table_name__}_addidx'] = int
+            init_f_code = []
+            init_pars = []
+            if hyperc.settings.DEBUG:
+                print(f" {clsv} -  {clsv.__annotations__}")
+            # init_f_code.append(f"global DATA")
+            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
+            init_f_code.append(f"{var_global_addidx_name} += 1")
+            for par_name, par_type in clsv.__annotations__.items():
+                if par_name in ['__table_name__', 'addidx']:
+                    continue
+                # Skip None type cell
+                if par_type is None:
+                    par_type = str
+                    clsv.__annotations__[par_name] = str
+                # init_f_code.append(
+                    # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
+                if par_name in clsv.__default_init__:
+                    if clsv.__default_init__[par_name] == 'set()':
+                        init_f_code.append(f'self.{par_name} = set() # set init "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                    else:
+                        init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                        init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                else:
+                    if not par_type in hyperc.xtj.DEFAULT_VALS:
+                        raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
+                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                    init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+
+            if len(init_f_code) == 0:
+                continue
+            init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  OrderedSet()))')
+            init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
+            c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
+            init_f_code.append(c+'{self.__recid__}", self))')
+            full_f_code = '\n    '.join(init_f_code)
+            full_f_pars = ",".join(init_pars)
+            full_code = f"def hct_f_init(self, {full_f_pars}):\n    {full_f_code}"
+            
+            fn = f"{self.tempdir}/hpy_init_{clsv.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, globals())
+            clsv.__init__ = globals()["hct_f_init"]
+            clsv.__init__.__name__ = "__init__"
+
+        # Now generate init for static object
+        self.mod.DATA.GOAL = False
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
+        init_f_code = []
+        for attr_name, attr_type in self.mod.StaticObject.__annotations__.items():
+            init_f_code.append(f"self.{attr_name} = DATA.{attr_name}")  # if it does not ignore, fix it!
+        self.mod.StaticObject.__annotations__['GOAL'] = bool
+        if init_f_code:
+
+            full_f_code = '\n    '.join(init_f_code)
+            full_code = f"def hct_stf_init(self):\n    {full_f_code}"
+            fn = f"{self.tempdir}/hpy_stf_init_{self.mod.StaticObject.__name__}.py"
+            open(fn, "w+").write(full_code)
+            f_code = compile(full_code, fn, 'exec')
+            exec(f_code, self.mod.__dict__)
+            self.mod.StaticObject.__init__ = self.mod.__dict__["hct_stf_init"]
+            self.mod.StaticObject.__init__.__name__ = "__init__"
+
+        # dump goals and actions
+        self.dump_functions(goal_code_source, 'hpy_goals.py')
+
+        # addition python code
+        for code_file in addition_python_files:
+            addition_code = open(code_file, "r").read()
+            if addition_code.startswith("from"):  # workaround for module imports
+                addition_code = "#"+addition_code
+            f_code = compile(addition_code, code_file, 'exec')
+            exec(f_code, self.mod.__dict__)
+            for f_name in f_code.co_names:
+                if "." in f_name: continue  # workaround for module names
+                t = self.mod.__dict__.get(f_name, None)
+                if isinstance(t, types.FunctionType) or isinstance(t, types.MethodType) or isinstance(t, type):
+                    self.methods_classes[f_name] = self.mod.__dict__[f_name]
+        # for f in self.mod.__dict__:
+        #     if isinstance(self.mod.__dict__[f], types.FunctionType):
+        #         self.methods_classes[f] = self.mod.__dict__[f]
+
+        self.methods_classes.update(self.classes)
+        return conn
 
     def open_dump(self, has_header=None, addition_python_files=[], external_classes_filename=None):
         if has_header is not None:
@@ -363,12 +479,12 @@ class ETable:
                 is_header = True
             else:
                 is_header = False
-            ThisTable = TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
+            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
-            ThisTable.__touched_annotations__ = set()
+            ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = defaultdict(set)
             self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
             self.classes[py_table_name] = ThisTable
@@ -385,7 +501,7 @@ class ETable:
                     rec_obj.__header_back_map__ = header_back_map
                 rec_obj.__recid__ = recid
                 rec_obj.__table_name__ += f'[{filename}]{sheet}_{recid}'
-                rec_obj.__touched_annotations__ = set()
+                rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
                 sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
@@ -405,6 +521,7 @@ class ETable:
                         #     continue
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
+                        ThisTable.__annotations__[header_map.get(letter, None)] = str
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if self.has_header:
@@ -414,6 +531,7 @@ class ETable:
                             continue
                     else:
                         column_name = letter
+                        ThisTable.__annotations__[column_name] = str
                     if self.has_header:
                         self.objects[py_table_name][recid].__header_back_map__ = header_back_map
 
@@ -424,13 +542,12 @@ class ETable:
                     if (type(xl_orig_calculated_value) == bool or type(xl_orig_calculated_value) == int or type(xl_orig_calculated_value) == str):
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
                         setattr(self.objects[py_table_name][recid], column_name, xl_orig_calculated_value)
-                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name) 
                     else:
                         setattr(self.objects[py_table_name][recid], column_name, '')
-                        self.objects[py_table_name][recid].__class__.__annotations__[column_name] = str
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
                 if is_header:
+                    self.mod.HCT_OBJECTS[py_table_name].remove(rec_obj)
                     is_header = False
                     continue
 
@@ -460,8 +577,8 @@ class ETable:
             if hyperc.settings.DEBUG:
                 print(f" {clsv} -  {clsv.__annotations__}")
             # init_f_code.append(f"global DATA")
-            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
             init_f_code.append(f"{var_global_addidx_name} += 1")
+            init_f_code.append(f"self.addidx = {var_global_addidx_name}")
             for par_name, par_type in clsv.__annotations__.items():
                 if par_name in ['__table_name__', 'addidx']:
                     continue
@@ -545,7 +662,11 @@ class ETable:
     def load_external_classes(self, class_py_filename):
         if class_py_filename is None:
             return
-        code_str= open(class_py_filename, "r").read()
+        code_str = None
+        try:
+            code_str= open(class_py_filename, "r").read()
+        except FileNotFoundError:
+            return
         code_list = code_str.split("\n")
         code_ast = ast.parse(code_str, filename=class_py_filename, type_comments=True)
         for cl in code_ast.body:
@@ -629,15 +750,13 @@ class ETable:
 
     def dump_py(self, dir=None, out_filename=None):
         """"Dump classes as python code"""
-        if dir is None:
-            dir =  self.filename.parent
-        try:
-            os.mkdir(dir)
-        except FileExistsError:
-            pass 
-        
+
+        assert dir is not None or out_filename is not None, "All output is empty"
+        if out_filename is not None:
+            out_filename = pathlib.Path(out_filename)
+            out_filename.parent.mkdir(parents=True, exist_ok=True)
         # dump classes as python code
-        for c in itertools.chain([TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
+        for c in itertools.chain([hyper_etable.meta_table.TableElementMeta], self.classes.values(), [self.mod.StaticObject, self.mod.DefinedTables]):
             self.source_code['classes'].append(hyper_etable.pysourcebuilder.build_source_from_class(c, ['__table_name__','__xl_sheet_name__'], default_comment=hyper_etable.pysourcebuilder.DEFAULT_COMMENT).end())
 
         # dump object as python code
@@ -667,12 +786,13 @@ class ETable:
     def save_plan(self, prefix="DATA.", exec_plan=False, out_dir=None, out_filename=None):
         """Dump plan as python code"""
         self.plan_data_prefix=prefix
-        if out_dir is None:
+        if out_dir is None and out_filename is None:
             out_dir =  os.path.join(self.filename.parent, 'out')
         if out_filename is None:
             self.plan_file = pathlib.Path(os.path.join(out_dir,f'{os.path.splitext(self.filename.name)[0]}.py'))
         else:
             self.plan_file = out_filename
+            out_dir = pathlib.Path(out_filename).parent
         try:
             os.mkdir(out_dir)
         except FileExistsError:
@@ -693,33 +813,6 @@ class ETable:
             f.write(code_str)
         if exec_plan:
             self.run_plan(py_plan_filename=self.plan_file)
-
-    def save_dump(self, has_header=False, out_dir=None, out_filename=None):
-        """Save objects into XLSX file"""
-        if out_dir is None:
-            out_dir =  os.path.join(self.filename.parent, 'out')
-        try:
-            os.mkdir(out_dir)
-        except FileExistsError:
-            pass
-        for table in self.mod.HCT_OBJECTS.values():
-            for row in table:
-                sheet_name = row.__xl_sheet_name__
-                recid = row.__recid__
-                for attr_name in row.__touched_annotations__:
-                    if self.has_header:
-                        letter = row.__header_back_map__[attr_name]
-                    else:
-                        letter = attr_name
-                    new_value = getattr(row, attr_name)
-                    if getattr(self.wb_values_only[sheet_name][f'{letter}{recid}'], "value", None) == new_value:
-                        continue
-                    self.wb_values_only[sheet_name][f'{letter}{recid}'].value = new_value
-                    self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        if out_filename is None:
-            out_filename = os.path.join(out_dir, f'{self.filename.name}')
-        self.wb_with_formulas.save(out_filename)
-        return out_filename
 
     def calculate(self):
 
