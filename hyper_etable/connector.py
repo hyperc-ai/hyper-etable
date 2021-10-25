@@ -45,6 +45,9 @@ class NameMap:
 
     def __str__(self):
         return self.name_external
+
+    def __hash__(self):
+        return hash(self.name_internal) + hash(self.name_external)
     
     def get_internal(self):
         return self.name_internal
@@ -81,7 +84,7 @@ class Connector:
                 tables[row.__xl_sheet_name__][row.__recid__] = {}
                 for column_name in row.__touched_annotations__:
                     if hasattr(row.__class__, '__column_to_py_map__'):
-                        column_name_wrap = NameMap(row.__class__.__column_to_py_map__[column_name], )
+                        column_name_wrap = row.__class__.__column_to_py_map__[column_name]
                         tables[row.__xl_sheet_name__][row.__recid__][column_name_wrap] = getattr(row, column_name)
 
                     elif hasattr(row.__class__, '__header_back_map__') and self.has_header:
@@ -209,7 +212,7 @@ class Connector:
 
     def save_all(self, raw_tables_in_base = None):
         raw_tables_to_save = self.get_all_raw_table()
-        if raw_tables_in_base is not None:
+        if raw_tables_in_base is None:
             raw_tables_in_base = self.load()
         raw_tables_to_update = collections.defaultdict(dict)
         raw_tables_to_append = collections.defaultdict(dict)
@@ -242,7 +245,11 @@ class XLSXConnector(Connector):
         self.wb_values_only = None
 
     def load(self):
-        self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
+        self.wb_values_only = None
+        try:
+            self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
+        except FileNotFoundError:
+            return 
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
             sheet = wb_sheet.title
