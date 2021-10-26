@@ -326,7 +326,7 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                 "tests/test_sql_conn.py::test_con_trucks"
+                 "tests/test_sql_conn.py::test_raw_base"
             ],
             "console": "integratedTerminal",
             "env": {
