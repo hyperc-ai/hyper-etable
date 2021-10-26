@@ -95,7 +95,7 @@ class Connector:
     
     def calculate_columns(self):
         tables = {}
-        for table_name in self.HCT_OBJECTS.keys():
+        for table_name in self.mod.HCT_OBJECTS.keys():
             if self.classes[table_name].__connector__ is not self:
                 continue
             tables[table_name] = self.classes[table_name].__header_back_map__
@@ -213,19 +213,20 @@ class Connector:
     def save_all(self, raw_tables_in_base = None):
         raw_tables_to_save = self.get_all_raw_table()
         if raw_tables_in_base is None:
-            raw_tables_in_base = self.load()
-        raw_tables_to_update = collections.defaultdict(dict)
-        raw_tables_to_append = collections.defaultdict(dict)
-        for table_name, table in raw_tables_to_save.items():
-            if table_name in raw_tables_in_base: # save tables available in table
-                for recid in sorted(table.keys()):
-                    if recid in raw_tables_in_base[table_name]:
-                        if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
-                            raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
-                    else:
-                        raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
-        self.raw_update(raw_tables_to_update)
-        self.raw_append(raw_tables_to_append)   
+            self.raw_append(raw_tables_to_save)
+        else:
+            raw_tables_to_update = collections.defaultdict(dict)
+            raw_tables_to_append = collections.defaultdict(dict)
+            for table_name, table in raw_tables_to_save.items():
+                if table_name in raw_tables_in_base: # save tables available in table
+                    for recid in sorted(table.keys()):
+                        if recid in raw_tables_in_base[table_name]:
+                            if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
+                                raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
+                        else:
+                            raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
+            self.raw_update(raw_tables_to_update)
+            self.raw_append(raw_tables_to_append)   
 
 class RAWConnector(Connector):
     def load_raw(self):
@@ -252,6 +253,7 @@ class XLSXConnector(Connector):
             return 
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
+            skip_table = False
             sheet = wb_sheet.title
             self.tables[sheet] = {}
             py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in
@@ -277,7 +279,6 @@ class XLSXConnector(Connector):
             self.classes[py_table_name] = ThisTable
             self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
-            self.HCT_OBJECTS[py_table_name] = self.mod.HCT_OBJECTS[py_table_name]
             self.objects[py_table_name]={}
             ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():
@@ -306,7 +307,8 @@ class XLSXConnector(Connector):
 
                     letter = _cell.column_letter
                     if is_header:
-                        assert xl_orig_calculated_value is not None, "first row can't have empty cell'"
+                        if xl_orig_calculated_value is None:
+                            continue
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
                         header_name_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = xl_orig_calculated_value
@@ -393,6 +395,8 @@ class XLSXConnector(Connector):
             self.wb_with_formulas = openpyxl.Workbook()
 
         for sheet_name, table in tables.items():
+            if sheet_name not in self.wb_with_formulas.sheetnames:
+                self.wb_with_formulas.create_sheet(sheet_name)
             for recid, row in table.items():
                 for letter, new_value in row.items():
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
