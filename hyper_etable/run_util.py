@@ -89,7 +89,7 @@ class CycleRun:
     has_header:bool=True
     ):
         self.first_run = True
-        self.run_counter = 1
+        self.run_counter = 0
         self.input_xlsx_filename = input_xlsx_filename
         self.input_py_filename = input_py_filename
         self.output_classes_filename = pathlib.Path(output_classes_filename)
@@ -101,8 +101,10 @@ class CycleRun:
         self.output_plan_filename_origin = pathlib.Path(output_plan_filename)
         self.output_plan_filename_origin.parent.mkdir(parents=True, exist_ok=True)
         project_name = pathlib.Path(input_xlsx_filename).name.replace("/", "_").replace(".", "_")
-        self.e_table = hyper_etable.etable.ETable(input_xlsx_filename, project_name=project_name)
-        self.e_table.open_dump(has_header=has_header, addition_python_files=[input_py_filename], external_classes_filename=output_classes_filename)
+        self.e_table = hyper_etable.etable.ETable(project_name=project_name)
+        self.connector = self.e_table.open_from(path=self.input_xlsx_filename,
+                                                has_header=has_header, addition_python_files=[input_py_filename],
+                                                external_classes_filename=output_classes_filename)
         self.e_table.dump_py(out_filename=output_classes_filename) # save classes in py file
         
 
@@ -119,8 +121,8 @@ class CycleRun:
                 shutil.move(output_plan_filename_was, self.output_plan_filename)
             self.output_xlsx_filename = pathlib.Path(os.path.join(self.output_xlsx_filename_origin.parent, f'{self.run_counter}_{self.output_xlsx_filename_origin.name}'))
             self.output_plan_filename = pathlib.Path(os.path.join(self.output_plan_filename_origin.parent, f'{self.run_counter}_{self.output_plan_filename_origin.name}'))
-            self.run_counter += 1
+        self.run_counter += 1
         self.e_table.solver_call_plan_n_exec()  # solve with execution
         self.e_table.load_rows_in_table()
         self.e_table.save_plan(prefix='DATA.', out_filename=self.output_plan_filename) # save execution plan in py file
-        self.e_table.save_dump(out_filename=self.output_xlsx_filename)
+        self.connector.save_all(out_path=self.output_xlsx_filename)

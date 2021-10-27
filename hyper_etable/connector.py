@@ -45,6 +45,9 @@ class NameMap:
 
     def __str__(self):
         return self.name_external
+
+    def __hash__(self):
+        return hash(self.name_internal) + hash(self.name_external)
     
     def get_internal(self):
         return self.name_internal
@@ -81,7 +84,7 @@ class Connector:
                 tables[row.__xl_sheet_name__][row.__recid__] = {}
                 for column_name in row.__touched_annotations__:
                     if hasattr(row.__class__, '__column_to_py_map__'):
-                        column_name_wrap = NameMap(row.__class__.__column_to_py_map__[column_name], )
+                        column_name_wrap = row.__class__.__column_to_py_map__[column_name]
                         tables[row.__xl_sheet_name__][row.__recid__][column_name_wrap] = getattr(row, column_name)
 
                     elif hasattr(row.__class__, '__header_back_map__') and self.has_header:
@@ -92,7 +95,7 @@ class Connector:
     
     def calculate_columns(self):
         tables = {}
-        for table_name in self.HCT_OBJECTS.keys():
+        for table_name in self.mod.HCT_OBJECTS.keys():
             if self.classes[table_name].__connector__ is not self:
                 continue
             tables[table_name] = self.classes[table_name].__header_back_map__
@@ -161,7 +164,8 @@ class Connector:
                     setattr(self.objects[py_table_name][recid], py_column_name, '')
                     self.objects[py_table_name][recid].__class__.__annotations__[py_column_name] = str
                     self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name)
-    def save(self):
+
+    def save(self, out_path=None):
         raw_tables_to_save = self.get_raw_table()
         raw_tables_in_base = self.load_raw()
         raw_tables_to_update = collections.defaultdict(dict)
@@ -174,8 +178,8 @@ class Connector:
                             raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
                     else:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
-        self.raw_update(raw_tables_to_update)
-        self.raw_append(raw_tables_to_append)
+        self.raw_update(raw_tables_to_update, out_path)
+        self.raw_append(raw_tables_to_append, out_path)
     
     def get_update(self):
         raw_tables_to_save = self.get_raw_table()
@@ -207,22 +211,23 @@ class Connector:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
         return raw_tables_to_append
 
-    def save_all(self, raw_tables_in_base = None):
+    def save_all(self, raw_tables_in_base=None, out_path=None):
         raw_tables_to_save = self.get_all_raw_table()
-        if raw_tables_in_base is not None:
-            raw_tables_in_base = self.load()
-        raw_tables_to_update = collections.defaultdict(dict)
-        raw_tables_to_append = collections.defaultdict(dict)
-        for table_name, table in raw_tables_to_save.items():
-            if table_name in raw_tables_in_base: # save tables available in table
-                for recid in sorted(table.keys()):
-                    if recid in raw_tables_in_base[table_name]:
-                        if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
-                            raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
-                    else:
-                        raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
-        self.raw_update(raw_tables_to_update)
-        self.raw_append(raw_tables_to_append)   
+        if raw_tables_in_base is None:
+            self.raw_append(raw_tables_to_save, out_path)
+        else:
+            raw_tables_to_update = collections.defaultdict(dict)
+            raw_tables_to_append = collections.defaultdict(dict)
+            for table_name, table in raw_tables_to_save.items():
+                if table_name in raw_tables_in_base: # save tables available in table
+                    for recid in sorted(table.keys()):
+                        if recid in raw_tables_in_base[table_name]:
+                            if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
+                                raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
+                        else:
+                            raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
+            self.raw_update(raw_tables_to_update, out_path)
+            self.raw_append(raw_tables_to_append, out_path)   
 
 class RAWConnector(Connector):
     def load_raw(self):
@@ -242,9 +247,14 @@ class XLSXConnector(Connector):
         self.wb_values_only = None
 
     def load(self):
-        self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
+        self.wb_values_only = None
+        try:
+            self.wb_values_only = openpyxl.load_workbook(filename=self.path, data_only=True)
+        except FileNotFoundError:
+            return 
         self.wb_with_formulas = openpyxl.load_workbook(filename=self.path)
         for wb_sheet in self.wb_values_only:
+            skip_table = False
             sheet = wb_sheet.title
             self.tables[sheet] = {}
             py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in
@@ -270,7 +280,6 @@ class XLSXConnector(Connector):
             self.classes[py_table_name] = ThisTable
             self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
             self.mod.HCT_OBJECTS[py_table_name] = []
-            self.HCT_OBJECTS[py_table_name] = self.mod.HCT_OBJECTS[py_table_name]
             self.objects[py_table_name]={}
             ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():
@@ -296,10 +305,12 @@ class XLSXConnector(Connector):
 
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
-
+                    if xl_orig_calculated_value is None:
+                        continue
                     letter = _cell.column_letter
                     if is_header:
-                        assert xl_orig_calculated_value is not None, "first row can't have empty cell'"
+                        if xl_orig_calculated_value is None:
+                            continue
                         header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
                         header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
                         header_name_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = xl_orig_calculated_value
@@ -379,20 +390,22 @@ class XLSXConnector(Connector):
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         self.wb_with_formulas.save(out_file)
 
-    def raw_update(self, tables, out_file=None, force_create=True):
-        if out_file is None:
-            out_file = self.path
+    def raw_update(self, tables, out_path=None, force_create=True):
+        if out_path is None:
+            out_path = self.path
         if self.wb_values_only is None:
             self.wb_with_formulas = openpyxl.Workbook()
 
         for sheet_name, table in tables.items():
+            if sheet_name not in self.wb_with_formulas.sheetnames:
+                self.wb_with_formulas.create_sheet(sheet_name)
             for recid, row in table.items():
                 for letter, new_value in row.items():
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        self.wb_with_formulas.save(out_file)
+        self.wb_with_formulas.save(out_path)
 
-    def raw_append(self, tables, out_file=None):
-        self.raw_update(tables, out_file)
+    def raw_append(self, tables, out_path=None):
+        self.raw_update(tables, out_path)
 
     def __str__(self):
         return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'
@@ -637,7 +650,7 @@ class SQLAlchemyConnector(Connector):
                             raw_tables[table][recid][row._fields[column_num]] = row[column_num]
         return raw_tables
 
-    def raw_update(self, tables):
+    def raw_update(self, tables, out_path=None):
         path, _ = self.path
         import sqlalchemy
         engine = sqlalchemy.create_engine(path)
@@ -655,7 +668,7 @@ class SQLAlchemyConnector(Connector):
                     query = f'UPDATE {table} SET {set_column} WHERE {recid_column_name} = "{recid}"'
                     connection.execute((query))
 
-    def raw_append(self, tables):
+    def raw_append(self, tables, out_path=None):
         path, _ = self.path
         import sqlalchemy
         engine = sqlalchemy.create_engine(path)
@@ -704,7 +717,7 @@ class MySQLConnector(Connector):
         cnx.close()
         return raw_tables
 
-    def raw_update(self, tables):
+    def raw_update(self, tables, out_path=None):
         import mysql.connector
         user, password, host, database, _ = self.path
         cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
@@ -724,8 +737,7 @@ class MySQLConnector(Connector):
         cursor.close()
         cnx.close()
 
-
-    def raw_append(self, tables):
+    def raw_append(self, tables, out_path=None):
         import mysql.connector
         user, password, host, database, _ = self.path
         cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)

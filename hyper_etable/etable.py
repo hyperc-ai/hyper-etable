@@ -396,7 +396,7 @@ class ETable:
                 continue
             init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
-            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__) if hasattr(self, "__header_back_map__") else bool())')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  OrderedSet()))')
             init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
             c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'
@@ -604,7 +604,7 @@ class ETable:
                 continue
             init_f_code.append(f'side_effect(lambda: HCT_OBJECTS["{clsv.__table_name__}"].append(self))')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__recid__", self.__class__.__recid_max__ + self.addidx))')
-            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__))')
+            init_f_code.append(f'side_effect(lambda: setattr(self, "__header_back_map__",  self.__class__.__header_back_map__) if hasattr(self, "__header_back_map__") else bool())')
             init_f_code.append(f'side_effect(lambda: setattr(self, "__touched_annotations__",  set()))')
             init_f_code.append(f'side_effect(lambda: [self.__touched_annotations__.add(o) for o in self.__annotations__ if (not (o.startswith("__") and o.endswith("__")) and (o not in getattr(self.__class__,"__user_defined_annotations__", [])) and o != "addidx")])')
             c=f'side_effect(lambda: setattr(DATA, f"{clsv.__table_name__}_'

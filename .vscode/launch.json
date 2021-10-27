@@ -295,10 +295,10 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "-s",
-                "-o",
-                "log_cli=true",
-                "tests/test_tms3_213.py::test_cycled"
+                // "-s",
+                // "-o",
+                // "log_cli=true",
+                "tests/test_HyperCRM.py::test_test"
             ],
             "console": "integratedTerminal",
             "env": {
