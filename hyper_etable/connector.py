@@ -164,7 +164,8 @@ class Connector:
                     setattr(self.objects[py_table_name][recid], py_column_name, '')
                     self.objects[py_table_name][recid].__class__.__annotations__[py_column_name] = str
                     self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name)
-    def save(self):
+
+    def save(self, out_path=None):
         raw_tables_to_save = self.get_raw_table()
         raw_tables_in_base = self.load_raw()
         raw_tables_to_update = collections.defaultdict(dict)
@@ -177,8 +178,8 @@ class Connector:
                             raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
                     else:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
-        self.raw_update(raw_tables_to_update)
-        self.raw_append(raw_tables_to_append)
+        self.raw_update(raw_tables_to_update, out_path)
+        self.raw_append(raw_tables_to_append, out_path)
     
     def get_update(self):
         raw_tables_to_save = self.get_raw_table()
@@ -210,10 +211,10 @@ class Connector:
                         raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
         return raw_tables_to_append
 
-    def save_all(self, raw_tables_in_base = None):
+    def save_all(self, raw_tables_in_base=None, out_path=None):
         raw_tables_to_save = self.get_all_raw_table()
         if raw_tables_in_base is None:
-            self.raw_append(raw_tables_to_save)
+            self.raw_append(raw_tables_to_save, out_path)
         else:
             raw_tables_to_update = collections.defaultdict(dict)
             raw_tables_to_append = collections.defaultdict(dict)
@@ -225,8 +226,8 @@ class Connector:
                                 raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
                         else:
                             raw_tables_to_append[table_name][recid] = raw_tables_to_save[table_name][recid]
-            self.raw_update(raw_tables_to_update)
-            self.raw_append(raw_tables_to_append)   
+            self.raw_update(raw_tables_to_update, out_path)
+            self.raw_append(raw_tables_to_append, out_path)   
 
 class RAWConnector(Connector):
     def load_raw(self):
@@ -304,7 +305,8 @@ class XLSXConnector(Connector):
 
                 for _cell in row:
                     xl_orig_calculated_value = getattr(_cell, "value", None)
-
+                    if xl_orig_calculated_value is None:
+                        continue
                     letter = _cell.column_letter
                     if is_header:
                         if xl_orig_calculated_value is None:
@@ -388,9 +390,9 @@ class XLSXConnector(Connector):
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
         self.wb_with_formulas.save(out_file)
 
-    def raw_update(self, tables, out_file=None, force_create=True):
-        if out_file is None:
-            out_file = self.path
+    def raw_update(self, tables, out_path=None, force_create=True):
+        if out_path is None:
+            out_path = self.path
         if self.wb_values_only is None:
             self.wb_with_formulas = openpyxl.Workbook()
 
@@ -400,10 +402,10 @@ class XLSXConnector(Connector):
             for recid, row in table.items():
                 for letter, new_value in row.items():
                     self.wb_with_formulas[sheet_name][f'{letter}{recid}'].value = new_value
-        self.wb_with_formulas.save(out_file)
+        self.wb_with_formulas.save(out_path)
 
-    def raw_append(self, tables, out_file=None):
-        self.raw_update(tables, out_file)
+    def raw_append(self, tables, out_path=None):
+        self.raw_update(tables, out_path)
 
     def __str__(self):
         return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'
@@ -648,7 +650,7 @@ class SQLAlchemyConnector(Connector):
                             raw_tables[table][recid][row._fields[column_num]] = row[column_num]
         return raw_tables
 
-    def raw_update(self, tables):
+    def raw_update(self, tables, out_path=None):
         path, _ = self.path
         import sqlalchemy
         engine = sqlalchemy.create_engine(path)
@@ -666,7 +668,7 @@ class SQLAlchemyConnector(Connector):
                     query = f'UPDATE {table} SET {set_column} WHERE {recid_column_name} = "{recid}"'
                     connection.execute((query))
 
-    def raw_append(self, tables):
+    def raw_append(self, tables, out_path=None):
         path, _ = self.path
         import sqlalchemy
         engine = sqlalchemy.create_engine(path)
@@ -715,7 +717,7 @@ class MySQLConnector(Connector):
         cnx.close()
         return raw_tables
 
-    def raw_update(self, tables):
+    def raw_update(self, tables, out_path=None):
         import mysql.connector
         user, password, host, database, _ = self.path
         cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)
@@ -735,8 +737,7 @@ class MySQLConnector(Connector):
         cursor.close()
         cnx.close()
 
-
-    def raw_append(self, tables):
+    def raw_append(self, tables, out_path=None):
         import mysql.connector
         user, password, host, database, _ = self.path
         cnx = mysql.connector.connect(user=user, password=password, host=host, database=database)

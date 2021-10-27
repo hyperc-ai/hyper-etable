@@ -62,7 +62,7 @@ def test_cycle():
         input_xlsx_filename='./tests/dump/dump_me.xlsx',
         input_py_filename='./tests/dump/gg.py',
         output_plan_filename='./tests/dump/plan.py',
-        output_xlsx_filename='./tests/dump/result.xlsx',
+        output_xlsx_filename='./tests/dump/out/result.xlsx',
         output_classes_filename='./tests/dump/classes_dump.py',
         has_header=False)
     for r in range(5):
