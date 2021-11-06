@@ -1,0 +1,5 @@
+increment_value(selected_data_row=DATA.DATA_3)
+increment_value(selected_data_row=DATA.DATA_3)
+increment_value(selected_data_row=DATA.DATA_3)
+check_target_achieved(selected_data_row=DATA.DATA_3)
+hct_main_goal()

@@ -2,3 +2,8 @@
 .venv
 .pytest_cache
 tmp
+*.xlsx_out*
+
+tests_with_data/*
+.vscode/launch.json
+tests/*

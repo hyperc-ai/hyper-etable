@@ -2,6 +2,7 @@
 Convert the HyperC objects back to Excel spreadsheet
 """
 
+import hyper_etable.etable
 import hyperc.xtj
 from collections import defaultdict
 import schedula as sh
@@ -28,18 +29,18 @@ def to_dict(self):
 
 
 class SpileTrancer:
-    def __init__(self, filename, xl_model, static_objects, table_records=None):
+    def __init__(self, filename, xl_model, static_objects, plan_log, table_records=None):
         self.static_objects = static_objects
+        self.plan_log = plan_log
         self.filename = filename
         self.xl_model = xl_model
-        xl_model.finish()
         # self.xl_dict = xl_model.to_dict()
-        self.xl_dict = to_dict(xl_model)
-        self.wb = openpyxl.load_workbook(filename=filename)
+        self.wb = openpyxl.load_workbook(filename=filename, keep_vba=True)
+        # self.wb = openpyxl.load_workbook(filename=filename)
     
     def gen_xl_addr(self, filename, sheetname, letter, rownum):
         filename = os.path.basename(filename)
-        return f"'[{filename}]{sheetname}'!{letter}{rownum}".upper()
+        return f"'[{filename}]{sheetname}'!{letter.upper()}{rownum}"
 
     def gen_opxl_addr(self, filename, sheetname, letter, rownum):
         filename = os.path.basename(filename)
@@ -50,6 +51,8 @@ class SpileTrancer:
     
     def calculate_excel(self):
         "Return full xlsx"
+        self.xl_model.finish()
+        self.xl_dict = to_dict(self.xl_model)
         # First, collect types of annotations
 
         attr_names_by_class = defaultdict(list)
@@ -73,23 +76,42 @@ class SpileTrancer:
                     opxl_sht, opxl_cell_ref = self.gen_opxl_addr(self.filename, sheetname, letter, rownum)
 
                     # First, check what we currently have at this cell
-                    if (type(self.xl_dict[xl_cell_ref]) == str and 
-                            self.xl_dict[xl_cell_ref].upper().startswith("=SELECTIF")):
-                        # Selectif -> replace default value
+                    if (type(self.xl_dict.get(xl_cell_ref, None)) == str and
+                            self.xl_dict[xl_cell_ref].upper().startswith("=TAKEIF")):
+                        # TAKRIF -> replace default value
                         cellvalue = getattr(getattr(self.static_objects, cell), letter)
                         orig_cell = self.xl_dict[xl_cell_ref]
-                        if type_ == str:
+                        if type(cellvalue) == str: # if type_ == str:  # bug with type detector workaround
                             cellvalue = f'"{cellvalue}"'
                         # TODO: tokenize, rewrite, re-render
-                        fm_cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
+                        fm_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
                         all_inputs[xl_cell_ref] = fm_cellvalue
 
                         # for opyxl
                         orig_opxl_cell = self.wb[opxl_sht][opxl_cell_ref]
                         orig_cell = orig_opxl_cell.value
-                        opxl_cellvalue = f"=SELECTIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
+                        opxl_cellvalue = f"=TAKEIF({cellvalue}, {orig_cell.split(',', 1)[1]}"
                         self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
-                    elif (type(self.xl_dict[xl_cell_ref]) == str and 
+                        # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
+                        self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": 'n'}
+                    elif (type(self.xl_dict.get(xl_cell_ref, None)) == str and
+                            (self.xl_dict[xl_cell_ref].upper().startswith("=SELECTFROMRANGE")
+                            or self.xl_dict[xl_cell_ref].upper().startswith("=WATCHTAKEIF"))):
+                        cellvalue = getattr(getattr(self.static_objects, cell), letter)
+                        if type(cellvalue) == str: # if type_ == str:  # bug with type detector workaround
+                            cellvalue = f'"{cellvalue}"'
+                        if self.xl_dict[xl_cell_ref].upper().startswith("=WATCHTAKEIF") and cellvalue == 0:
+                            continue
+                        orig_opxl_cell = self.wb[opxl_sht][opxl_cell_ref]
+                        orig_cell = orig_opxl_cell.value
+                        if "," in orig_cell:
+                            opxl_cellvalue = f"{orig_cell.split(',', 1)[0]}, {cellvalue})"
+                        else:
+                            opxl_cellvalue = f"{orig_cell.split(')', 1)[0]}, {cellvalue})"
+                        self.wb[opxl_sht][opxl_cell_ref].value = opxl_cellvalue
+                        # self.wb[opxl_sht].formula_attributes[opxl_cell_ref]["t"] = "normal"
+                        self.wb[opxl_sht].formula_attributes[opxl_cell_ref] = {"t": "n"}
+                    elif (type(self.xl_dict.get(xl_cell_ref, None)) == str and 
                             self.xl_dict[xl_cell_ref].upper().startswith("=")):
                         pass
                     else:  # raw value? just write what we have
@@ -97,6 +119,29 @@ class SpileTrancer:
                         all_inputs[xl_cell_ref] = cellvalue
                         self.wb[opxl_sht][opxl_cell_ref] = cellvalue
 
+        plan_columns = ["Step N", "Automatic Decision", "Event Name", "Leftmost Value", 
+                        "Topmost Value", "Column", "Row", "(Prev. Value)", "Cell Value", "Formula"]
+        final_log_entry = ["", "(final formula calculations)", "", "", 
+                           "", "", "", "", "", ""]
+        self.plan_log.append(final_log_entry)
+        lettrs = "ABCDEFGHIJKLMNOP"
+
+        AUDIT_TABLE_NAME = "Calculation Report"
+
+        if AUDIT_TABLE_NAME in self.wb:
+            plan_ws = self.wb[AUDIT_TABLE_NAME]
+            for r in list(plan_ws.rows)[1:]:
+                for i in range(len(plan_columns)):
+                    r[i].value = None
+        else:
+            plan_ws = self.wb.create_sheet(AUDIT_TABLE_NAME)
+        for letter, col_n in zip(lettrs, plan_columns):
+            plan_ws[f"{letter.upper()}1"] = col_n
+        for i, step in enumerate(self.plan_log):
+            for letter, reccol in zip(lettrs, step):
+                if isinstance(reccol, hyper_etable.etable.EventNameHolder): 
+                    reccol = str(reccol)
+                plan_ws[f"{letter.upper()}{i+2}"] = reccol
 
         self.xl_model.calculate(inputs=all_inputs)
 
