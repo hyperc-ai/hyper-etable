@@ -191,12 +191,12 @@ class Connector:
                     if recid in raw_tables_in_base[table_name]:
                         if raw_tables_in_base[table_name][recid] !=  raw_tables_to_save[table_name][recid]:
                             raw_tables_to_update[table_name][recid] = raw_tables_to_save[table_name][recid]
-                            for_del = []
-                            for column, val in raw_tables_to_update[table_name][recid].items():
-                                if raw_tables_in_base[table_name][recid][column] == val:
-                                    for_del.append(column)
-                            for column in for_del:
-                                del raw_tables_to_update[table_name][recid][column]
+                            # for_del = []
+                            # for column, val in raw_tables_to_update[table_name][recid].items():
+                            #     if raw_tables_in_base[table_name][recid][column] == val:
+                            #         for_del.append(column)
+                            # for column in for_del:
+                            #     del raw_tables_to_update[table_name][recid][column]
 
         return raw_tables_to_update
 
