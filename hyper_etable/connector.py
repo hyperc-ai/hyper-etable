@@ -156,7 +156,7 @@ class Connector:
                 py_column_name = hyperc.xtj.str_to_py(f'{column_name}')
                 ThisTable.__column_to_py_map__[py_column_name] = column_name
                 self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name)
-                if (type(value) == bool or type(value) == int or type(value) == str):
+                if (type(value) == bool or type(value) == int or type(value) == str or type(value) == float):
                     setattr(self.objects[py_table_name][recid], py_column_name, value)
                     self.objects[py_table_name][recid].__class__.__annotations__[py_column_name] = str
                     self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name) 
