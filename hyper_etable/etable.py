@@ -191,18 +191,16 @@ class ETable:
         def gg(s, g, e, m):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
                             addition_modules=[s.mod], metadata=m)
-        metadata = {"plan_steps": [], "plan_exec": []}
-        metadata.update(self.metadata)
+        self.metadata.update({"plan_steps": [], "plan_exec": []})
         gg(self,self.methods_classes[self.main_goal.name],
-                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())), metadata)
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())), self.metadata)
     def solver_call_plan_n_exec(self):
         def gg(s, g, e, m):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
                             addition_modules=[s.mod], metadata=m)
-        metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True, "store_simple": []}
-        metadata.update(self.metadata)
+        self.metadata.update({"plan_steps": [], "plan_exec": [], "force_exec": True, "store_simple": []})
         gg(self,self.methods_classes[self.main_goal.name],
-                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())), metadata)
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())), self.metadata)
 
     def solver_call_simple_with_exec(self):
         def gg(s, g, e):
