@@ -188,19 +188,21 @@ class ETable:
                             addition_modules=[self.mod], metadata=self.metadata)
 
     def solver_call_simple_wo_exec(self):
-        def gg(s, g, e):
+        def gg(s, g, e, m):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
-                            addition_modules=[s.mod], metadata=s.metadata)
-        self.metadata = {"plan_steps": [], "plan_exec": []}
+                            addition_modules=[s.mod], metadata=m)
+        metadata = {"plan_steps": [], "plan_exec": []}
+        metadata.update(self.metadata)
         gg(self,self.methods_classes[self.main_goal.name],
-                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())), metadata)
     def solver_call_plan_n_exec(self):
-        def gg(s, g, e):
+        def gg(s, g, e, m):
             hyperc.solve(g, globals_=s.methods_classes, extra_instantiations=e, work_dir=s.tempdir, 
-                            addition_modules=[s.mod], metadata=s.metadata)
-        self.metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True, "store_simple": []}
+                            addition_modules=[s.mod], metadata=m)
+        metadata = {"plan_steps": [], "plan_exec": [], "force_exec": True, "store_simple": []}
+        metadata.update(self.metadata)
         gg(self,self.methods_classes[self.main_goal.name],
-                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())))
+                                              list(filter(lambda x: isinstance(x, type), self.methods_classes.values())), metadata)
 
     def solver_call_simple_with_exec(self):
         def gg(s, g, e):
