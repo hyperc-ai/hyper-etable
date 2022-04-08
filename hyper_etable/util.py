@@ -35,7 +35,7 @@ def str_to_py(sheet_name: str):
     trans_name = unidecode.unidecode(sheet_name).replace(' ', '_')
     trans_name = list(trans_name)
     for i, character in enumerate(trans_name):
-        if character not in (string.ascii_uppercase + string.digits + "_"):
+        if character not in (string.ascii_uppercase + string.ascii_lowercase + string.digits + "_"):
             trans_name[i] = "_"
     return f"{''.join(trans_name)}".strip('_')
 
