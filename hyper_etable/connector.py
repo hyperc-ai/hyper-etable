@@ -119,7 +119,7 @@ class Connector:
         py_table_name = hyperc.xtj.str_to_py(f'{table_name}') # warning only sheet in 
         if py_table_name in self.mod.HCT_OBJECTS:
             raise ValueError(f'Error sheet {table_name} already exist')
-        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': table_name})
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': table_name})
         ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
         ThisTable.__user_defined_annotations__ = []
         ThisTable.__default_init__ = {}
@@ -127,9 +127,10 @@ class Connector:
         ThisTable.__annotations_type_set__ = collections.defaultdict(set)
         ThisTable.__connector__ = self
         ThisTable.__column_to_py_map__ = {}
-        self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+        self.mod.__dict__[f'{py_table_name}'] = ThisTable
+        self.mod.__dict__[table_name] = ThisTable
         self.classes[py_table_name] = ThisTable
-        self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
+        self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}"
         self.mod.HCT_OBJECTS[py_table_name] = []
         self.objects[py_table_name]={}
         ThisTable.__recid_max__ = 0
@@ -267,7 +268,7 @@ class XLSXConnector(Connector):
                 is_header = True
             else:
                 is_header = False
-            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
+            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__header_name_map__ = header_name_map
@@ -276,9 +277,9 @@ class XLSXConnector(Connector):
             ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             ThisTable.__connector__ = self
-            self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+            self.mod.__dict__[f'{py_table_name}'] = ThisTable
             self.classes[py_table_name] = ThisTable
-            self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
+            self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}"
             self.mod.HCT_OBJECTS[py_table_name] = []
             self.objects[py_table_name]={}
             ThisTable.__recid_max__ = 0
@@ -544,7 +545,7 @@ class MSAPIConnector(Connector):
                 is_header = True
             else:
                 is_header = False
-            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
+            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
@@ -552,9 +553,9 @@ class MSAPIConnector(Connector):
             ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = collections.defaultdict(set)
             ThisTable.__connector__ = self
-            self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+            self.mod.__dict__[f'{py_table_name}'] = ThisTable
             self.classes[py_table_name] = ThisTable
-            self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
+            self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}"
             self.mod.HCT_OBJECTS[py_table_name] = []
             self.objects[py_table_name]={}
             ThisTable.__recid_max__ = 0
@@ -770,16 +771,16 @@ class AirtableConnector(Connector):
         py_table_name = hyperc.xtj.str_to_py(f'{TABLE}') # warning only sheet in 
         if py_table_name in self.mod.HCT_OBJECTS:
             raise ValueError(f'Error sheet {TABLE} already exist')
-        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': TABLE})
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': TABLE})
         ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
         ThisTable.__user_defined_annotations__ = []
         ThisTable.__default_init__ = {}
         ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = collections.defaultdict(set)
         ThisTable.__connector__ = self
-        self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+        self.mod.__dict__[f'{py_table_name}'] = ThisTable
         self.classes[py_table_name] = ThisTable
-        self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}_Class"
+        self.classes[py_table_name].__qualname__ = f"{self.mod.__name__}.{py_table_name}"
         self.mod.HCT_OBJECTS[py_table_name] = []
         self.objects[py_table_name]={}
         ThisTable.__recid_max__ = 0

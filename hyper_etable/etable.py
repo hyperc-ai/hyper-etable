@@ -317,13 +317,13 @@ class ETable:
 
 
     def get_new_table(self, table_name, sheet):
-        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}_Class', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
+        ThisTable = hyper_etable.meta_table.TableElementMeta(f'{table_name}', (object,), {'__table_name__': table_name, '__xl_sheet_name__': sheet})
         ThisTable.__annotations__ = {'__table_name__': str}
         ThisTable.__touched_annotations__ = OrderedSet()
         ThisTable.__annotations_type_set__ = defaultdict(set)
-        self.mod.__dict__[f'{table_name}_Class'] = ThisTable
+        self.mod.__dict__[f'{table_name}'] = ThisTable
         self.classes[table_name] = ThisTable
-        self.classes[table_name].__qualname__ = f"{self.session_name}.{table_name}_Class"
+        self.classes[table_name].__qualname__ = f"{self.session_name}.{table_name}"
         self.mod.HCT_OBJECTS[table_name] = []
         return ThisTable
 
@@ -479,16 +479,16 @@ class ETable:
                 is_header = True
             else:
                 is_header = False
-            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}_Class', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
+            ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': sheet})
             ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
             ThisTable.__header_back_map__ = header_back_map
             ThisTable.__user_defined_annotations__ = []
             ThisTable.__default_init__ = {}
             ThisTable.__touched_annotations__ = OrderedSet()
             ThisTable.__annotations_type_set__ = defaultdict(set)
-            self.mod.__dict__[f'{py_table_name}_Class'] = ThisTable
+            self.mod.__dict__[f'{py_table_name}'] = ThisTable
             self.classes[py_table_name] = ThisTable
-            self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}_Class"
+            self.classes[py_table_name].__qualname__ = f"{self.session_name}.{py_table_name}"
             self.mod.HCT_OBJECTS[py_table_name] = []
             ThisTable.__recid_max__ = 0
             for row in wb_sheet.iter_rows():

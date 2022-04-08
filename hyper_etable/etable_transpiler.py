@@ -966,7 +966,7 @@ class FunctionCode:
                 #     f'_stack_add(DATA.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code_str = '\n    '.join(stack_code)
 
-        function_args = ', '.join(set([f'{k.row_name}: {v}_Class' for k, v in self.function_args.items()]))
+        function_args = ', '.join(set([f'{k.row_name}: {v}' for k, v in self.function_args.items()]))
         if self.collapsed:
             operators = '\n    '.join(self.operators)
             all_code = f"{if_not_hasattr} {operators}"
