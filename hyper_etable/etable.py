@@ -362,7 +362,7 @@ class ETable:
 
         for clsv in self.classes.values():
             var_global_addidx_name = f'DATA.{clsv.__table_name__}_addidx'
-            setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 0)
+            setattr(self.mod.DATA, f'{clsv.__table_name__}_addidx', 1)
             self.mod.StaticObject.__annotations__[f'{clsv.__table_name__}_addidx'] = int
             init_f_code = []
             init_pars = []
