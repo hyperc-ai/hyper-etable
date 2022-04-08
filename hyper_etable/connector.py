@@ -3,6 +3,7 @@ import openpyxl
 import hyper_etable.meta_table
 import hyper_etable.ms_api
 import hyperc.util
+import hyper_etable.util
 import collections
 import io
 import googleapiclient.discovery
@@ -116,7 +117,7 @@ class Connector:
 
     def load_table(self, table_name):
 
-        py_table_name = hyperc.xtj.str_to_py(f'{table_name}') # warning only sheet in 
+        py_table_name = hyper_etable.util.str_to_py(f'{table_name}') # warning only sheet in 
         if py_table_name in self.mod.HCT_OBJECTS:
             raise ValueError(f'Error sheet {table_name} already exist')
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': table_name})
@@ -146,7 +147,7 @@ class Connector:
             rec_obj.__xl_sheet_name__ = table_name
             self.objects[py_table_name][recid] = rec_obj
             self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-            sheet_name = hyperc.xtj.str_to_py(f"{table_name}") + f'_{recid}'
+            sheet_name = hyper_etable.util.str_to_py(f"{table_name}") + f'_{recid}'
             if not hasattr(self.mod.DATA, sheet_name):
                 setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                 self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
@@ -154,7 +155,7 @@ class Connector:
             rec_obj.__py_sheet_name__ = sheet_name
 
             for column_name, value in self.raw_tables[table_name][recid].items():
-                py_column_name = hyperc.xtj.str_to_py(f'{column_name}')
+                py_column_name = hyper_etable.util.str_to_py(f'{column_name}')
                 ThisTable.__column_to_py_map__[py_column_name] = column_name
                 self.objects[py_table_name][recid].__touched_annotations__.add(py_column_name)
                 if (type(value) == bool or type(value) == int or type(value) == str or type(value) == float):
@@ -258,7 +259,7 @@ class XLSXConnector(Connector):
             skip_table = False
             sheet = wb_sheet.title
             self.tables[sheet] = {}
-            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in
+            py_table_name = hyper_etable.util.str_to_py(f'{sheet}') # warning only sheet in
             if py_table_name in self.mod.HCT_OBJECTS:
                 raise ValueError(f'Error sheet {sheet} already exist')
             header_map = {}
@@ -297,7 +298,7 @@ class XLSXConnector(Connector):
                 rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-                sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
+                sheet_name = hyper_etable.util.str_to_py(f"{sheet}") + f'_{recid}'
                 if not hasattr(self.mod.DATA, sheet_name):
                     setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
@@ -312,9 +313,9 @@ class XLSXConnector(Connector):
                     if is_header:
                         if xl_orig_calculated_value is None:
                             continue
-                        header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
-                        header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
-                        header_name_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = xl_orig_calculated_value
+                        header_map[letter] = hyper_etable.util.str_to_py(xl_orig_calculated_value)
+                        header_back_map[hyper_etable.util.str_to_py(xl_orig_calculated_value)] = letter
+                        header_name_map[hyper_etable.util.str_to_py(xl_orig_calculated_value)] = xl_orig_calculated_value
                         continue
                     elif xl_orig_calculated_value is None:
                         continue
@@ -409,12 +410,12 @@ class XLSXConnector(Connector):
         self.raw_update(tables, out_path)
 
     def __str__(self):
-        return f'XLSX_FILE_{hyperc.xtj.str_to_py(self.path)}'
+        return f'XLSX_FILE_{hyper_etable.util.str_to_py(self.path)}'
 
 class CSVConnector(Connector):
 
     def __str__(self):
-        return f'CSV_FILE_{hyperc.xtj.str_to_py(self.path)}'
+        return f'CSV_FILE_{hyper_etable.util.str_to_py(self.path)}'
 
 class GSheetConnector(XLSXConnector):
 
@@ -526,7 +527,7 @@ class GSheetConnector(XLSXConnector):
 
 
     def __str__(self):
-        return f'GSHEET_{hyperc.xtj.str_to_py(self.path)}'
+        return f'GSHEET_{hyper_etable.util.str_to_py(self.path)}'
 
 class MSAPIConnector(Connector):
     def __init__(self, path, has_header=True):
@@ -537,8 +538,8 @@ class MSAPIConnector(Connector):
         for sheet in self.ms_table:
             wb_sheet=self.ms_table[sheet]
             filename = self.path
-            # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
-            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in 
+            # py_table_name = hyper_etable.util.str_to_py(f'[{filename}]{sheet}')
+            py_table_name = hyper_etable.util.str_to_py(f'{sheet}') # warning only sheet in 
             header_map = {}
             header_back_map = {}
             if self.has_header:
@@ -572,7 +573,7 @@ class MSAPIConnector(Connector):
                 rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-                sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
+                sheet_name = hyper_etable.util.str_to_py(f"{sheet}") + f'_{recid}'
                 if not hasattr(self.mod.DATA, sheet_name):
                     setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
@@ -587,8 +588,8 @@ class MSAPIConnector(Connector):
                     if is_header:
                         # if xl_orig_calculated_value is None:
                         #     continue
-                        header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
-                        header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
+                        header_map[letter] = hyper_etable.util.str_to_py(xl_orig_calculated_value)
+                        header_back_map[hyper_etable.util.str_to_py(xl_orig_calculated_value)] = letter
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
                     if self.has_header:
@@ -625,7 +626,7 @@ class MSAPIConnector(Connector):
                         self.objects[py_table_name][recid].__touched_annotations__.add(column_name)
 
     def __str__(self):
-        return f'MSAPI_{hyperc.xtj.str_to_py(self.path)}'
+        return f'MSAPI_{hyper_etable.util.str_to_py(self.path)}'
 
 class SQLAlchemyConnector(Connector):
 
@@ -767,8 +768,8 @@ class AirtableConnector(Connector):
         # response = requests.get(f'https://api.airtable.com/v0/meta/bases/{BASE_ID}/tables?api_key={API_KEY}',).json()
         response = requests.get(f'https://api.airtable.com/v0/{BASE_ID}/{TABLE}?api_key={API_KEY}').json()
         assert 'error' not in response, f"Airtable error {response}"
-        # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
-        py_table_name = hyperc.xtj.str_to_py(f'{TABLE}') # warning only sheet in 
+        # py_table_name = hyper_etable.util.str_to_py(f'[{filename}]{sheet}')
+        py_table_name = hyper_etable.util.str_to_py(f'{TABLE}') # warning only sheet in 
         if py_table_name in self.mod.HCT_OBJECTS:
             raise ValueError(f'Error sheet {TABLE} already exist')
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': TABLE})
@@ -797,7 +798,7 @@ class AirtableConnector(Connector):
             rec_obj.__xl_sheet_name__ = TABLE
             self.objects[py_table_name][recid] = rec_obj
             self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-            sheet_name = hyperc.xtj.str_to_py(f"{TABLE}") + f'_{recid}'
+            sheet_name = hyper_etable.util.str_to_py(f"{TABLE}") + f'_{recid}'
             if not hasattr(self.mod.DATA, sheet_name):
                 setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                 self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]

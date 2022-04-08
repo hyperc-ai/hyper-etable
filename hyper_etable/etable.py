@@ -134,7 +134,7 @@ class ETable:
         self.plan_data_prefix = 'DATA.'
         self.out_filename = ""
         APPENDIX = hyperc.settings.APPENDIX
-        hyperc.settings.APPENDIX = hyperc.xtj.str_to_py(str(self.filename)) + "_" + project_name
+        hyperc.settings.APPENDIX = hyper_etable.util.str_to_py(str(self.filename)) + "_" + project_name
         self.tempdir = hyperc.util.get_work_dir()
         hyperc.settings.APPENDIX = APPENDIX
         self.session_name = "etable_mod"
@@ -173,13 +173,13 @@ class ETable:
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
-        py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+        py_table_name = hyper_etable.util.str_to_py(f'[{filename}]{sheet}')
         attrname = f"{py_table_name}_{row}"
         return getattr(getattr(self.mod.DATA, attrname), column.upper())
 
     def get_row_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
-        py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+        py_table_name = hyper_etable.util.str_to_py(f'[{filename}]{sheet}')
         attrname = f"{py_table_name}_{row}"
         return getattr(self.mod.DATA, attrname)
 
@@ -328,7 +328,7 @@ class ETable:
         return ThisTable
 
     def get_object_from_var(self, var):
-        py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+        py_table_name = hyper_etable.util.str_to_py(f'[{var.filename}]{var.sheet}')
         return self.objects[py_table_name][var.number]
 
     def save_all(self):
@@ -471,8 +471,8 @@ class ETable:
             sheet = wb_sheet.title
             filename = self.filename
             filename = filename_case_remap_workaround.get(filename, filename)
-            # py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
-            py_table_name = hyperc.xtj.str_to_py(f'{sheet}') # warning only sheet in 
+            # py_table_name = hyper_etable.util.str_to_py(f'[{filename}]{sheet}')
+            py_table_name = hyper_etable.util.str_to_py(f'{sheet}') # warning only sheet in 
             header_map = {}
             header_back_map = {}
             if self.has_header:
@@ -504,7 +504,7 @@ class ETable:
                 rec_obj.__touched_annotations__ = OrderedSet()
                 self.objects[py_table_name][recid] = rec_obj
                 self.mod.HCT_OBJECTS[py_table_name].append(rec_obj)
-                sheet_name = hyperc.xtj.str_to_py(f"{sheet}") + f'_{recid}'
+                sheet_name = hyper_etable.util.str_to_py(f"{sheet}") + f'_{recid}'
                 if not hasattr(self.mod.DATA, sheet_name):
                     setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                     self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
@@ -519,8 +519,8 @@ class ETable:
                     if is_header:
                         # if xl_orig_calculated_value is None:
                         #     continue
-                        header_map[letter] = hyperc.xtj.str_to_py(xl_orig_calculated_value)
-                        header_back_map[hyperc.xtj.str_to_py(xl_orig_calculated_value)] = letter
+                        header_map[letter] = hyper_etable.util.str_to_py(xl_orig_calculated_value)
+                        header_back_map[hyper_etable.util.str_to_py(xl_orig_calculated_value)] = letter
                         ThisTable.__annotations__[header_map.get(letter, None)] = str
                         continue
                     cell = hyper_etable.cell_resolver.PlainCell(filename=filename, sheet=sheet, letter=letter, number=recid)
@@ -845,7 +845,7 @@ class ETable:
                         continue # pass only formulas
                     output = hyper_etable.etable_transpiler.StringLikeVariable(
                         var_map=var_mapper, filename=self.filename, sheet=ws.title, letter=cell.column_letter, number=cell.row)
-                    out_py = hyperc.xtj.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
+                    out_py = hyper_etable.util.str_to_py(f'[{output.filename}]{output.sheet}!{output.letter}{output.number}')
                     code_init = hyper_etable.etable_transpiler.FunctionCode(name=f'hct_{out_py}')
                     code_init.init.append(f'#{text_formula}')
 
@@ -971,7 +971,7 @@ class ETable:
                     used_cell_set.add(current_cell)
                     goal_code_used_vars.add(current_cell)
                     filename_, sheet, recid, letter = hyper_etable.etable_transpiler.split_cell(cell)
-                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                    sheet_name = hyper_etable.util.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     for rule in rule_cell.rules:
                         value = hyper_etable.etable_transpiler.formulas_parser(rule.formula[0])[0]
                         r = int(rule.dxf.fill.end_color.rgb[2:4], 16)
@@ -992,7 +992,7 @@ class ETable:
                                 filename=filename_value, sheet=sheet_value, letter=letter_value.upper(), number=recid_value)
                             goal_code_used_vars.add(current_cell)
                             used_cell_set.add(current_cell)
-                            sheet_name_value = hyperc.xtj.str_to_py(
+                            sheet_name_value = hyper_etable.util.str_to_py(
                                 f"[{filename_value}]{sheet_value}") + f'_{recid_value}'
                             goal_code[cell].append([
                                 f'assert DATA.{sheet_name}.{letter} {operator_name_to_operator(rule.operator)} DATA.{sheet_name_value}.{letter_value}',
@@ -1092,7 +1092,7 @@ class ETable:
             letter_ret = cell.letter
 
             filename = filename_case_remap_workaround.get(filename, filename)
-            py_table_name = hyperc.xtj.str_to_py(f'[{filename}]{sheet}')
+            py_table_name = hyper_etable.util.str_to_py(f'[{filename}]{sheet}')
             if isinstance(recid_ret, list):
                 recid_ret = range(recid_ret[0], recid_ret[1] + 1)
             else:
@@ -1130,7 +1130,7 @@ class ETable:
                     defined_table_name = self.range_resolver.get_table_by_cell(cell)
                     if defined_table_name is not None:
                         for dtn_raw in defined_table_name:
-                            dtn = hyperc.xtj.str_to_py(dtn_raw)
+                            dtn = hyper_etable.util.str_to_py(dtn_raw)
                             if dtn not in self.mod.DefinedTables.__annotations__:
                                 self.mod.DefinedTables.__annotations__[dtn] = set
                                 setattr(self.mod.DEFINED_TABLES, dtn, set())
@@ -1141,7 +1141,7 @@ class ETable:
                     #TODO add type detector
                     # self.classes[py_table_name].__annotations__[letter] = int
                     # rec_obj.__annotations__.add(letter)
-                    sheet_name = hyperc.xtj.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
+                    sheet_name = hyper_etable.util.str_to_py(f"[{filename}]{sheet}") + f'_{recid}'
                     if not hasattr(self.mod.DATA, sheet_name):
                         setattr(self.mod.DATA, sheet_name, self.objects[py_table_name][recid])
                         self.mod.StaticObject.__annotations__[sheet_name] = self.classes[py_table_name]
@@ -1202,7 +1202,7 @@ class ETable:
         #         else:
         #             recid_ret = [var.number]
         #             letter = var.letter
-        #         py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+        #         py_table_name = hyper_etable.util.str_to_py(f'[{var.filename}]{var.sheet}')
         #         for recid in recid_ret:
         #             line_object = self.objects[py_table_name][recid]
         #             #TODO fix type detector for ranges
@@ -1215,7 +1215,7 @@ class ETable:
         # stack_code = ''
         # for cell in used_cell_set:
         #     filename, sheet, recid_ret, letter = hyper_etable.etable_transpiler.split_cell(cell)
-        #     stack_code = stack_code_gen(hyperc.xtj.str_to_py(f'[{filename}]{sheet}'))
+        #     stack_code = stack_code_gen(hyper_etable.util.str_to_py(f'[{filename}]{sheet}'))
         #     break
 
         # Dump defined table names

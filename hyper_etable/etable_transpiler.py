@@ -12,6 +12,7 @@ import random
 import string
 import hyper_etable.type_mapper
 import hyper_etable.cell_resolver
+import hyper_etable.util
 
 VAR_RE = re.compile(r"\.(.+_\d+)\.")
 
@@ -53,7 +54,7 @@ def get_var_from_cell(cell_str):
                                           [1].compile().dsp.nodes.keys())[0].replace(" = -", "=-"))[0][0].attr
     letter = cell['c1'].upper()
     number = cell['r1']
-    sheet_name = hyperc.xtj.str_to_py(f"[{cell['filename']}]{cell['sheet']}")
+    sheet_name = hyper_etable.util.str_to_py(f"[{cell['filename']}]{cell['sheet']}")
     var_name = f'var_tbl_{sheet_name}__hct_direct_ref__{number}_{letter}'
     return var_name
 
@@ -143,9 +144,9 @@ class StringLikeNamedRange:
         self.sheet = sheet
         self.range_name = range_name
         self.cell = cell
-        self.sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
+        self.sheet_name = hyper_etable.util.str_to_py(f"[{self.filename}]{self.sheet}")
         self.is_range = True
-        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyperc.xtj.str_to_py(self.range_name)}'
+        self.row_name = f'var_tbl_{self.sheet_name}__named_range_{hyper_etable.util.str_to_py(self.range_name)}'
         self.var_str = f'{self.row_name}.{cell.letter[0]}'
         self.types = set()
         self.type_group_set = set()
@@ -231,7 +232,7 @@ class StringLikeVariable:
 
         self.var_str = var_str
         if self.var_str is None:
-            sheet_name = hyperc.xtj.str_to_py(f"[{self.filename}]{self.sheet}")
+            sheet_name = hyper_etable.util.str_to_py(f"[{self.filename}]{self.sheet}")
             if self.is_range:
                 self.row_name = f'var_tbl_{sheet_name}__range_{self.number[0]}_{self.number[1]}_{self.letter[0]}'
                 self.var_str = f'{self.row_name}.{self.cell.letter[0]}'
@@ -363,12 +364,12 @@ class EtableTranspiler:
         self.init_code.all_variables.update(set(transpiled_formula_return.variables))
         self.init_code.input_variables.update(set([v for v in transpiled_formula_return.variables if isinstance(
             v, StringLikeVariable) or isinstance(v, StringLikeNamedRange)]))
-        sheet_name = hyperc.xtj.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
+        sheet_name = hyper_etable.util.str_to_py(f"[{self.output.filename}]{self.output.sheet}")
         self.output_code = []
         self.output_code.append(f'{self.output} = {transpiled_formula_return}')
         self.output.temp = True
         if self.output.is_range:
-            out_py = hyperc.xtj.str_to_py(
+            out_py = hyper_etable.util.str_to_py(
                 f'[{self.output.filename}]{self.output.sheet}!{self.output.letter[0]}{self.output.number[0]}_{self.output.letter[1]}{self.output.number[1]}')
             self.init_code.name = f'hct_{out_py}'
             self.output_code.append(
@@ -444,7 +445,7 @@ class EtableTranspiler:
         rng_ret.range_name = rng.range_name
         rng_ret.row_name = rng_test.row_name
         rng_ret.var_str = f'{rng_ret.row_name}.{rng_ret.letter[0]}'
-        self.init_code.function_args[rng] = hyperc.xtj.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
+        self.init_code.function_args[rng] = hyper_etable.util.str_to_py(f'[{rng.cell.filename}]{rng.cell.sheet}')
         self.var_counter += 1
         ret_var = StringLikeVariable.new(
             var_map=self.var_mapper, filename=self.output.filename, sheet=self.output.sheet, letter=self.output.letter,
@@ -907,7 +908,7 @@ class FunctionCode:
         all_vars = set()
         for var in self.input_variables:
             if not var.is_range:
-                sheet_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+                sheet_name = hyper_etable.util.str_to_py(f'[{var.filename}]{var.sheet}')
                 all_vars.add(f'DATA.{sheet_name}_{var.cell.number}')
         for a, b in itertools.combinations(all_vars, r=2):
             # code += f"    assert {a} != {b}\n"
@@ -920,13 +921,13 @@ class FunctionCode:
             if arg in self.input_variables:
                 self.input_variables.remove(arg)
         for var in self.input_variables:
-            py_table_name = hyperc.xtj.str_to_py(f'[{var.filename}]{var.sheet}')
+            py_table_name = hyper_etable.util.str_to_py(f'[{var.filename}]{var.sheet}')
             if var.is_range :
                 self.function_args[var] = py_table_name
                 self.init.append(f'assert {var}_not_hasattr == False')
                 if isinstance(var, StringLikeNamedRange) or isinstance(var, StringLikeVariable):
                     self.init.append(
-                        f'assert {var.row_name} in DEFINED_TABLES.{hyperc.xtj.str_to_py(var.range_name)}')
+                        f'assert {var.row_name} in DEFINED_TABLES.{hyper_etable.util.str_to_py(var.range_name)}')
                     pass
                 else:
                     raise Exception(f"Unsupport range {var}")
@@ -939,7 +940,7 @@ class FunctionCode:
     def gen_not_hasattr(self):
         not_hasattrs = []
         for eff_var in self.effect_vars:
-            py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+            py_table_name = hyper_etable.util.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
             not_hasattrs.append(
                 f'assert DATA.{py_table_name}_{eff_var.number}.{eff_var.letter}_not_hasattr == True')
         return "\n    ".join(not_hasattrs)
@@ -955,13 +956,13 @@ class FunctionCode:
             elif not self.is_atwill:
                 if_not_hasattr = f'\n    {self.gen_not_hasattr()}'
                 for eff_var in self.effect_vars:
-                    py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+                    py_table_name = hyper_etable.util.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                     # stack_code.append(
                     # f'_stack_add(DATA.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
             else:
                 pass  # do nothing if at-will like selectfromrange
                 # for eff_var in self.effect_vars:
-                #     py_table_name = hyperc.xtj.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
+                #     py_table_name = hyper_etable.util.str_to_py(f'[{eff_var.filename}]{eff_var.sheet}')
                 #     stack_code.append(
                 #     f'_stack_add(DATA.{py_table_name}_{eff_var.number},"{eff_var.letter}")')
         stack_code_str = '\n    '.join(stack_code)
