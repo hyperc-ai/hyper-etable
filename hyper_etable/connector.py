@@ -122,6 +122,9 @@ class Connector:
             raise ValueError(f'Error sheet {table_name} already exist')
         ThisTable = hyper_etable.meta_table.TableElementMeta(f'{py_table_name}', (object,), {'__table_name__': py_table_name, '__xl_sheet_name__': table_name})
         ThisTable.__annotations__ = {'__table_name__': str, 'addidx': int}
+        if hasattr(self.raw_tables[table_name], "proposed_annotations"):
+            proposed_annotations = self.raw_tables[table_name].proposed_annotations
+            ThisTable.__annotations__.update(proposed_annotations)
         ThisTable.__user_defined_annotations__ = []
         ThisTable.__default_init__ = {}
         ThisTable.__touched_annotations__ = OrderedSet()
