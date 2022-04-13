@@ -384,13 +384,13 @@ class ETable:
                     if clsv.__default_init__[par_name] == 'set()':
                         init_f_code.append(f'self.{par_name} = set() # set init "{par_name.upper()}" of table "{clsv.__table_name__}"')
                     else:
-                        init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
-                        init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                        init_pars.append(f"{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                        init_f_code.append(f'self.{par_name} = {par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
                 else:
                     if not par_type in hyperc.xtj.DEFAULT_VALS:
                         raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
-                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
-                    init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                    init_pars.append(f"{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                    init_f_code.append(f'self.{par_name} = {par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
 
             if len(init_f_code) == 0:
                 continue
@@ -592,13 +592,13 @@ class ETable:
                     if clsv.__default_init__[par_name] == 'set()':
                         init_f_code.append(f'self.{par_name} = set() # set init "{par_name.upper()}" of table "{clsv.__table_name__}"')
                     else:
-                        init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
-                        init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                        init_pars.append(f"{par_name}:{par_type.__name__}={clsv.__default_init__[par_name]}")
+                        init_f_code.append(f'self.{par_name} = {par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
                 else:
                     if not par_type in hyperc.xtj.DEFAULT_VALS:
                         raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
-                    init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
-                    init_f_code.append(f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                    init_pars.append(f"{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                    init_f_code.append(f'self.{par_name} = {par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
 
             if len(init_f_code) == 0:
                 continue
@@ -1256,12 +1256,12 @@ class ETable:
                     par_type = str
                     clsv.__annotations__[par_name] = str
                 init_f_code.append(
-                    f'self.{par_name} = hct_p_{par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
+                    f'self.{par_name} = {par_name} # cell "{par_name.upper()}" of table "{clsv.__table_name__}"')
                 # init_f_code.append(
                     # f'self.{par_name}_not_hasattr = True')  # TODO: statically set to true instead of asking in parameters
                 if not par_type in hyperc.xtj.DEFAULT_VALS:
                     raise TypeError(f"Could not resolve type for {clsv.__name__}.{par_name} (forgot to init cell?)")
-                init_pars.append(f"hct_p_{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
+                init_pars.append(f"{par_name}:{par_type.__name__}={hyperc.xtj.DEFAULT_VALS[par_type]}")
             if len(init_f_code) == 0:
                 continue
             full_f_code = '\n    '.join(init_f_code)
