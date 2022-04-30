@@ -169,7 +169,7 @@ class ETable:
         self.range_resolver = None # will be initialized later in self.calulate() not in self.open_dump
         self.plan_or_invariants = None
         self.source_code = defaultdict(list)
-        self.metadata = {}
+        self.metadata = {"sessionName": project_name}
 
     def get_cellvalue_by_cellname(self, cellname):
         filename, sheet, row, column = hyper_etable.etable_transpiler.split_cell(cellname) 
