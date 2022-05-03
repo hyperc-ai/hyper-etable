@@ -7,4 +7,5 @@ class TableElementMeta(type):
     
     @hyperc.util.side_effect_decorator
     def __repr__(self):
-        return str(self)
+        # return str(self)  #  what was the reason for this?
+        return self.__table_name__
